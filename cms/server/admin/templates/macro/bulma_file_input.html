@@ -1,0 +1,66 @@
+{% macro bulma_file_input(input_id, name, accept, required=false, filename_id=None, button_text="Choose file…") %}
+{% set filename_id = filename_id or (input_id ~ "-file-name") %}
+<div class="file has-name bulma-file-drop"
+     ondragover="event.preventDefault();this.classList.add('is-dragover')"
+     ondragleave="this.classList.remove('is-dragover')"
+     ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=this.querySelector('.file-input');inp.files=event.dataTransfer.files;inp.dispatchEvent(new Event('change',{bubbles:true}))">
+    <label class="file-label">
+        <input class="file-input" type="file" id="{{ input_id }}" name="{{ name }}" accept="{{ accept }}" {% if required %}required{% endif %} onchange="document.getElementById('{{ filename_id }}').textContent = this.files[0]?.name || 'No file selected'" />
+        <span class="file-cta">
+            <span class="file-icon">
+                <svg width="16" height="16"><use href="#icon-upload"/></svg>
+            </span>
+            <span class="file-label">{{ button_text }}</span>
+        </span>
+        <span class="file-name" id="{{ filename_id }}">No file selected</span>
+    </label>
+</div>
+{% endmacro %}
+
+{% macro form_field(name, label, value='', type='text', placeholder='', required=False, icon=None, hint=None, info_tooltip=None, autocomplete=None, input_id=None, rows=3) %}
+{% set field_id = input_id or name %}
+<div class="field">
+    <label class="label" for="{{ field_id }}">
+        {{ label }}
+        {% if required %}<span class="has-text-danger">*</span>{% endif %}
+        {% if info_tooltip %}
+        <span class="info" title="{{ info_tooltip }}"></span>
+        {% endif %}
+    </label>
+    <div class="control {{ 'has-icons-left' if icon and type != 'textarea' and type != 'checkbox' else '' }}">
+        {% if type == 'textarea' %}
+        <textarea class="textarea"
+                  name="{{ name }}"
+                  id="{{ field_id }}"
+                  placeholder="{{ placeholder }}"
+                  rows="{{ rows }}"
+                  {% if required %}required{% endif %}>{{ value }}</textarea>
+        {% elif type == 'checkbox' %}
+        <label class="checkbox">
+            <input type="checkbox"
+                   name="{{ name }}"
+                   id="{{ field_id }}"
+                   {% if value %}checked{% endif %}
+                   {% if required %}required{% endif %}>
+        </label>
+        {% else %}
+        <input class="input"
+               type="{{ type }}"
+               name="{{ name }}"
+               id="{{ field_id }}"
+               value="{{ value }}"
+               placeholder="{{ placeholder }}"
+               {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+               {% if required %}required{% endif %}>
+        {% if icon %}
+        <span class="icon is-small is-left">
+            <svg width="18" height="18"><use href="#icon-{{ icon }}"/></svg>
+        </span>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% if hint %}
+    <p class="help">{{ hint }}</p>
+    {% endif %}
+</div>
+{% endmacro %}

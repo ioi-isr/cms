@@ -1,13 +1,16 @@
+{% from "macro/modal.html" import modal_header %}
+{% from 'macro/sidebar.html' import render_badges, render_mobile_menu_item, render_navbar_item, render_sidebar_item, render_sidebar_section with context %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <script>
     // Pre-paint CSS injection to prevent flash of expanded menus
     // Uses a hydration class on <html> so these rules only apply during initial render
     (function() {
-      var validSectionKeys = ['contests', 'tasks', 'users', 'teams'];
-      var folderKeyPattern = /^(folder|subfolder)-\d+$/;
+      var validSectionKeys = ['training-programs', 'contests', 'tasks', 'users', 'teams', 'training-days'];
+      var folderKeyPattern = /^(folder|subfolder|training-program)-\d+$|^training-days-section$/;
       var css = '';
 
       // Add hydration class to gate these styles
@@ -32,12 +35,21 @@
         if (folders) {
           JSON.parse(folders).forEach(function(key) {
             if (folderKeyPattern.test(key)) {
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-contents,\n';
-              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
-              css += 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before,\n';
-              css += 'html.sidebar-hydrating .sidebar-subfolder[data-folder-key="' + key + '"] > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
+              var sel = 'html.sidebar-hydrating .sidebar-folder[data-folder-key="' + key + '"]';
+              css += sel + ' > .folder-contents { max-height: 0; padding-top: 0; padding-bottom: 0; }\n';
+              css += sel + ' > .folder-header .folder-icon::before { transform: rotate(0deg); margin-top: 4px; margin-left: 4px; }\n';
             }
           });
+        }
+      } catch (e) {}
+
+      // Apply minimized sidebar state
+      try {
+        if (localStorage.getItem('cms-sidebar-minimized') === 'true') {
+          css += 'html.sidebar-hydrating #sidebar { width: 80px; flex: 0 0 80px; padding: 0 0.5em 4em; overflow-x: hidden; }\n';
+          css += 'html.sidebar-hydrating #sidebar #sidebar-regular { display: none; }\n';
+          css += 'html.sidebar-hydrating #sidebar #sidebar-minimized { display: block !important; }\n';
+          css += 'html.sidebar-hydrating #sidebar .is-hidden-when-minimized { display: none; }\n';
         }
       } catch (e) {}
 
@@ -50,10 +62,14 @@
     })();
     </script>
     <link rel="shortcut icon" href="{{ url("static", "favicon.ico") }}" />
-    <link rel="stylesheet" type="text/css" href="{{ url("static", "reset.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "bulma.min.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_themes.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_tp_styles.css") }}">
     <script src="{{ url("static", "web_rpc.js") }}"></script>
     <script src="{{ url("static", "aws_utils.js") }}"></script>
+    <script src="{{ url("static", "aws_table_utils.js") }}"></script>
+    <script src="{{ url("static", "aws_form_utils.js") }}"></script>
     <script src="{{ url("static", "jq", "jquery-3.6.0.min.js") }}"></script>
     <script src="{{ url("static", "js", "zxcvbn.js") }}"></script>
     <script src="{{ url("static", "jq", "jquery.jqplot.min.js") }}"></script>
@@ -64,6 +80,26 @@
     <script src="{{ url("static", "prism.js") }}" data-manual></script>
     <link rel="stylesheet" type="text/css" href="{{ url("static", "tomselect", "css", "tom-select.css") }}">
     <script src="{{ url("static", "tomselect", "js", "tom-select.complete.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "tagify", "tagify.css") }}">
+    <script src="{{ url("static", "tagify", "tagify.min.js") }}"></script>
+    <script src="{{ url("static", "micromodal", "micromodal.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "micromodal", "micromodal.css") }}">
+    <script src="{{ url("static", "sweetalert2", "sweetalert2.all.min.js") }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url("static", "sweetalert2", "sweetalert2.min.css") }}">
+    <style>
+      .swal2-popup .swal2-styled.swal2-confirm {
+        background-color: var(--tp-primary, #0F766E);
+      }
+      .swal2-popup .swal2-styled.swal2-confirm:hover {
+        background-color: var(--tp-primary-hover, #0d655e);
+      }
+      .swal2-popup .swal2-styled.swal2-cancel {
+        background-color: #6e7881;
+      }
+    </style>
+    <script src="{{ url("static", "js", "admin_table_utils.js") }}"></script>
+    <script src="{{ url("static", "training_program.js") }}"></script>
+    <script src="{{ url("static", "admin_modals.js") }}"></script>
 
     {% if contest is none %}
     <title>Admin</title>
@@ -147,13 +183,25 @@ function applySidebarState() {
     var sectionState = SidebarState.load('cms_sidebar_collapsed');
     document.querySelectorAll('.sidebar-section[data-section-key]').forEach(function(el) {
         var key = el.getAttribute('data-section-key');
-        if (sectionState[key]) el.classList.add('collapsed');
+        var sectionTitle = el.querySelector('.sidebar-section-title');
+        if (sectionState[key]) {
+            el.classList.add('collapsed');
+            if (sectionTitle) sectionTitle.setAttribute('aria-expanded', 'false');
+        } else {
+            if (sectionTitle) sectionTitle.setAttribute('aria-expanded', 'true');
+        }
     });
 
     var folderState = SidebarState.load('cms_sidebar_folders_collapsed');
-    document.querySelectorAll('.sidebar-folder[data-folder-key], .sidebar-subfolder[data-folder-key]').forEach(function(el) {
+    document.querySelectorAll('.sidebar-folder[data-folder-key]').forEach(function(el) {
         var key = el.getAttribute('data-folder-key');
-        if (folderState[key]) el.classList.add('collapsed');
+        var folderHeader = el.querySelector('.folder-header');
+        if (folderState[key]) {
+            el.classList.add('collapsed');
+            if (folderHeader) folderHeader.setAttribute('aria-expanded', 'false');
+        } else {
+            if (folderHeader) folderHeader.setAttribute('aria-expanded', 'true');
+        }
     });
 
     // End hydration phase - pre-paint CSS no longer applies, class-based CSS takes over
@@ -171,16 +219,18 @@ function initSidebarEvents() {
         if (section) {
             var key = section.getAttribute('data-section-key');
             var isCollapsed = section.classList.toggle('collapsed');
+            sectionTitle.setAttribute('aria-expanded', !isCollapsed ? 'true' : 'false');
             if (key) SidebarState.toggle('cms_sidebar_collapsed', key, isCollapsed);
         }
     }
 
     // Helper to toggle folder
     function toggleFolder(folderHeader) {
-        var folder = folderHeader.closest('.sidebar-folder, .sidebar-subfolder');
+        var folder = folderHeader.closest('.sidebar-folder');
         if (folder) {
             var key = folder.getAttribute('data-folder-key');
             var isCollapsed = folder.classList.toggle('collapsed');
+            folderHeader.setAttribute('aria-expanded', !isCollapsed ? 'true' : 'false');
             if (key) SidebarState.toggle('cms_sidebar_folders_collapsed', key, isCollapsed);
         }
     }
@@ -188,14 +238,14 @@ function initSidebarEvents() {
     sidebar.addEventListener('click', function(e) {
         // Handle section title clicks (but not link clicks)
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             toggleSection(sectionTitle);
             return;
         }
 
         // Handle folder header clicks (but not link clicks)
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             toggleFolder(folderHeader);
         }
     });
@@ -205,14 +255,14 @@ function initSidebarEvents() {
         if (e.key !== 'Enter' && e.key !== ' ') return;
 
         var sectionTitle = e.target.closest('.sidebar-section-title');
-        if (sectionTitle && e.target.tagName.toLowerCase() !== 'a') {
+        if (sectionTitle && !e.target.closest('a')) {
             e.preventDefault();
             toggleSection(sectionTitle);
             return;
         }
 
         var folderHeader = e.target.closest('.folder-header');
-        if (folderHeader && e.target.tagName.toLowerCase() !== 'a') {
+        if (folderHeader && !e.target.closest('a')) {
             e.preventDefault();
             toggleFolder(folderHeader);
         }
@@ -223,248 +273,596 @@ $(document).ready(init);
 $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 
+function initThemeToggle() {
+    var saved = localStorage.getItem('cms_theme');
+    // Always set a data-theme attribute to prevent prefers-color-scheme from applying
+    // Default to 'original' if no theme is saved
+    if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+    } else {
+        // Set to 'original' by default, which allows prefers-color-scheme to work
+        // but only when the user hasn't explicitly chosen a theme
+        document.documentElement.setAttribute('data-theme', 'original');
+    }
+    var dropdown = document.getElementById('theme-dropdown');
+    if (dropdown) {
+        var toggle = dropdown.querySelector('.navbar-item');
+        if (toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropdown.classList.toggle('is-active');
+            });
+        }
+        var options = dropdown.querySelectorAll('.theme-option');
+        for (var i = 0; i < options.length; i++) {
+            options[i].addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var theme = this.getAttribute('data-theme-switch');
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('cms_theme', theme);
+                dropdown.classList.remove('is-active');
+            });
+        }
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('is-active');
+            }
+        });
+    }
+}
+
+function initMobileMoreDropdown() {
+    var dropdown = document.getElementById('mobile-more-dropdown');
+    var trigger = document.getElementById('mobile-more-trigger');
+    if (!dropdown || !trigger) return;
+
+    trigger.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropdown.classList.toggle('is-active');
+    });
+
+    var menuLinks = dropdown.querySelectorAll('.dropdown-item');
+    for (var i = 0; i < menuLinks.length; i++) {
+        menuLinks[i].addEventListener('click', function() {
+            dropdown.classList.remove('is-active');
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('is-active');
+        }
+    });
+}
+$(document).ready(initThemeToggle);
+$(document).ready(initMobileMoreDropdown);
+
+function initHamburgerMenu() {
+    var burgers = document.querySelectorAll('.navbar-burger');
+    for (var i = 0; i < burgers.length; i++) {
+        burgers[i].addEventListener('click', function() {
+            var targetId = this.dataset.target;
+            var target = document.getElementById(targetId);
+            this.classList.toggle('is-active');
+            var isActive = this.classList.contains('is-active');
+            this.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+            if (target) {
+                target.classList.toggle('is-active', isActive);
+                target.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+            }
+        });
+    }
+}
+$(document).ready(initHamburgerMenu);
+
 //-->
     </script>
-  </head>
-  <body class="admin">
-    <div id="global">
-      <div id="sidebar">
-{% if admin is undefined %}
-        <div id="sidebar_header">
-          <h1 class="sidebar-title">Administration</h1>
-        </div>
+{# ── Build training-programs children ─────────────────────────── #}
+{% set tp_children = [] %}
+{% for tp in training_program_list|default([]) %}
+  {% set td_items = [] %}
+  {% for td in tp.training_days if td.contest %}
+    {% set _ = td_items.append({
+      "text": td.contest.name,
+      "url": url("contest", td.contest_id),
+      "title": td.contest.description,
+      "css_class": "sidebar-contest"
+    }) %}
+  {% endfor %}
+  {% set _ = tp_children.append({
+    "text": tp.name,
+    "url": url("training_program", tp.id),
+    "title": tp.description,
+    "folder_key": "training-program-" ~ tp.id,
+    "children": td_items
+  }) %}
+{% endfor %}
+
+{# ── Build contests children ─────────────────────────────────── #}
+{% set contest_children = [] %}
+{% for folder in folder_list|default([]) if folder.parent is none %}
+  {% set folder_items = [] %}
+  {% for c in folder.contests if c.training_day is none %}
+    {% set _ = folder_items.append({
+      "text": c.name,
+      "url": url("contest", c.id),
+      "title": c.description,
+      "css_class": "sidebar-contest"
+    }) %}
+  {% endfor %}
+  {% for subfolder in folder.children %}
+    {% set subfolder_items = [] %}
+    {% for c in subfolder.contests if c.training_day is none %}
+      {% set _ = subfolder_items.append({
+        "text": c.name,
+        "url": url("contest", c.id),
+        "title": c.description,
+        "css_class": "sidebar-contest"
+      }) %}
+    {% endfor %}
+    {% set _ = folder_items.append({
+      "text": subfolder.name,
+      "url": url("folder", subfolder.id),
+      "folder_key": "subfolder-" ~ subfolder.id,
+      "children": subfolder_items
+    }) %}
+  {% endfor %}
+  {% set _ = contest_children.append({
+    "text": folder.name,
+    "url": url("folder", folder.id),
+    "folder_key": "folder-" ~ folder.id,
+    "children": folder_items
+  }) %}
+{% endfor %}
+{% for c in (root_contests|default([]))[:5] %}
+  {% set _ = contest_children.append({
+    "text": c.name,
+    "url": url("contest", c.id),
+    "title": c.description,
+    "css_class": "sidebar-contest root-contest"
+  }) %}
+{% endfor %}
+{% if (root_contests|default([]))|length > 5 %}
+  {% set _ = contest_children.append({
+    "type": "action",
+    "text": "Show more...",
+    "url": url("contests")
+  }) %}
+{% endif %}
+
+{# ── Build tasks children ────────────────────────────────────── #}
+{% set task_children = [] %}
+{% for t in (task_list|default([]))[:5] %}
+  {% set _ = task_children.append({
+    "text": t.name,
+    "url": url("task", t.id),
+    "title": t.title,
+    "css_class": "sidebar-item"
+  }) %}
+{% endfor %}
+{% if (task_list|default([]))|length > 5 %}
+  {% set _ = task_children.append({
+    "type": "action",
+    "text": "Show more...",
+    "url": url("tasks")
+  }) %}
+{% endif %}
+
+{# ── Build users children ────────────────────────────────────── #}
+{% set user_children = [] %}
+{% if (user_list|default([]))|length > 0 %}
+  {% if user_list|length == 1 %}
+    {% set _ = user_children.append({"type": "action", "text": "Show the only user", "url": url("users")}) %}
+  {% else %}
+    {% set _ = user_children.append({"type": "action", "text": "Show " ~ user_list|length ~ " users", "url": url("users")}) %}
+  {% endif %}
+{% endif %}
+
+{# ── Build teams children ────────────────────────────────────── #}
+{% set team_children = [] %}
+{% if (team_list|default([]))|length > 0 %}
+  {% if team_list|length == 1 %}
+    {% set _ = team_children.append({"type": "action", "text": "Show the only team", "url": url("teams")}) %}
+  {% else %}
+    {% set _ = team_children.append({"type": "action", "text": "Show " ~ team_list|length ~ " teams", "url": url("teams")}) %}
+  {% endif %}
+{% endif %}
+
+{# ── Assemble global_menu_items with full hierarchy ──────────── #}
+{% set global_menu_items = [
+  {"key": "overview",          "icon": "icon-activity",       "text": "Overview",           "url": url(),                     "pos": 1, "mobile": false, "badges": []},
+  {"key": "resource-list",     "icon": "icon-cpu",            "text": "Resource usage",     "url": url("resources"),           "pos": 2, "mobile": false, "badges": []},
+  {"key": "training-programs", "icon": "icon-graduation-cap", "text": "Training Programs", "url": url("training_programs"),  "pos": 3, "mobile": true, "mobile_text": "Programs", "badges": [],
+   "children": tp_children, "empty_text": "No training programs available",
+   "actions": [{"type": "button", "text": "New training program", "onclick": "MicroModal.show('modal-add-program')"}]},
+  {"key": "contests",          "icon": "icon-stopwatch",      "text": "Contests",           "url": url("contests"),           "pos": 4, "mobile": true, "badges": [],
+   "children": contest_children, "empty_text": "No contests available",
+   "actions": [
+     {"type": "link", "text": "New contest", "url": "#", "onclick": "event.preventDefault(); AdminModals.showAddContestDialog('" ~ url("contests", "add") ~ "', '" ~ url("contest", "") ~ "')"},
+     {"type": "button", "text": "New folder", "onclick": "MicroModal.show('modal-add-folder')"},
+     {"type": "link", "text": "Manage folders", "url": url("folders")}
+   ]},
+  {"key": "tasks",             "icon": "icon-puzzle",         "text": "Tasks",              "url": url("tasks"),              "pos": 5, "mobile": true, "badges": [],
+   "children": task_children, "empty_text": "No tasks available",
+   "actions": [{"type": "button", "text": "New task", "onclick": "AdminModals.showAddTaskDialog('" ~ url("tasks", "add") ~ "', '" ~ url("task", "") ~ "')"}]},
+  {"key": "users",             "icon": "icon-users",          "text": "Users",              "url": url("users"),              "pos": 6, "mobile": true, "badges": [],
+   "children": user_children, "empty_text": "No users available",
+   "actions": [{"type": "button", "text": "New user", "onclick": "MicroModal.show('modal-add-user')"}]},
+  {"key": "teams",             "icon": "icon-flag",           "text": "Teams",              "url": url("teams"),              "pos": 7, "mobile": true, "badges": [],
+   "children": team_children, "empty_text": "No teams available",
+   "actions": [{"type": "button", "text": "New team", "onclick": "AdminModals.showAddTeamDialog('" ~ url("teams", "add") ~ "')"}]},
+] %}
+
+{% if contest is defined and contest is not none and training_program is not defined %}
+  {% set context_menu_items = [
+    {"icon": "icon-activity",       "text": "Overview",       "url": url("contest", contest.id, "overview"),               "pos": 1,  "mobile": false, "badges": []},
+    {"icon": "icon-cpu",            "text": "Resource usage", "url": url("resources", "all", contest.id|string),          "pos": 2,  "mobile": false, "badges": []},
+    {"icon": "icon-settings",       "text": "General",        "url": url("contest", contest.id),                           "pos": 3,  "mobile": true,  "badges": []},
+    {"icon": "icon-trophy",         "text": "Ranking",        "url": url("contest", contest.id, "ranking"),                "pos": 4,  "mobile": true,  "badges": []},
+    {"icon": "icon-file-code",      "text": "Submissions",    "url": url("contest", contest.id, "submissions"),            "pos": 5,  "mobile": true,  "badges": []},
+    {"icon": "icon-puzzle",         "text": "Tasks",          "url": url("contest", contest.id, "tasks"),                  "pos": 7,  "mobile": true,  "badges": []},
+    {"icon": "icon-megaphone",      "text": "Announcements",  "url": url("contest", contest.id, "announcements"),          "pos": 8,  "mobile": false, "badges": []},
+    {"icon": "icon-message-circle", "text": "Questions",      "url": url("contest", contest.id, "questions"),              "pos": 9,  "mobile": true,
+     "badges": [{"count": unanswered|default(0), "color": "danger"}]},
+    {"icon": "icon-calendar-check", "text": "Attendance",     "url": url("contest", contest.id, "delays_and_extra_times"), "pos": 10, "mobile": true,
+     "badges": [{"count": unanswered_delay_requests|default(0), "color": "warning"}]},
+  ] %}
+  {% if contest.allow_user_tests %}
+    {% set context_menu_items = context_menu_items + [
+      {"icon": "icon-play-circle", "text": "User tests", "url": url("contest", contest.id, "user_tests"), "pos": 11, "mobile": false, "badges": []}
+    ] %}
+  {% endif %}
+  {% if contest.training_day is none %}
+    {% set context_menu_items = context_menu_items + [
+      {"icon": "icon-users", "text": "Users", "url": url("contest", contest.id, "users"), "pos": 6, "mobile": false, "badges": []}
+    ] %}
+  {% endif %}
+
+{% elif training_program is defined %}
+  {% set active_training_days = training_program.training_days | selectattr("contest") | list %}
+  {% set td_children = [] %}
+  {% for td in active_training_days %}
+    {% set td_notifs = training_day_notifications.get(td.id, {}) if training_day_notifications is defined else {} %}
+    {% set td_unanswered = td_notifs.get("unanswered_questions", 0) %}
+    {% set td_delays = td_notifs.get("pending_delay_requests", 0) %}
+    {% set _ = td_children.append({
+      "text": td.contest.name,
+      "url": url("contest", td.contest_id),
+      "title": td.contest.description,
+      "css_class": "sidebar-contest",
+      "badges": [{"count": td_unanswered, "color": "danger"}, {"count": td_delays, "color": "warning"}]
+    }) %}
+  {% endfor %}
+  {% set context_menu_items = [
+    {"icon": "icon-activity",       "text": "Overview",         "url": url("contest", training_program.managing_contest.id, "overview"),      "pos": 1,  "mobile": false, "badges": []},
+    {"icon": "icon-cpu",            "text": "Resource usage",   "url": url("resources", "all", training_program.managing_contest.id|string), "pos": 2,  "mobile": false, "badges": []},
+    {"icon": "icon-settings",       "text": "General",          "url": url("training_program", training_program.id),                          "pos": 3,  "mobile": false, "badges": []},
+    {"icon": "icon-users",          "text": "Students",         "url": url("training_program", training_program.id, "students"),              "pos": 4,  "mobile": true,  "badges": []},
+    {"icon": "icon-laptop-code",    "text": "Training Days",    "url": url("training_program", training_program.id, "training_days"),         "pos": 5,  "mobile": true, "mobile_text": "Trainings",
+     "badges": [{"count": total_td_unanswered_questions|default(0), "color": "danger"}, {"count": total_td_pending_delay_requests|default(0), "color": "warning"}],
+     "children": td_children, "folder_key": "training-days-section", "empty_text": "No active training days",
+     "actions": [{"type": "button", "text": "Add a training day", "onclick": "MicroModal.show('modal-add-training-day')"}]},
+    {"icon": "icon-home-chart",     "text": "Home Task Scores", "url": url("training_program", training_program.id, "ranking"),               "pos": 6,  "mobile": false, "badges": []},
+    {"icon": "icon-file-code",      "text": "Submissions",      "url": url("training_program", training_program.id, "submissions"),           "pos": 7,  "mobile": false, "badges": []},
+    {"icon": "icon-puzzle",         "text": "Tasks",             "url": url("training_program", training_program.id, "tasks"),                "pos": 8,  "mobile": false, "badges": []},
+    {"icon": "icon-calendar-check", "text": "Attendance",        "url": url("training_program", training_program.id, "attendance"),           "pos": 9,  "mobile": true,  "badges": []},
+    {"icon": "icon-trophy",         "text": "Ranking",           "url": url("training_program", training_program.id, "combined_ranking"),     "pos": 10, "mobile": true,  "badges": []},
+    {"icon": "icon-message-circle", "text": "Questions",         "url": url("training_program", training_program.id, "questions"),            "pos": 11, "mobile": true,
+     "badges": [{"count": unanswered|default(0), "color": "danger"}]},
+    {"icon": "icon-megaphone",      "text": "Announcements",     "url": url("training_program", training_program.id, "announcements"),        "pos": 12, "mobile": false, "badges": []},
+  ] %}
 {% else %}
-        <div id="sidebar_header">
-          <div class="login_notice">
-            Hello, <a href="{{ url("admins") }}">{{ admin.name }}</a>.
-              <form class="inline" action="{{ url("logout") }}" method="POST">{{ xsrf_form_html|safe }}<input type="submit" value="Logout"></form>
-          </div>
-          {% if contest is none %}
-          <h1 class="sidebar-title">Administration</h1>
-          {% else %}
-          <h1 class="sidebar-title"><a href="{{ url() }}">Administration</a></h1>
-          {% if contest.folder %}
-          <div class="sidebar-breadcrumb">
-            <a href="{{ url("folder", contest.folder.id) }}">{{ contest.folder.name }}</a>
-            <span class="breadcrumb-separator"></span>
-            <span class="breadcrumb-current">{{ contest.name }}</span>
-          </div>
-          {% else %}
-          <div class="sidebar-breadcrumb">
-            <span class="breadcrumb-current">{{ contest.name }}</span>
-          </div>
-          {% endif %}
-          {% endif %}
+  {% set context_menu_items = global_menu_items %}
+{% endif %}
+
+  </head>
+  <body class="admin has-navbar-fixed-top has-navbar-fixed-bottom-touch">
+    {% include 'fragments/svg_icons.html' %}
+    <nav id="admin-navbar" class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
+      <!-- is-flex-grow-1 allows the brand row to span the full width of the screen -->
+      <div class="navbar-brand is-flex-grow-1">
+        <a role="button" class="navbar-burger ml-0" aria-label="menu" aria-expanded="false" data-target="admin-navbar-menu">
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+
+        <!-- Logo stays on the left -->
+        <a class="navbar-item" href="{{ url() }}">
+          <img src="{{ url("static", "ioi-logo.png") }}" alt="IOI Logo" style="max-height: 2.25rem;">
+          <span class="ml-2 has-text-weight-bold is-hidden-touch is-5">CMS Admin</span>
+        </a>
+
+        <!-- Main navigation links (centered section) -->
+        <div class="is-flex is-align-items-center is-flex-grow-1 is-justify-content-center is-hidden-touch">
+          {% for item in global_menu_items %}
+            {% if item.mobile %}
+{{ render_navbar_item(item) }}
+            {% endif %}
+          {% endfor %}
         </div>
+
+        <!-- ml-auto pushes this entire group to the right edge. is-flex keeps it horizontal -->
+        <div class="is-flex is-align-items-center ml-auto">
+
+          <!-- Theme Dropdown -->
+          <div class="dropdown is-right" id="theme-dropdown">
+            <div class="dropdown-trigger">
+              <button type="button" class="navbar-item" aria-haspopup="true" aria-controls="dropdown-menu" title="Change color theme">
+                <svg class="icon"><use href="#icon-color-palette"/></svg>
+              </button>
+            </div>
+            <div class="dropdown-menu" id="dropdown-menu" role="menu">
+              <div class="dropdown-content">
+                {% set themes = [
+                  {'id': 'original', 'name': 'Red\'s favorite', 'icon_class': 'theme-icon-original'},
+                  {'id': 'granny-smith', 'name': 'Granny Smith', 'icon_class': 'theme-icon-granny-smith'},
+                  {'id': 'pink-lady', 'name': 'Pink Lady', 'icon_class': 'theme-icon-pink-lady'},
+                  {'id': 'arkansas-black', 'name': 'Arkansas Black', 'icon_class': 'theme-icon-arkansas-black'},
+                  {'id': 'golden', 'name': 'Golden', 'icon_class': 'theme-icon-golden'},
+                  {'id': 'mcintosh', 'name': 'McIntosh', 'icon_class': 'theme-icon-mcintosh'}
+                ] %}
+                {% for theme in themes %}
+                  <button type="button" class="dropdown-item theme-option" data-theme-switch="{{ theme.id }}" role="menuitem" title="{{ theme.name }}">
+                    <svg class="icon theme-icon {{ theme.icon_class }}"><use href="#icon-apple"/></svg>
+                    <span>{{ theme.name }}</span>
+                  </button>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+{% if admin is defined %}
+          <a class="navbar-item is-flex is-align-items-center" href="{{ url("admins") }}">
+            <svg class="icon"><use href="#icon-admin"/></svg>
+            <!-- is-hidden-mobile hides the text on small screens so icons don't squash together -->
+            <span class="ml-1 is-hidden-mobile">{{ admin.name }}</span>
+          </a>
+
+          <!-- Logout -->
+          <div class="navbar-item">
+            <form action="{{ url("logout") }}" method="POST" class="m-0">
+              {{ xsrf_form_html|safe }}
+              <button type="submit" class="is-clickable is-flex is-align-items-center has-text-inherit">
+                <svg class="icon"><use href="#icon-logout"/></svg>
+                <span class="is-hidden-touch">Logout</span>
+              </button>
+            </form>
+          </div>
+{% endif %}
+        </div>
+      </div>
+      <!-- Mobile hamburger menu (hidden on desktop, toggled by burger) -->
+      <div id="admin-navbar-menu" class="navbar-menu is-hidden-desktop" aria-hidden="true">
+        <div class="navbar-start">
+          {% for item in global_menu_items | sort(attribute='pos') %}
+{{ render_mobile_menu_item(item, 0) }}
+            {% if not loop.last %}
+            <hr class="navbar-divider">
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </nav>
+
+    <div id="global" class="layout">
+      <aside id="sidebar" class="menu is-hidden-touch">
+        <!-- Toggle button for minimized sidebar -->
+        <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" title="Toggle sidebar">
+          <svg class="icon"><use href="#icon-chevrons-left"/></svg>
+        </button>
         {% if config.web_server.secret_key == config.web_server.DEFAULT_SECRET_KEY %}
-        <div class="secret_notice">
+        <div class="secret_notice is-hidden-when-minimized">
           Change secret_key in cms.toml!<br/>
           For example,<br/>
           {{ get_hex_random_key() }}
         </div>
         {% endif %}
         {% if pending_password_resets > 0 %}
-        <div class="secret_notice notice-pending">
+        <div class="secret_notice notice-pending is-hidden-when-minimized">
           <a href="{{ url("users") }}">
             {{ pending_password_resets }} pending password reset{% if pending_password_resets > 1 %}s{% endif %}
           </a>
         </div>
         {% endif %}
-        <ul class="menu">
-        {% if contest is none %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url() }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("resourceslist") }}">Resource usage</a></li>
-        {% else %}
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "overview") }}">Overview</a></li>
-          <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "resourceslist") }}">Resource usage</a></li>
-        {% endif %}
-        </ul>
-        <div class="hr"></div>
-
-        {% if contest is none %}
-        <div class="sidebar-section" data-section-key="contests">
-          <h2 class="sidebar-section-title" tabindex="0">
-            <span class="section-caret"></span>
-            <a href="{{ url("contests") }}">Contests</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if folder_list|length > 0 or root_contests|length > 0 %}
-            <ul class="sidebar-menu">
-            {% for folder in folder_list if folder.parent is none %}
-            <li class="sidebar-folder" data-folder-key="folder-{{ folder.id }}">
-              <div class="folder-header" tabindex="0">
-                <span class="folder-icon"></span>
-                <a href="{{ url("folder", folder.id) }}">{{ folder.name }}</a>
-              </div>
-              <ul class="folder-contents">
-                {% for c in folder.contests %}
-                  <li class="sidebar-contest">
-                    <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                  </li>
-                  {% endfor %}
-                {% for subfolder in folder.children %}
-                <li class="sidebar-subfolder" data-folder-key="subfolder-{{ subfolder.id }}">
-                  <div class="folder-header" tabindex="0">
-                    <span class="folder-icon"></span>
-                    <a href="{{ url("folder", subfolder.id) }}">{{ subfolder.name }}</a>
-                  </div>
-                  <ul class="folder-contents">
-                      {% for c in subfolder.contests %}
-                      <li class="sidebar-contest">
-                        <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                  </li>
-                  {% endfor %}
-                </ul>
-              </li>
-              {% endfor %}
-              {% for c in root_contests[:5] %}
-              <li class="sidebar-contest root-contest">
-                <a href="{{ url("contest", c.id) }}" title="{{ c.description }}">{{ c.name }}</a>
-              </li>
-              {% endfor %}
-              {% if root_contests|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("contests") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No contests available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("contests", "add") }}">New contest</a>
-              <a class="sidebar-action-link" href="{{ url("folders", "add") }}">New folder</a>
-              <a class="sidebar-action-link" href="{{ url("folders") }}">Manage folders</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="tasks">
-          <h2 class="sidebar-section-title" tabindex="0">
-            <span class="section-caret"></span>
-            <a href="{{ url("tasks") }}">Tasks</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if task_list|length > 0 %}
-            <ul class="sidebar-menu">
-              {% for t in task_list[:5] %}
-              <li class="sidebar-item">
-                <a href="{{ url("task", t.id) }}" title="{{ t.title }}">{{ t.name }}</a>
-              </li>
-              {% endfor %}
-              {% if task_list|length > 5 %}
-              <li class="sidebar-action">
-                <a href="{{ url("tasks") }}">Show more...</a>
-              </li>
-              {% endif %}
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No tasks available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("tasks", "add") }}">New task</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="users">
-          <h2 class="sidebar-section-title" tabindex="0">
-            <span class="section-caret"></span>
-            <a href="{{ url("users") }}">Users</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if user_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("users") }}">
-                  {% if user_list|length == 1 %}Show the only user{% else %}Show {{ user_list|length }} users{% endif %}
-                </a>
-              </li>
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No users available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("users", "add") }}">New user</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="sidebar-section" data-section-key="teams">
-          <h2 class="sidebar-section-title" tabindex="0">
-            <span class="section-caret"></span>
-            <a href="{{ url("teams") }}">Teams</a>
-          </h2>
-          <div class="sidebar-section-body">
-            {% if team_list|length > 0 %}
-            <ul class="sidebar-menu">
-              <li class="sidebar-action">
-                <a href="{{ url("teams") }}">
-                  {% if team_list|length == 1 %}Show the only team{% else %}Show {{ team_list|length }} teams{% endif %}
-                </a>
-              </li>
-            </ul>
-            {% else %}
-            <p class="sidebar-empty">No teams available</p>
-            {% endif %}
-            {% if admin.permission_all %}
-            <div class="sidebar-actions">
-              <a class="sidebar-action-link" href="{{ url("teams", "add") }}">New team</a>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-        {% else %}
+        <!-- Regular sidebar content -->
+        <div id="sidebar-regular">
+        {% if contest is none and training_program is not defined %}
+        {# ── Global view: render sidebar from global_menu_items ── #}
+        {% set all_items = global_menu_items | sort(attribute='pos') %}
           <ul class="menu">
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id) }}">General</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "ranking") }}">Ranking</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "submissions") }}">Submissions</a></li>
-            {% if contest.allow_user_tests %}<li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "user_tests") }}">User tests</a></li>{% endif %}
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "users") }}">Users</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "tasks") }}">Tasks</a></li>
-            <li class="menu_entry"><a class="menu_link" href="{{ url("contest", contest.id, "announcements") }}">Announcements</a></li>
-            <li class="menu_entry">
-              <span id="unanswered_questions" class="unread"
-                {% if unanswered == 0 %} style="display: none;" {% endif %}>
-                {{ unanswered }}
-              </span>
-              <a class="menu_link" href="{{ url("contest", contest.id, "questions") }}">Questions</a>
-            </li>
-            <li class="menu_entry">
-              <span id="unanswered_delay_requests" class="unread"
-                {% if unanswered_delay_requests == 0 %} style="display: none;" {% endif %}>
-                {{ unanswered_delay_requests }}
-              </span>
-              <a class="menu_link" href="{{ url("contest", contest.id, "delays_and_extra_times") }}">Attendance</a>
-            </li>
+          {% for item in all_items %}
+            {% if item.pos == 3 %}
+            </ul>
+            <div class="hr"></div>
+            <ul class="menu">
+            {% endif %}
+            {% if item.children is defined %}
+            </ul>
+{{ render_sidebar_section(item, admin.permission_all) }}
+            <ul class="menu">
+            {% else %}
+{{ render_sidebar_item(item, is_top_level=true) }}
+            {% endif %}
+          {% endfor %}
           </ul>
+        {% else %}
+          {# Context view (training program or contest): render from context_menu_items #}
+          {% set all_items = context_menu_items | sort(attribute='pos') %}
+          <ul class="menu">
+          {% for item in all_items %}
+            {% if item.pos == 3 %}
+            </ul>
+            <div class="hr"></div>
+            <ul class="menu">
+            {% endif %}
+{{ render_sidebar_item(item, is_top_level=true) }}
+          {% endfor %}
+          </ul>
+          {% if training_program is not defined %}
           <div class="hr"></div>
-          <div class="footer">
+          <div class="side_footer">
             <span id="remaining_text"></span>
             <span id="remaining_value"></span>
           </div>
+          {% endif %}
         {% endif %}
-{% endif %}
-        <div class="cr_notice">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
+        </div>
+
+        <!-- Minimized sidebar content (icon-only) -->
+        <div id="sidebar-minimized" style="display: none;">
+        {% if contest is none and training_program is not defined %}
+          {% set all_items = global_menu_items | sort(attribute='pos') %}
+        {% else %}
+          {% set all_items = context_menu_items | sort(attribute='pos') %}
+        {% endif %}
+          <div class="minimized-menu">
+          {% for item in all_items %}
+            <a href="{{ item.url }}" class="minimized-menu-item" title="{{ item.text }}">
+              <div style="position: relative;">
+                <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
+                {% set ns = namespace(shown=false) %}
+                {% for badge in item.badges if badge.count > 0 and not ns.shown %}
+                  {% set ns.shown = true %}
+                  <span class="tag is-{{ badge.color }} is-rounded" style="position:absolute; top:-4px; right:-8px; height: 18px; min-width: 18px; padding: 0 4px; font-size: 0.7rem; font-weight: bold;">{{ badge.count }}</span>
+                {% endfor %}
+              </div>
+            </a>
+          {% endfor %}
+          </div>
+        </div>
+        <div class="cr_notice is-hidden-when-minimized">CMS <a href="http://github.com/cms-dev/cms/">codebase</a> is released under the<br/><a href="http://www.gnu.org/licenses/agpl.txt">GNU Affero General Public License</a>.</div>
+      </aside>
+
+{% if context_menu_items|length > 0 %}
+  {% set mobile_items = context_menu_items | selectattr('mobile') | sort(attribute='pos') | list %}
+  {% set more_items = context_menu_items | rejectattr('mobile') | sort(attribute='pos') | list %}
+  <nav id="mobile-bottom-nav" class="navbar is-fixed-bottom-touch is-hidden-desktop has-shadow" style="border-top: 1px solid var(--bulma-border-weak); background: var(--bulma-scheme-main); z-index: 30;" role="navigation">
+  <div class="is-flex is-justify-content-space-evenly is-align-items-stretch is-flex-grow-1" style="width: 100%; height: 3.5rem;">
+
+    {% for item in mobile_items %}
+    <a href="{{ item.url }}" class="is-flex is-flex-direction-column is-align-items-center is-justify-content-center has-text-grey" title="{{ item.text }}" style="flex: 1;">
+      <div class="is-relative is-flex is-align-items-center is-justify-content-center">
+        <svg class="icon is-medium"><use href="#{{ item.icon }}"/></svg>
+        {% set ns = namespace(shown=false) %}
+        {% for badge in item.badges if badge.count > 0 and not ns.shown %}
+          {% set ns.shown = true %}
+          <span class="tag is-{{ badge.color }} is-rounded" style="position:absolute; top:-2px; right:-8px; height: 18px; min-width: 18px; padding: 0 4px; font-size: 0.7rem; font-weight: bold;">{{ badge.count }}</span>
+        {% endfor %}
+      </div>
+      <div class="is-tiny mt-0 has-text-centered">{{ item.mobile_text if item.mobile_text is defined else item.text }}</div>
+    </a>
+    {% endfor %}
+
+    {% if more_items|length > 0 %}
+    <!-- NATIVE BULMA DROP-UP -->
+    <div class="dropdown is-up is-right" id="mobile-more-dropdown" style="flex: 1; display: flex;">
+
+      <!-- Using an <a> tag ensures mobile browsers correctly register the tap/click -->
+      <a id="mobile-more-trigger" class="dropdown-trigger is-flex is-flex-direction-column is-align-items-center is-justify-content-center has-text-grey" style="width: 100%; height: 100%; text-decoration: none; cursor: pointer;">
+        <div class="is-flex is-align-items-center is-justify-content-center">
+          <svg class="icon is-medium"><use href="#icon-more"/></svg>
+        </div>
+        <div class="is-size-7 has-text-centered">More</div>
+      </a>
+
+      <!-- The Menu that pops upwards -->
+      <div class="dropdown-menu" role="menu" style="min-width: 220px; padding-bottom: 0.5rem; z-index: 100;">
+        <div class="dropdown-content">
+          {% for item in more_items %}
+          <a href="{{ item.url }}" class="dropdown-item is-flex is-align-items-center py-3">
+            <svg class="icon mr-3 has-text-grey"><use href="#{{ item.icon }}"/></svg>
+            <span>{{ item.text }}</span>
+          </a>
+          {% endfor %}
+        </div>
       </div>
 
-      <div id="border"></div>
-      <div id="core">
-        <div id="notifications" class="notifications"></div>
-        <dialog id="subpage_popup">
-          <button id="subpage_close">x</button>
-          <div id="subpage_content"></div>
-        </dialog>
-        {% block core %}{% endblock core %}
+    </div>
+    {% endif %}
+
+  </div>
+</nav>
+{% endif %}
+
+      <main id="core">
+        {% if breadcrumbs %}
+        <nav class="breadcrumb has-succeeds-separator box is-bordered is-radiusless mb-5 py-3 px-4" aria-label="breadcrumbs">
+          <ul>
+        {% for crumb in breadcrumbs %}
+            <li{% if loop.last %} class="is-active"{% endif %}>
+              <a href="{{ crumb.url }}" class="has-text-link-35 has-text-weight-medium">
+            {% if crumb.icon %}
+                <svg class="icon is-small"><use href="#{{ crumb.icon }}"/></svg>
+            {% endif %}
+                <span>{{ crumb.name }}</span>
+              </a>
+            </li>
+        {% endfor %}
+          </ul>
+        </nav>
+        {% endif %}
+        <div class="modal modal--wide" id="modal-show-file" aria-hidden="true">
+            <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+                <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-show-file-title" style="max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;">
+                    <header class="modal__header is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-center gap-2">
+                      <h2 class="modal__title is-flex-grow-1 m-0" id="modal-show-file-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">File preview</h2>
+                        <div class="is-flex is-align-items-center gap-2">
+                            <a id="modal-show-file-download" class="button is-ghost" download aria-label="Download file" title="Download file">
+                                <span class="icon"><svg><use href="#icon-download"/></svg></span>
+                                <span class="is-hidden-mobile">Download</span>
+                            </a>
+                            <button id="modal-show-file-copy" type="button" class="button is-ghost" aria-label="Copy file content" title="Copy file content">
+                                <span class="icon"><svg><use href="#icon-copy"/></svg></span>
+                                <span class="is-hidden-mobile">Copy</span>
+                            </button>
+                            <button class="modal__close" aria-label="Close modal" data-micromodal-close>&times;</button>
+                        </div>
+                    </header>
+                    <main class="modal__content" id="subpage_content" style="overflow: auto; flex: 1;"></main>
+                </div>
+            </div>
+        </div>
+        <div class="container is-fluid">
+          <div id="notifications" class="notifications"></div>
+          {% block core %}{% endblock core %}
+        </div>
+      </main>
+
+      <!-- Global modals for sidebar actions -->
+      {% include "fragments/modal_add_user.html" %}
+      {% include "fragments/modal_add_training_program.html" %}
+      {% if training_program is defined %}
+      {% include "fragments/modal_add_training_day.html" %}
+      {% endif %}
+      {% include "fragments/modal_add_folder.html" %}
+
+      <!-- Generic Confirm Modal -->
+      <div class="modal modal--medium" id="modal-generic-confirm" aria-hidden="true">
+          <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+              <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-confirm-title">
+                  {{ modal_header("Confirm Action", "modal-confirm-title", "modal__header--danger") }}
+                  <main class="modal__content">
+                      <p id="modal-confirm-message" style="margin-bottom: 16px;"></p>
+                      <div id="modal-confirm-warning-box" class="modal__warning--danger" style="display: none;">
+                          <p class="modal__warning-title">
+                              <svg class="icon" width="16" height="16" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
+                              Warning: This action cannot be undone!
+                          </p>
+                          <div id="modal-confirm-warning-text" class="modal__warning-body" style="margin-top: 4px;"></div>
+                          <ul id="modal-confirm-warning-list" style="margin: 4px 0 0 0; padding-left: 20px;"></ul>
+                      </div>
+                  </main>
+                  <footer class="modal__footer">
+                      <button type="button" class="button has-text-weight-bold" data-micromodal-close>Cancel</button>
+                      <button type="button" class="button is-danger" id="modal-confirm-btn">Confirm</button>
+                  </footer>
+              </div>
+          </div>
       </div>
 
     </div>

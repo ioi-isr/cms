@@ -28,7 +28,8 @@
 import logging
 
 from cms import ServiceCoord, config
-from cms.db import SessionGen, Submission, Dataset, get_submission_results
+from cms.db import SessionGen, Submission, Dataset, Participation, \
+    get_submission_results
 from cms.grading.scorecache import update_score_cache, invalidate_score_cache
 from cms.io import Executor, TriggeredService, rpc_method
 from cms.io.priorityqueue import QueueEntry
@@ -224,6 +225,10 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                                        include_model_solutions=True).all()
 
             affected_pairs: set[tuple[int, int]] = set()
+            # Memoize training day participation lookups to avoid N queries
+            # during bulk invalidations. Key: (training_day_contest_id, user_id)
+            training_day_participation_cache: dict[tuple[int, int], Participation | None] = {}
+
             for sr in submission_results:
                 if sr.scored():
                     sr.invalidate_score()
@@ -232,6 +237,27 @@ class ScoringService(TriggeredService[ScoringOperation, ScoringExecutor]):
                         sr.submission.timestamp))
                     affected_pairs.add(
                         (sr.submission.participation_id, sr.submission.task_id))
+
+                    # For training day submissions, also add the training day
+                    # participation to the affected pairs so its cache gets
+                    # invalidated too.
+                    training_day = sr.submission.training_day
+                    if training_day is not None and training_day.contest_id is not None:
+                        cache_key = (training_day.contest_id,
+                                     sr.submission.participation.user_id)
+                        if cache_key not in training_day_participation_cache:
+                            training_day_participation_cache[cache_key] = (
+                                session.query(Participation)
+                                .filter(
+                                    Participation.contest_id == cache_key[0],
+                                    Participation.user_id == cache_key[1],
+                                )
+                                .one_or_none()
+                            )
+                        training_day_participation = training_day_participation_cache[cache_key]
+                        if training_day_participation is not None:
+                            affected_pairs.add(
+                                (training_day_participation.id, sr.submission.task_id))
 
             for p_id, t_id in affected_pairs:
                 invalidate_score_cache(

@@ -1,0 +1,38 @@
+{#
+  Modern info/warning alert component using Bulma message (header-less variant).
+
+  Parameters:
+  - title: The alert title (e.g., "Pending Delay Requests")
+  - message: The descriptive message text
+  - items: Optional list of items to display as badges (each item should have 'url', 'label', and optionally 'count')
+  - type: 'warning' (amber) or 'info' (blue), defaults to 'warning'
+#}
+{% macro alert(title, message, items=none, type='warning') %}
+<article class="message is-{{ type }}">
+    <div class="message-body is-flex is-gap-2">
+        <div class="info-alert-icon">
+            {% if type == 'warning' %}
+            <svg class="icon"><use href="#icon-alert-triangle"/></svg>
+            {% else %}
+            <svg class="icon"><use href="#icon-info"/></svg>
+            {% endif %}
+        </div>
+        <div class="info-alert-content">
+            <strong>{{ title }}</strong>
+            <div>{{ message }}</div>
+            {% if items %}
+            <div class="info-alert-items">
+                {% for item in items %}
+                <a href="{{ item.url }}" class="info-alert-badge">
+                    {{ item.label }}
+                    {% if item.count is defined and item.count %}
+                    <span class="info-alert-count">{{ item.count }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</article>
+{% endmacro %}

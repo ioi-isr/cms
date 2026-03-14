@@ -31,18 +31,39 @@ from .base import BaseHandler, require_permission
 
 
 class ContestSubmissionsHandler(BaseHandler):
-    """Shows all submissions for this contest.
+    """Shows all submissions for this contest or training program.
 
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/submissions
+    - /training_program/{id}/submissions
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
-        self.contest = contest
+    def get(self, entity_type: str, entity_id: str):
+        training_program = self.setup_contest_or_training_program(
+            entity_type, entity_id
+        )
+        contest = self.contest
 
-        query = self.sql_session.query(Submission).join(Task)\
-            .filter(Task.contest == contest)
+        # Determine if this is a training program managing contest
+        is_training_program = training_program is not None
+
+        # For training day contests, only show submissions made via that training day
+        # (submissions now have training_day_id set when submitted via a training day)
+        if contest.training_day is not None:
+            query = self.sql_session.query(Submission)\
+                .filter(Submission.training_day_id == contest.training_day.id)
+        else:
+            # For regular contests and training program managing contests,
+            # show all submissions for tasks in this contest
+            query = self.sql_session.query(Submission).join(Task)\
+                .filter(Task.contest == contest)
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(query, page)
+
+        # Pass flag and training_program to template for training programs
+        self.r_params["is_training_program"] = is_training_program
+        if is_training_program:
+            self.r_params["training_program"] = training_program
 
         self.render("contest_submissions.html", **self.r_params)
 
@@ -56,8 +77,15 @@ class ContestUserTestsHandler(BaseHandler):
         contest = self.safe_get_item(Contest, contest_id)
         self.contest = contest
 
-        query = self.sql_session.query(UserTest).join(Task)\
-            .filter(Task.contest == contest)
+        # For training day contests, tasks have training_day_id set
+        # but contest_id points to the managing contest.
+        # We need to filter by training_day_id for training day contests.
+        if contest.training_day is not None:
+            query = self.sql_session.query(UserTest).join(Task)\
+                .filter(Task.training_day_id == contest.training_day.id)
+        else:
+            query = self.sql_session.query(UserTest).join(Task)\
+                .filter(Task.contest == contest)
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_user_tests(query, page)
 

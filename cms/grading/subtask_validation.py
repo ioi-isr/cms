@@ -23,6 +23,7 @@ including background execution with proper cancellation support.
 The handlers that use this logic are in cms/server/admin/handlers/.
 """
 
+import errno
 import logging
 
 import gevent
@@ -61,6 +62,13 @@ _validator_pool = Pool(size=_VALIDATOR_CONCURRENCY_LIMIT)
 # file after it was written to the sandbox.
 _TEXT_FILE_BUSY_MAX_RETRIES = 3
 _TEXT_FILE_BUSY_RETRY_DELAY = 0.3
+
+
+def _is_text_file_busy_error(exc):
+    """Check if an exception is related to ETXTBSY (text file busy)."""
+    if isinstance(exc, OSError) and exc.errno in (errno.ETXTBSY, errno.EBUSY):
+        return True
+    return "text file busy" in str(exc).lower()
 
 
 def set_sandbox_resource_limits(sandbox):
@@ -203,18 +211,42 @@ def _run_validator(file_cacher, filename, executable_digest, testcase_data):
             for attempt in range(_TEXT_FILE_BUSY_MAX_RETRIES + 1):
                 sandbox = _create_sandbox_with_retry(file_cacher)
 
-                sandbox.create_file_from_storage(
-                    exe_name, executable_digest, executable=True)
-                sandbox.create_file_from_storage("input.txt", tc_data["input"])
-                sandbox.create_file_from_storage("output.txt", tc_data["output"])
+                try:
+                    sandbox.create_file_from_storage(
+                        exe_name, executable_digest, executable=True
+                    )
+                    sandbox.create_file_from_storage("input.txt", tc_data["input"])
+                    sandbox.create_file_from_storage("output.txt", tc_data["output"])
 
-                set_sandbox_resource_limits(sandbox)
+                    set_sandbox_resource_limits(sandbox)
 
-                sandbox.stdin_file = "input.txt"
-                sandbox.stdout_file = "stdout.txt"
-                sandbox.stderr_file = "stderr.txt"
+                    sandbox.stdin_file = "input.txt"
+                    sandbox.stdout_file = "stdout.txt"
+                    sandbox.stderr_file = "stderr.txt"
 
-                box_success = sandbox.execute_without_std(cmd, wait=True)
+                    box_success = sandbox.execute_without_std(cmd, wait=True)
+                except Exception as exc:
+                    if (
+                        _is_text_file_busy_error(exc)
+                        and attempt < _TEXT_FILE_BUSY_MAX_RETRIES
+                    ):
+                        logger.info(
+                            "Text file busy (exception) for testcase "
+                            "%s (attempt %d/%d), retrying...",
+                            tc_data["id"],
+                            attempt + 1,
+                            _TEXT_FILE_BUSY_MAX_RETRIES + 1,
+                        )
+                        try:
+                            sandbox.cleanup(delete=True)
+                        except Exception as cleanup_error:
+                            logger.debug(
+                                "Sandbox cleanup error (non-fatal): %s", cleanup_error
+                            )
+                        sandbox = None
+                        gevent.sleep(_TEXT_FILE_BUSY_RETRY_DELAY * (attempt + 1))
+                        continue
+                    raise
 
                 stderr = safe_get_str(sandbox, "stderr.txt")
 

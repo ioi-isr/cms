@@ -1,0 +1,155 @@
+{# This macro should be imported "with context". #}
+
+{% import 'macro/markdown_input.html' as macro_markdown %}
+
+
+{% macro new_item_card(title, action_url, subject_name="subject", text_name="text", submit_label="Submit", icon="edit", datalist_id="", extra_hidden_html="", extra_fields_html="") %}
+{#
+Render a "post new item" card (used for announcements and messages).
+
+title (str): card header title, e.g. "Post New Announcement".
+action_url (str): the URL to POST the form to.
+subject_name (str): the name attribute for the subject input.
+text_name (str): the name attribute for the text textarea.
+submit_label (str): label for the submit button.
+icon (str): icon name for the card header.
+datalist_id (str): optional datalist id to attach to the subject input.
+extra_hidden_html (str): optional extra hidden fields HTML.
+extra_fields_html (str): optional extra visible fields HTML (inserted after text).
+#}
+{% if admin.permission_all or admin.permission_messaging %}
+<div class="tp-card" style="margin-bottom: 2em;">
+  <div class="tp-card-header-modern">
+    <div class="tp-card-header-icon">
+      <svg class="icon"><use href="#icon-{{ icon }}"/></svg>
+    </div>
+    <h3 class="tp-card-title-modern">{{ title }}</h3>
+  </div>
+  <div class="tp-card-body">
+    <form method="post" action="{{ action_url }}">
+      {{ xsrf_form_html|safe }}
+      {{ extra_hidden_html|safe }}
+      <label class="question-form-label">SUBJECT</label>
+      <input type="text" name="{{ subject_name }}" class="question-form-select"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
+      <label class="question-form-label">TEXT</label>
+      {{ macro_markdown.markdown_input(text_name) }}
+      {{ extra_fields_html|safe }}
+      {{ form_buttons(submit_label, show_cancel=false) }}
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+
+{% macro form_buttons(submit_label, show_cancel=false, submit_icon="plus", cancel_function="announcement_edit_toggle") %}
+{#
+Render the action buttons row for a form (Preview Markdown + optional Cancel + Submit).
+
+submit_label (str): label for the submit button.
+show_cancel (bool): whether to show a Cancel button.
+submit_icon (str): icon name for the submit button.
+cancel_function (str): the JavaScript function to call for cancel button.
+#}
+<div class="level pt-3">
+  <div class="level-left">
+    <div class="level-item">
+      <button type="button" class="button" onclick="utils.render_markdown_preview(this)">
+        <svg class="icon is-small"><use href="#icon-eye"/></svg> <span>Preview Markdown</span>
+      </button>
+    </div>
+  </div>
+  <div class="level-right">
+    <div class="buttons level-item">
+      {% if show_cancel %}
+      <button type="button" class="button" onclick="utils.{{ cancel_function }}(event, this);"><span>Cancel</span></button>
+      {% endif %}
+      <button type="submit" class="button is-primary">
+        <svg class="icon is-small"><use href="#icon-{{ submit_icon }}"/></svg> <span>{{ submit_label }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+
+{% macro card_header(subject, timestamp, delete_button_html="") %}
+{#
+Render the header of a display card (subject + timestamp + optional delete button).
+#}
+<div class="question-card-header">
+  <div class="question-card-title-row">
+    <h3 class="question-subject">{{ subject }}</h3>
+  </div>
+  <div class="is-flex is-align-items-center is-flex-wrap-wrap is-gap-3 is-size-s">
+    <span class="is-flex is-align-items-center icon-text has-text-grey">
+      <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+      <span>{{ timestamp|format_datetime }}</span>
+    </span>
+    {% if admin.permission_all or admin.permission_messaging %}
+    {{ delete_button_html|safe }}
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+
+{% macro card_footer(admin_name, extra_left_html="", edit_function="announcement_edit_toggle") %}
+{#
+Render the footer of a display card (meta info + edit button).
+
+admin_name (str): the name of the admin who created the item.
+extra_left_html (str): optional extra HTML for the left side of the footer.
+edit_function (str): JavaScript function called when the Edit button is clicked.
+#}
+<div class="announcement-card-footer">
+  <div class="announcement-card-footer-left">
+    {{ extra_left_html|safe }}
+    <span class="is-flex is-align-items-center icon-text">
+      <svg class="icon is-small"><use href="#icon-user"/></svg>
+      <span>By: {{ admin_name }}</span>
+    </span>
+  </div>
+  {% if admin.permission_all or admin.permission_messaging %}
+  <div class="is-flex is-justify-content-end">
+    <button type="button" class="button is-text has-text-grey is-small no-underline" onclick="utils.{{ edit_function }}(event, this);">
+      <svg class="icon is-small"><use href="#icon-edit"/></svg> <span>Edit</span>
+    </button>
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro edit_form(action_url, submit_label, subject_name="subject", text_name="text", datalist_id="", extra_hidden_html="", extra_fields_html="", cancel_function="announcement_edit_toggle") %}
+{#
+Render the edit form section that appears when the Edit button is clicked.
+
+action_url (str): the URL to POST the edit form to.
+submit_label (str): label for the submit button.
+subject_name (str): the name attribute for the subject input.
+text_name (str): the name attribute for the text textarea.
+datalist_id (str): optional datalist id to attach to the subject input.
+extra_hidden_html (str): optional extra hidden fields HTML.
+extra_fields_html (str): optional extra visible fields HTML (inserted after text).
+cancel_function (str): JavaScript function called when the Cancel button is clicked.
+#}
+{% if admin.permission_all or admin.permission_messaging %}
+<div class="question-actions">
+  <div class="reply_question">
+    <div class="question-reply-form-section">
+      <form class="reply_question_form" method="post" action="{{ action_url }}">
+        {{ xsrf_form_html|safe }}
+        {{ extra_hidden_html|safe }}
+        <label class="question-form-label">SUBJECT</label>
+        <input type="text" name="{{ subject_name }}" class="question-form-select"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
+        <label class="question-form-label">TEXT</label>
+        {{ macro_markdown.markdown_input(text_name) }}
+        {{ extra_fields_html|safe }}
+        {{ form_buttons(submit_label, show_cancel=true, submit_icon="edit", cancel_function=cancel_function) }}
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}

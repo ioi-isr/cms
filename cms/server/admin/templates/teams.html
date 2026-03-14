@@ -1,35 +1,74 @@
 {% extends "base.html" %}
 
 {% block core %}
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title is-spaced">Teams</h1>
+        </div>
+        <div class="level-right">
+            {% if admin.permission_all %}
+            <button type="button" class="button is-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Team</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<div class="core_title">
-  <h1>Teams list</h1>
-</div>
+    {% if team_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No teams have been created yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary" onclick="AdminModals.showAddTeamDialog('{{ url("teams", "add") }}')">
+                <span>Create your first team</span>
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search teams..." aria-label="Search teams" oninput="CMS.AWSUtils.filter_elements('teams-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
 
-<form action="{{ url("teams") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected team:
-  <input type="submit" name="operation" value="Remove" {% if not admin.permission_all %} disabled {% endif %} />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Code</th>
-        <th>Name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in team_list|sort(attribute="code") %}
-      <tr>
-        <td>
-          <input type="radio" name="team_id" value="{{ t.id }}" />
-        </td>
-        <td><a href="{{ url("team", t.id) }}">{{ t.code }}</a></td>
-        <td>{{ t.name }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
-
+    <!-- Teams Cards Grid -->
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="teams-grid">
+        {% for t in team_list|sort(attribute="code") %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <button type="button" class="btn-icon-only" title="Remove team" style="position: absolute; top: 12px; right: 12px;"
+                aria-label="Remove team"
+                onclick='AdminModals.deleteResource({
+                    title: "Remove Team",
+                    message: "Are you sure you want to remove team " + {{ t.code|tojson }} + " (" + {{ t.name|tojson }} + ")?",
+                    warnings: [
+                        {% if t.participations|length == 1 %}
+                        {{ "1 participation will lose its team association."|tojson }}
+                        {% elif t.participations|length > 1 %}
+                        {{ (t.participations|length|string + " participations will lose their team associations.")|tojson }}
+                        {% else %}
+                        {{ "This team has no associated participations."|tojson }}
+                        {% endif %}
+                    ],
+                    deleteUrl: {{ url("teams", t.id, "remove")|tojson }},
+                    confirmLabel: "Yes, Remove"
+                })'>
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="tp-stat-icon is-opaque-bg has-text-info">
+                    <svg class="icon"><use href="#icon-flag"/></svg>
+                </div>
+                <div style="min-width: 0;">
+                    <a href="#" onclick='event.preventDefault(); AdminModals.showEditTeamDialog({{ url("team", t.id)|tojson }}, {{ t.code|tojson }}, {{ t.name|tojson }})' style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.code }}">{{ t.code }}</a>
+                    <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.name }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 {% endblock core %}

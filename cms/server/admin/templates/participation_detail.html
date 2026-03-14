@@ -1,276 +1,29 @@
 {% extends "base.html" %}
 
 {% block core %}
-<style>
-#UserDetail_bg {
-  display: block;
-}
+{% include "fragments/user_detail_styles.html" %}
 
-#UserDetail {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-#UserDetail_close {
-  display: none;
-}
-
-#UserDetail_header {
-  display: flex;
-  min-height: 120px;
-  margin-bottom: 20px;
-}
-
-#UserDetail_summary {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  font-size: 1.5em;
-  line-height: 1.5em;
-}
-
-#UserDetail_face {
-  display: block;
-  max-width: 160px;
-  max-height: 240px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin: 10px 0;
-}
-
-#UserDetail_flag {
-  display: none;
-}
-
-#UserDetail_navigator {
-  flex: 1;
-  max-width: 450px;
-}
-
-#UserDetail_navigator table {
-  width: 100%;
-  table-layout: fixed;
-  border-spacing: 2px;
-  border-collapse: separate;
-}
-
-#UserDetail_navigator tr {
-  height: 28px;
-}
-
-#UserDetail_navigator col.name {
-  width: 55%;
-}
-
-#UserDetail_navigator col.score,
-#UserDetail_navigator col.rank {
-  width: 15%;
-}
-
-#UserDetail_navigator col.show {
-  width: 15%;
-}
-
-#UserDetail_navigator tr td.score,
-#UserDetail_navigator tr td.rank {
-  padding-left: 4px;
-  text-align: right;
-}
-
-#UserDetail_navigator tbody tr td.btn {
-  text-align: center;
-  border: 1px solid #999999;
-  box-shadow: 0 0 2px gray;
-  background-color: #EEEEEE;
-  border-radius: 3px;
-  cursor: pointer;
-  user-select: none;
-}
-
-#UserDetail_navigator tbody tr td.btn:hover {
-  background-color: #DDDDDD;
-}
-
-#UserDetail_navigator tbody tr td.btn:active {
-  background-color: #CCCCCC;
-}
-
-#UserDetail_navigator tbody tr.active td.btn {
-  background-color: #EEEEEE;
-  opacity: 0.4;
-  cursor: default;
-}
-
-#UserDetail_navigator tr.global,
-#UserDetail_navigator tr.contest {
-  background-color: #DDDDDD;
-}
-
-#UserDetail_navigator tr.task {
-  background-color: #FFFFFF;
-}
-
-#UserDetail_navigator tr.global td.name,
-#UserDetail_navigator tr.contest td.name {
-  padding-left: 5px;
-  font-weight: bold;
-}
-
-#UserDetail_navigator tr.task td.name {
-  padding-left: 25px;
-}
-
-#UserDetail_title {
-  margin-top: 24px;
-  font-size: 1.5em;
-  line-height: 1.5em;
-  text-align: center;
-}
-
-#UserDetail_charts {
-  margin-top: 24px;
-  width: 100%;
-  text-align: center;
-}
-
-#UserDetail_charts canvas {
-  display: block;
-  margin: 10px auto;
-}
-
-#UserDetail_submissions {
-  margin-top: 24px;
-  width: 100%;
-}
-
-#UserDetail_submissions:empty {
-  margin-top: 0;
-}
-
-#UserDetail_submissions table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-}
-
-#UserDetail_submissions td,
-#UserDetail_submissions th {
-  height: 28px;
-  padding: 4px 8px;
-  text-align: left;
-}
-
-#UserDetail_submissions thead {
-  background-color: #DDDDDD;
-}
-
-#UserDetail_submissions tbody tr:nth-child(even) {
-  background-color: #EEEEEE;
-}
-
-#UserDetail_submissions tbody tr:nth-child(odd) {
-  background-color: #F8F8F8;
-}
-
-#UserDetail_submissions tbody td[colspan] {
-  text-align: center;
-  font-style: italic;
-}
-
-.back-link {
-  margin-bottom: 20px;
-}
-</style>
-
-<div class="back-link">
+<div class="user-detail-back-link">
   <a href="{{ url("contest", contest.id, "ranking") }}">&larr; Back to Ranking</a>
   |
   <a href="{{ url("contest", contest.id, "user", participation.user.id, "edit") }}">Edit Participation</a>
 </div>
 
-<div id="UserDetail_bg">
-  <div id="UserDetail">
-    <img id="UserDetail_close" src="" alt="Close"/>
-    <div id="UserDetail_header">
-      <div id="UserDetail_summary">
-        <div>
-          <span id="UserDetail_f_name">{{ participation.user.first_name }}</span>
-          <span id="UserDetail_l_name">{{ participation.user.last_name }}</span>
-        </div>
-        <div style="font-size: 0.6em; color: #666;">
-          {{ participation.user.username }}
-        </div>
-        {% if participation.user.picture %}<img id="UserDetail_face" src="{{ url("file", participation.user.picture, "picture") }}" alt="Profile picture of {{ participation.user.first_name }} {{ participation.user.last_name }}"/>{% endif %}
-        <div id="UserDetail_spacer"></div>
-        <div id="UserDetail_team">{% if participation.team %}{{ participation.team.name }}{% endif %}</div>
-        <img id="UserDetail_flag" src="" alt="Flag"/>
-      </div>
-      <div id="UserDetail_navigator">
-        <table>
-          <col class="name"/>
-          <col class="score"/>
-          <col class="rank"/>
-          <col class="show"/>
-          <thead>
-            <tr>
-              <td></td>
-              <td style="text-align: right;">Score</td>
-              <td style="text-align: right;">Rank</td>
-              <td></td>
-            </tr>
-          </thead>
-          <tbody id="UserDetail_scores">
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="UserDetail_title"></div>
-
-    <div id="UserDetail_charts">
-      <div style="margin-bottom: 10px;"><strong>Score</strong></div>
-      <canvas id="UserDetail_score_chart" width="920" height="200"></canvas>
-      <div style="margin-top: 20px; margin-bottom: 10px;"><strong>Rank</strong></div>
-      <canvas id="UserDetail_rank_chart" width="920" height="200"></canvas>
-    </div>
-
-    <div id="UserDetail_submissions">
-    </div>
-  </div>
-</div>
+{% with first_name=participation.user.first_name,
+        last_name=participation.user.last_name,
+        username=participation.user.username,
+        picture_url=url("file", participation.user.picture, "picture") if participation.user.picture else none,
+        team_name=participation.team.name if participation.team else none %}
+{% include "fragments/user_detail_layout.html" %}
+{% endwith %}
 
 <script>
-// Shims for RWS JS files - these must be defined before loading the RWS scripts
-
-// format_time from TimeView.js
-function format_time(time, full) {
-  var h = Math.floor(time / 3600);
-  var m = Math.floor((time % 3600) / 60);
-  var s = Math.floor(time % 60);
-  h = full && h < 10 ? "0" + h : "" + h;
-  m = m < 10 ? "0" + m : "" + m;
-  s = s < 10 ? "0" + s : "" + s;
-  return (h + ":" + m + ":" + s);
-}
-
-// round_to_str from DataStore.js
-function round_to_str(value, ndigits) {
-  if (ndigits > 0) {
-    return value.toFixed(ndigits).replace(/\.?0+$/, "");
-  } else {
-    return value.toFixed(0);
-  }
-}
-
-// Config shim - provides URL functions that HistoryStore and UserDetail need
 var Config = new function() {
   var self = this;
   self.get_history_url = function() {
     return {{ history_url | tojson | safe }};
   };
   self.get_submissions_url = function(user_id) {
-     // user_id ignored - URL is pre-configured for the current participation
     return {{ submissions_url | tojson | safe }};
   };
   self.get_face_url = function(user_id) {
@@ -281,7 +34,6 @@ var Config = new function() {
   };
 };
 
-// DataStore shim - provides the data structure that HistoryStore and UserDetail need
 var DataStore = new function() {
   var self = this;
 
@@ -289,7 +41,6 @@ var DataStore = new function() {
   var tasksData = {{ tasks_data | tojson | safe }};
   var contestData = {{ contest_data | tojson | safe }};
 
-  // Set up contest reference for tasks and build tasks array for contest
   var tasksList = [];
   for (var t_id in tasksData) {
     tasksData[t_id].contest = contestData.key;
@@ -311,114 +62,15 @@ var DataStore = new function() {
 };
 </script>
 
-<script src="{{ url("static", "js", "Chart.js") }}"></script>
-<script src="{{ url("static", "js", "HistoryStore.js") }}"></script>
-<script src="{{ url("static", "js", "UserDetail.js") }}"></script>
+{% include "fragments/user_detail_scripts.html" %}
 
 <script>
 (function() {
-  var userId = {{ user_id | tojson | safe }};
-
-  // Initialize HistoryStore
-  HistoryStore.init();
-
-  // Override UserDetail behaviors for embedded page (not modal)
-  var originalInit = UserDetail.init;
-  UserDetail.init = function() {
-    // Set up DOM references like the original init
-    UserDetail.f_name_label = $('#UserDetail_f_name');
-    UserDetail.l_name_label = $('#UserDetail_l_name');
-    UserDetail.team_label = $('#UserDetail_team');
-    UserDetail.flag_image = $('#UserDetail_flag');
-    UserDetail.face_image = $('#UserDetail_face');
-    UserDetail.title_label = $('#UserDetail_title');
-    UserDetail.navigator = $('#UserDetail_navigator table tbody');
-    UserDetail.submission_table = $('#UserDetail_submissions');
-    UserDetail.score_chart = $('#UserDetail_score_chart')[0];
-    UserDetail.rank_chart = $('#UserDetail_rank_chart')[0];
-
-    // Set up click handler for navigator
-    UserDetail.navigator.on("click", "td.btn", function() {
-      if (UserDetail.active !== null) {
-        UserDetail.active.removeClass("active");
-      }
-      UserDetail.active = $(this).parent();
-      UserDetail.active.addClass("active");
-
-      if (UserDetail.active.hasClass('global')) {
-        UserDetail.show_global();
-      } else if (UserDetail.active.hasClass('contest')) {
-        UserDetail.show_contest(UserDetail.active.attr('data-contest'));
-      } else if (UserDetail.active.hasClass('task')) {
-        UserDetail.show_task(UserDetail.active.attr('data-task'));
-      }
-    });
-  };
-
-  // Override show to skip modal/hash behavior
-  UserDetail.show = function(user_id) {
-    UserDetail.user_id = user_id;
-    UserDetail.user = DataStore.users[user_id];
-    UserDetail.data_fetched = 0;
-
-    HistoryStore.request_update(UserDetail.history_callback);
-
-    $.ajax({
-      url: Config.get_submissions_url(UserDetail.user_id),
-      dataType: "json",
-      success: UserDetail.submissions_callback,
-      error: function() {
-        console.error("Error while getting the submissions for " + UserDetail.user_id);
-        UserDetail.submission_table.html('<p style="color: red; text-align: center;">Failed to load submissions. Please refresh the page.</p>');
-      }
-    });
-  };
-
-  // Override do_show to skip modal open and name/face updates (already in HTML)
-  var originalDoShow = UserDetail.do_show;
-  UserDetail.do_show = function() {
-    if (UserDetail.data_fetched == 2) {
-      // Build navigator HTML (reuse original logic)
-      var s = "<tr class=\"global\"> \
-                  <td class=\"name\">Global</td> \
-                  <td class=\"score\">" + (UserDetail.global_s.length > 0 ? round_to_str(UserDetail.global_s[UserDetail.global_s.length-1][1], DataStore.global_score_precision) : 0) + "</td> \
-                  <td class=\"rank\">" + (UserDetail.global_r.length > 0 ? UserDetail.global_r[UserDetail.global_r.length-1][1] : 1) + "</td> \
-                  <td class=\"btn\"><a>Show</a></td> \
-              </tr>";
-
-      var contests = DataStore.contest_list;
-      for (var i in contests) {
-        var contest = contests[i];
-        var c_id = contest["key"];
-
-        var tasks = contest["tasks"];
-        for (var j in tasks) {
-          var task = tasks[j];
-          var t_id = task["key"];
-
-          s += "<tr class=\"task\" data-task=\"" + t_id +"\"> \
-                   <td class=\"name\">" + task['name'] + "</td> \
-                   <td class=\"score\">" + (UserDetail.task_s[t_id].length > 0 ? round_to_str(UserDetail.task_s[t_id][UserDetail.task_s[t_id].length-1][1], task["score_precision"]) : 0) + "</td> \
-                   <td class=\"rank\">" + (UserDetail.task_r[t_id].length > 0 ? UserDetail.task_r[t_id][UserDetail.task_r[t_id].length-1][1] : 1) + "</td> \
-                   <td class=\"btn\"><a>Show</a></td> \
-                </tr>"
-        }
-      }
-
-      UserDetail.navigator.html(s);
-      UserDetail.active = null;
-
-      // Click the first button to show global view
-      $('tr.global td.btn', UserDetail.navigator).click();
-    }
-  };
-
-  // Override hide to do nothing (we're not a modal)
-  UserDetail.hide = function() {};
-
-  // Initialize and show
-  UserDetail.init();
-  UserDetail.show(userId);
+  initUserDetail({
+    userId: {{ user_id | tojson | safe }},
+    showContestRows: false,
+    fetchSubmissionsViaAjax: true
+  });
 })();
 </script>
 

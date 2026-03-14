@@ -42,7 +42,9 @@ import tornado.web
 
 from sqlalchemy import and_, exists
 
-from cms.db import Contest, Message, Participation, Submission, User, Team
+from cms.db import Contest, Message, Participation, Submission, User, Team, TrainingDay
+from cms.db.training_day import get_managing_participation
+from cms.server.admin.handlers.utils import parse_usernames_from_file
 from cmscommon.crypto import validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -52,8 +54,6 @@ logger = logging.getLogger(__name__)
 
 
 class ContestUsersHandler(BaseHandler):
-    REMOVE_FROM_CONTEST = "Remove from contest"
-
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
         self.contest = self.safe_get_item(Contest, contest_id)
@@ -73,59 +73,9 @@ class ContestUsersHandler(BaseHandler):
                 .all()
         self.render("contest_users.html", **self.r_params)
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, contest_id):
-        fallback_page = self.url("contest", contest_id, "users")
-
-        try:
-            user_id = self.get_argument("user_id")
-            operation = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE_FROM_CONTEST,
-            ), "Please select a valid operation"
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
-            return
-
-        if operation == self.REMOVE_FROM_CONTEST:
-            asking_page = \
-                self.url("contest", contest_id, "user", user_id, "remove")
-            # Open asking for remove page
-            self.redirect(asking_page)
-            return
-
-        self.redirect(fallback_page)
-
 
 class RemoveParticipationHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the participation from the contest.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, contest_id, user_id):
-        self.contest = self.safe_get_item(Contest, contest_id)
-        user = self.safe_get_item(User, user_id)
-        participation: Participation = (
-            self.sql_session.query(Participation)
-            .filter(Participation.contest_id == contest_id)
-            .filter(Participation.user_id == user_id)
-            .first()
-        )
-        # Check that the participation is valid.
-        if participation is None:
-            raise tornado.web.HTTPError(404)
-
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
-        self.render_params_for_remove_confirmation(submission_query)
-
-        self.r_params["user"] = user
-        self.r_params["contest"] = self.contest
-        self.render("participation_remove.html", **self.r_params)
+    """Delete removes the participation from the contest."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, contest_id, user_id):
@@ -139,15 +89,29 @@ class RemoveParticipationHandler(BaseHandler):
             .first()
         )
 
-        # Unassign the user from the contest.
-        self.sql_session.delete(participation)
+        # Check if participation exists before deleting
+        if participation is None:
+            raise tornado.web.HTTPError(404)
 
-        if self.try_commit():
+        # Unassign the user from the contest.
+        try:
+            self.sql_session.delete(participation)
+            if not self.try_commit():
+                self.set_status(500)
+                self.write("Failed to remove participation")
+                return
             # Remove the participation on RWS.
             self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception(
+                "Unexpected error removing participation for user %s", user_id
+            )
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another participation)
-        self.write("../../users")
+        self.write(self.url("contest", contest_id, "users"))
 
 
 class AddContestUserHandler(BaseHandler):
@@ -192,7 +156,7 @@ class BulkAddContestUsersHandler(BaseHandler):
             file_data = self.request.files["users_file"][0]
             file_content = file_data["body"].decode("utf-8")
 
-            usernames = file_content.split()
+            usernames = parse_usernames_from_file(file_content)
 
             if not usernames:
                 raise ValueError("File is empty or contains no usernames")
@@ -201,10 +165,6 @@ class BulkAddContestUsersHandler(BaseHandler):
             users_added = 0
 
             for username in usernames:
-                username = username.strip()
-                if not username:
-                    continue
-
                 user = self.sql_session.query(User).filter(
                     User.username == username).first()
 
@@ -284,8 +244,21 @@ class ParticipationHandler(BaseHandler):
         if participation is None:
             raise tornado.web.HTTPError(404)
 
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.participation == participation)
+        training_day: TrainingDay | None = self.contest.training_day
+        if training_day is not None:
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user)
+            if managing_participation is not None:
+                submission_query = self.sql_session.query(Submission)\
+                    .filter(Submission.participation == managing_participation)\
+                    .filter(Submission.training_day_id == training_day.id)
+            else:
+                submission_query = self.sql_session.query(Submission)\
+                    .filter(False)
+        else:
+            submission_query = self.sql_session.query(Submission)\
+                .filter(Submission.participation == participation)
+
         page = int(self.get_query_argument("page", 0))
         self.render_params_for_submissions(submission_query, page)
 
@@ -394,7 +367,11 @@ class MessageHandler(BaseHandler):
             logger.info("Message submitted to user %s in contest %s.",
                         user.username, self.contest.name)
 
-        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+        fallback = self.url("contest", contest_id, "user", user_id, "edit")
+        redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
+        self.redirect(redirect_url)
 
 
 class EditMessageHandler(BaseHandler):
@@ -430,7 +407,12 @@ class EditMessageHandler(BaseHandler):
         else:
             self.service.add_notification(
                 make_datetime(), "Subject is mandatory.", "")
-        self.redirect(self.url("contest", contest_id, "user", user_id, "edit"))
+
+        fallback = self.url("contest", contest_id, "user", user_id, "edit")
+        redirect_url = self.get_argument("next", fallback)
+        if not redirect_url.startswith("/") or redirect_url.startswith("//"):
+            redirect_url = fallback
+        self.redirect(redirect_url)
 
 
 class DeleteMessageHandler(BaseHandler):

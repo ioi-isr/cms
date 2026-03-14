@@ -1,59 +1,92 @@
 {% extends "base.html" %}
+{% from "macro/folder_table.html" import folder_contents_table with context %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Folder</h1>
-</div>
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <div>
+                <h1 class="title is-spaced mb-1">{{ folder.name }}</h1>
+                {% if folder.description and folder.description != folder.name %}
+                <p class="has-text-grey">{{ folder.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="buttons">
+                <a class="button" href="{{ url("folders") }}">
+                    <svg class="icon is-small"><use href="#icon-chevron-left"/></svg>
+                    <span>Back to Root</span>
+                </a>
+                {% if admin.permission_all %}
+                <button type="button" class="button" onclick="MicroModal.show('modal-edit-folder-{{ folder.id }}')">
+                    <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                    <span>Edit Folder</span>
+                </button>
+                <button type="button" class="button is-danger is-outlined"
+                        onclick='AdminModals.deleteResource({
+                            title: "Remove Folder",
+                            message: {{ ("Are you sure you want to remove folder \"" ~ folder.name ~ "\"? Its subfolders and contests will be moved to its parent (or to root if no parent exists).")|tojson|forceescape }},
+                            deleteUrl: {{ url("folders", folder.id, "remove")|tojson|forceescape }},
+                            confirmLabel: "Yes, Remove",
+                            onSuccess: function() { window.location.href = {{ url("folders")|tojson|forceescape }}; }
+                        })'>
+                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                    <span>Remove</span>
+                </button>
+                <button type="button" class="button is-primary" onclick="openAddSubfolderModal()">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>New Subfolder</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-<form action="{{ url("folder", folder.id) }}" method="POST" name="edit_folder" style="display:inline;">
-  {{ xsrf_form_html|safe }}
-  <table class="sub_table">
-    <tr>
-      <td>Codename</td>
-      <td><input type="text" name="name" value="{{ folder.name }}"/></td>
-    </tr>
-    <tr>
-      <td>Description</td>
-      <td><input type="text" name="description" value="{{ folder.description }}"/></td>
-    </tr>
-    <tr>
-      <td>Parent</td>
-      <td>
-        <select name="parent_id">
-          <option value="none">(root)</option>
-          {% for f in possible_parents %}
-          <option value="{{ f.id }}" {{ 'selected' if f.id == (folder.parent.id if folder.parent else -1) else '' }}>{{ f.description }}</option>
-          {% endfor %}
-        </select>
-      </td>
-    </tr>
-    <tr>
-      <td>Hidden (unlisted in contest server)</td>
-      <td><input type="checkbox" name="hidden" value="1" {{ 'checked' if folder.hidden else '' }}/></td>
-    </tr>
-  </table>
-  <input type="submit" value="Update"/>
-</form>
+    {% if folder.hidden %}
+    <div class="notification is-warning is-light mb-4">
+        <div class="is-flex is-align-items-center">
+            <svg class="icon is-small has-text-warning mr-2"><use href="#icon-eye-off"/></svg>
+            <span class="has-text-grey">This folder is hidden (unlisted in contest server)</span>
+        </div>
+    </div>
+    {% endif %}
 
-<form action="{{ url("folders") }}" method="POST" style="display:inline;">
-    {{ xsrf_form_html|safe }}
-    <input type="hidden" name="folder_id" value="{{ folder.id }}"/>
-    <input type="submit" name="operation" value="Remove" style="float: right;"/>
-  </form>
+    {% set has_items = (subfolders|length > 0) or (folder_contests|length > 0) %}
 
-<h2>Subfolders</h2>
-<ul>
-  {% for f in folder.children %}
-  <li><a href="{{ url("folder", f.id) }}">{{ f.description }}</a></li>
-  {% endfor %}
-</ul>
+    {{ folder_contents_table("folder-table", subfolders, folder_contests, show_table=has_items) }}
 
-<h2>Contests in this folder</h2>
-<ul>
-  {% for c in folder.contests %}
-  <li><a href="{{ url("contest", c.id) }}">{{ c.description }}</a></li>
-  {% endfor %}
-</ul>
+    {% if not has_items %}
+    <div class="empty-state-box">
+        <h3>This folder is empty</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary" onclick="openAddSubfolderModal()">
+                Add a subfolder
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
 
+{# Edit Folder Modal (current folder) #}
+{% if admin is defined and admin.permission_all %}
+    {% include "fragments/modal_edit_folder.html" %}
+    {# Edit Folder Modals (subfolders) #}
+    {% for f in subfolders %}
+        {% with folder = f %}
+        {% include "fragments/modal_edit_folder.html" %}
+        {% endwith %}
+    {% endfor %}
+{% endif %}
+
+<script>
+function openAddSubfolderModal() {
+    var parentSelect = document.getElementById('add-folder-parent');
+    if (parentSelect) {
+        parentSelect.value = {{ folder.id|tojson }};
+    }
+    MicroModal.show('modal-add-folder');
+}
+</script>
 {% endblock core %}
-

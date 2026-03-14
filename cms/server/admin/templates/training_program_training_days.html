@@ -1,0 +1,1015 @@
+{% from "macro/modal.html" import modal_header %}
+{% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
+
+{% block js_init %}
+{% for td in training_program.training_days %}
+CMS.AWSFormUtils.initTagify({
+    inputSelector: 'input[name="training_day_types_{{ td.id }}"]',
+    whitelist: {{ all_training_day_types | default([]) | tojson }},
+    getSaveUrl: function() {
+        return '{{ url("training_program", training_program.id, "training_day", td.id, "types") }}';
+    },
+    saveParamName: 'training_day_types',
+    placeholder: 'Type tags',
+    editable: true,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Types cannot contain commas.'
+});
+{% endfor %}
+
+// Histogram modal data (shared with combined ranking)
+var allStudentTagsSet = new Set();
+var allStudentTags = [];
+var studentData = {};
+var historicalStudentTags = {};
+var tagsPerTrainingDay = {};
+var taskMaxScoresByTrainingDay = {};
+var trainingDayMaxScores = {};
+var trainingDayTasks = {};
+var studentAccessibleTasks = {};
+var archivedTaskScores = {};
+var participatedStudentsByTrainingDay = {};
+
+{% set archived_training_days = training_program.training_days | rejectattr("contest") | list %}
+{% for td in archived_training_days %}
+participatedStudentsByTrainingDay[{{ td.id }}] = new Set();
+{% for attendance in td.archived_attendances %}
+{% if attendance.status == 'participated' %}
+participatedStudentsByTrainingDay[{{ td.id }}].add({{ attendance.student_id }});
+{% endif %}
+{% endfor %}
+{% if td.archived_tasks_data %}
+taskMaxScoresByTrainingDay[{{ td.id }}] = {};
+trainingDayMaxScores[{{ td.id }}] = 0;
+trainingDayTasks[{{ td.id }}] = [];
+{% for task_id_str, task_info in td.archived_tasks_data.items() %}
+taskMaxScoresByTrainingDay[{{ td.id }}][{{ task_id_str }}] = {{ task_info.get('max_score', 100) }};
+trainingDayMaxScores[{{ td.id }}] += {{ task_info.get('max_score', 100) }};
+trainingDayTasks[{{ td.id }}].push({{ task_id_str }});
+archivedTaskScores['{{ td.id }}_{{ task_id_str }}'] = [];
+{% endfor %}
+{% endif %}
+{% for ranking in td.archived_student_rankings %}
+if (!historicalStudentTags[{{ td.id }}]) {
+    historicalStudentTags[{{ td.id }}] = {};
+    tagsPerTrainingDay[{{ td.id }}] = new Set();
+}
+historicalStudentTags[{{ td.id }}][{{ ranking.student_id }}] = {{ ranking.student_tags | tojson if ranking.student_tags else '[]' }};
+{% if ranking.student_tags %}
+{{ ranking.student_tags | tojson }}.forEach(function(tag) {
+    tagsPerTrainingDay[{{ td.id }}].add(tag);
+    allStudentTagsSet.add(tag);
+});
+{% endif %}
+
+studentData[{{ ranking.student_id }}] = {
+    tags: {{ ranking.student_tags | tojson if ranking.student_tags else '[]' }},
+    name: "(Archived)"
+};
+
+if (!studentAccessibleTasks[{{ td.id }}]) {
+    studentAccessibleTasks[{{ td.id }}] = {};
+}
+studentAccessibleTasks[{{ td.id }}][{{ ranking.student_id }}] = [];
+{% if ranking.task_scores %}
+var participated = participatedStudentsByTrainingDay[{{ td.id }}] && participatedStudentsByTrainingDay[{{ td.id }}].has({{ ranking.student_id }});
+{% for task_id_str, score in ranking.task_scores.items() %}
+if (participated) {
+    studentAccessibleTasks[{{ td.id }}][{{ ranking.student_id }}].push({{ task_id_str }});
+    if (archivedTaskScores['{{ td.id }}_{{ task_id_str }}']) {
+        archivedTaskScores['{{ td.id }}_{{ task_id_str }}'].push({
+            studentId: {{ ranking.student_id }},
+            score: {{ score if score is not none else 0 }}
+        });
+    }
+}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+Object.keys(tagsPerTrainingDay).forEach(function(tdId) {
+    tagsPerTrainingDay[tdId] = Array.from(tagsPerTrainingDay[tdId]).sort();
+});
+allStudentTags = Array.from(allStudentTagsSet).sort();
+window.tagsPerTrainingDay = tagsPerTrainingDay;
+window.allStudentTags = allStudentTags;
+window.historicalStudentTags = historicalStudentTags;
+
+// Initialize training program module with histogram data
+CMS.TrainingProgram.init({
+    allStudentTags: allStudentTags,
+    tagsPerTrainingDay: tagsPerTrainingDay,
+    historicalStudentTags: historicalStudentTags,
+    studentData: studentData,
+    trainingDayTasks: trainingDayTasks,
+    studentAccessibleTasks: studentAccessibleTasks,
+    taskMaxScores: {},
+    taskMaxScoresByTrainingDay: taskMaxScoresByTrainingDay
+});
+
+window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
+    var key = trainingDayId + '_' + taskId;
+    var scores = archivedTaskScores[key] || [];
+    var maxScore = 100;
+    if (taskMaxScoresByTrainingDay[trainingDayId] &&
+        taskMaxScoresByTrainingDay[trainingDayId][taskId] !== undefined) {
+        maxScore = taskMaxScoresByTrainingDay[trainingDayId][taskId];
+    }
+    openHistogramModal(scores, taskName, 'task', trainingDayId, maxScore);
+};
+{% endblock js_init %}
+
+{% block core %}
+<div class="content-constraint">
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <div>
+                <h1 class="title is-spaced">Training Days</h1>
+                <p class="subtitle has-text-grey">
+                    Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+                </p>
+            </div>
+        </div>
+        <div class="level-right">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" onclick="MicroModal.show('modal-import-contest')"
+                  class="button is-medium" {% if not admin.permission_all %}disabled{% endif %}>
+                    <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
+                    <span>Import Contest</span>
+                </button>
+                <button type="button" onclick="MicroModal.show('modal-add-training-day')"
+                  class="button is-medium is-primary" {% if not admin.permission_all %}disabled{% endif %}>
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>Add Training Day</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Training Days Section -->
+    <div class="tp-section-header">
+        <h2>Active Training Days ({{ training_program.training_days | selectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Active Training Days",
+        message="These training days have an associated contest and can accept student participation. Drag to reorder. Use the Archive action when a training day is complete.",
+        type="info"
+    ) }}
+
+    <form action="{{ url("training_program", training_program.id, "training_days") }}" method="POST" id="training-days-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="table-container" style="width: 100%;">
+            <table class="ranking-table tp-tasks-table" id="training-days-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column no-sort"></th>
+                        <th style="text-align: left;">Name</th>
+                        <th class="no-sort" style="text-align: left;">Description</th>
+                        <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
+                        <th data-sort-settings="numeric" style="text-align: left;">Start</th>
+                        <th class="no-sort" style="text-align: left;">Tasks</th>
+                        <th class="has-text-centered no-sort" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="training-days-tbody">
+                    {% set active_training_days = training_program.training_days | selectattr("contest") %}
+                    {% for td in active_training_days %}
+                    <tr data-training-day-id="{{ td.id }}"
+                        data-name="{{ td.contest.name }}"
+                        data-start="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 0 }}"
+                        {% if admin.permission_all %}draggable="true"{% endif %}>
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder training day">
+                                <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
+                            </div>
+                        </td>
+
+                        <!-- Name -->
+                        <td data-value="{{ td.contest.name }}">
+                            <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
+                                <div class="is-flex is-align-items-center">
+                                    <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
+                                    {% set td_notif = training_day_notifications.get(td.id, {}) %}
+                                    <div class="tags is-align-items-center ml-2">
+                                        {% if td_notif.get("unanswered_questions", 0) > 0 %}
+                                        <span class="tag is-rounded is-bordered has-text-danger" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
+                                            <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
+                                            <span>{{ td_notif.unanswered_questions }}</span>
+                                        </span>
+                                        {% endif %}
+                                        {% if td_notif.get("pending_delay_requests", 0) > 0 %}
+                                        <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
+                                            <svg class="icon is-small"><use href="#icon-clock"/></svg>
+                                            <span>{{ td_notif.pending_delay_requests }}</span>
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Description -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <span style="color: var(--tp-text-secondary);">{{ td.contest.description }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Types -->
+                        <td>
+                            <div class="list-cell-wrapper">
+                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                            </div>
+                        </td>
+
+                        <!-- Start Time -->
+                        <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}">
+                            <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                                {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
+                                    <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
+                                    <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
+                                {% else %}
+                                    <span class="tag is-size-s has-text-weight-semibold">Unscheduled</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Tasks -->
+                        <td>
+                            <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                                {% set tasks = td.contest.get_tasks() %}
+                                {% if tasks %}
+                                    {% for task in tasks %}
+                                        <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="has-text-centered">
+                            <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                                <!-- Archive button -->
+                                <button type="button"
+                                   class="btn-icon-only btn-archive"
+                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   onclick="MicroModal.show('modal-archive-td-{{ td.id }}')"
+                                   title="Archive training day" aria-label="Archive training day">
+                                    <svg class="icon is-small"><use href="#icon-archive-down"/></svg>
+                                </button>
+                                <!-- Remove button -->
+                                <button type="button" class="btn-icon-only"
+                                   {% if not admin.permission_all %}disabled style="opacity: 0.5;"{% endif %}
+                                   onclick="openRemoveTrainingDayModal(this); return false;"
+                                   data-td-name="{{ td.contest.name }}"
+                                   data-remove-url="{{ url('training_program', training_program.id, 'training_day', td.id, 'remove') }}"
+                                   data-participation-count="{{ td.contest.participations|length }}"
+                                   data-task-count="{{ td.tasks|length }}"
+                                   data-is-archived="false"
+                                   title="Remove training day" aria-label="Remove training day">
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not (training_program.training_days | selectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No active training days</h3>
+        <p>Use the "Add New Training Day" button above to create one.</p>
+    </div>
+    {% endif %}
+    <div></div>
+
+    <!-- Archived Training Days Section -->
+    <div class="tp-section-header" style="margin-top: 40px;">
+        <h2>Archived Training Days ({{ training_program.training_days | rejectattr("contest") | list | length }})</h2>
+    </div>
+
+    {{ info_alert.alert(
+        title="Archived Training Days",
+        message="These training days have been archived. Their contest data has been deleted, but attendance and ranking data is preserved. Click on task badges to view score histograms.",
+        type="info"
+    ) }}
+
+    <div class="table-container" style="width: 100%;">
+        <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Name</th>
+                    <th class="no-sort" style="text-align: left;">Description</th>
+                    <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
+                    <th data-sort-settings="numeric" style="text-align: left;">Start</th>
+                    <th class="no-sort" style="text-align: left;">Tasks</th>
+                    <th class="no-sort" style="text-align: center; width: 100px;">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set archived_training_days = training_program.training_days | rejectattr("contest") %}
+                {% for td in archived_training_days %}
+                <tr>
+                    <!-- Name -->
+                    <td data-value="{{ td.name or '' }}">
+                        <div class="list-cell-wrapper">
+                            <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Description -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <span style="color: var(--tp-text-secondary);">{{ td.description or "(no description)" }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Types -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
+                        </div>
+                    </td>
+
+                    <!-- Start Time -->
+                    <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}">
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            {% if td.start_time %}
+                                <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
+                                <div style="color: #94a3b8; font-size: 0.9em;">{{ td.start_time.strftime('%H:%M') }}</div>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Tasks -->
+                    <td>
+                        <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                            {% if td.archived_tasks_data %}
+                                {% for task_id_str, task_info in td.archived_tasks_data.items() %}
+                                    <button class="tag is-bordered has-text-warning"
+                                            type="button"
+                                            title="{{ task_info.get('title', task_info.get('name', 'Task')) }} - Click for histogram"
+                                            onclick='showArchivedTaskHistogram({{ td.id }}, {{ task_id_str }}, {{ task_info.get("name", "Task " ~ task_id_str) | tojson }})'
+                                            aria-label="Show histogram for {{ task_info.get('name', 'Task ' ~ task_id_str) }}">
+                                        <span>{{ task_info.get('name', 'Task ' ~ task_id_str) }}</span>
+                                        <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+                                    </button>
+                                {% endfor %}
+                            {% else %}
+                                <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Share Scoreboard -->
+                    <td style="text-align: center;">
+                        <div class="list-cell-wrapper" style="justify-content: center;">
+                            <button type="button" class="btn-icon-only" title="Configure scoreboard sharing" aria-label="Configure scoreboard sharing"
+                                    onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
+                                    {% if not admin.permission_all %}disabled{% endif %}>
+                                <svg class="icon is-small"><use href="#icon-share"/></svg>
+                            </button>
+                            {% if td.scoreboard_sharing %}
+                            <span class="tag is-bordered has-text-link" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                                {{ td.scoreboard_sharing | length }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not (training_program.training_days | rejectattr("contest") | list) %}
+    <div class="empty-state-box">
+        <h3>No archived training days</h3>
+        <p>Training days will appear here after being archived.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% include 'fragments/histogram_modal.html' %}
+{% include 'fragments/modal_import_contest_as_td.html' %}
+
+{% for td in training_program.training_days if td.contest is not none and td.id in archive_modal_data %}
+{% set training_day = td %}
+{% set contest = td.contest %}
+{% set network_hierarchy = archive_modal_data[td.id]['network_hierarchy'] %}
+{% set users_not_finished = archive_modal_data[td.id]['users_not_finished'] %}
+{% include 'fragments/modal_archive_training_day.html' %}
+{% endfor %}
+
+<!-- Scoreboard Sharing Modal (Micromodal) -->
+<div class="modal modal--medium" id="modal-scoreboard-sharing" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="scoreboardSharingTitle">
+            {{ modal_header("Scoreboard Sharing", "scoreboardSharingTitle") }}
+            <main class="modal__content">
+            <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
+                Configure which student tags can view the scoreboard for this training day.
+                Students will only see results for their tag group.
+            </p>
+
+            <!-- Share with Everyone option -->
+            <div id="everyoneShareSection" style="margin-bottom: 20px; padding: 16px; background: var(--tp-bg-secondary); border-radius: 8px; border: 1px solid var(--tp-border);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <input type="checkbox" id="shareWithEveryone" onchange="toggleEveryoneSettings()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="shareWithEveryone" style="font-weight: 600; cursor: pointer;">Share with Everyone</label>
+                    <span style="font-size: 0.85rem; color: var(--tp-text-secondary);">(All students can view, regardless of tags)</span>
+                </div>
+                <div id="everyoneSettings" style="display: none; margin-left: 30px;">
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label for="everyoneTopToShow" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopToShow" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopToShowAll" onchange="toggleEveryoneTopToShowAll()" style="cursor: pointer;">
+                                <label for="everyoneTopToShowAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label for="everyoneTopNames" style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names to Show</label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="everyoneTopNames" value="0" min="0" style="width: 80px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;" onchange="validateEveryoneFields()">
+                                <input type="checkbox" id="everyoneTopNamesAll" onchange="toggleEveryoneTopNamesAll()" style="cursor: pointer;">
+                                <label for="everyoneTopNamesAll" style="font-size: 0.85rem; cursor: pointer;">All</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 12px; font-weight: 600;">Share by Tag</div>
+
+            <div id="scoreboardSharingEntries" style="margin-bottom: 16px;">
+            </div>
+
+            <button type="button" class="button" onclick="addSharingEntry()">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Tag</span>
+            </button>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                <button type="button" class="button is-primary" id="save-scoreboard-sharing-btn"><span>Save</span></button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<script>
+// Drag and drop reordering using shared utility
+AdminTableUtils.initDragDropReorder({
+    tbodyId: 'training-days-tbody',
+    rowSelector: 'tr',
+    rowIdAttr: 'training-day-id',
+    colSpan: 7,
+    confirmMessage: 'Save the new training day order?',
+    enabled: {{ 'true' if admin.permission_all else 'false' }},
+    onSave: function(orderedIds) {
+        var order = orderedIds.map(function(item) {
+            return { training_day_id: item.id, new_position: item.position };
+        });
+        var form = document.getElementById('training-days-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
+        operationInput.value = 'reorder';
+        form.submit();
+    }
+});
+
+// Initialize table sorting for both tables using CMS.AWSUtils
+$(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#training-days-table"), false, -1);
+    CMS.AWSUtils.init_table_sort($("#archived-training-days-table"), false, 3);
+});
+
+// Scoreboard Sharing Modal
+var currentSharingTrainingDayId = null;
+var totalStudentsForTrainingDay = 0;
+
+function openScoreboardSharingModal(trainingDayId, currentSharing, trainingDayName) {
+    currentSharingTrainingDayId = trainingDayId;
+    document.getElementById('scoreboardSharingTitle').textContent = 'Scoreboard Sharing - ' + (trainingDayName || 'Training Day');
+
+    // Count total students for this training day (for "everyone" option)
+    totalStudentsForTrainingDay = 0;
+    if (window.historicalStudentTags && window.historicalStudentTags[trainingDayId]) {
+        totalStudentsForTrainingDay = Object.keys(window.historicalStudentTags[trainingDayId]).length;
+    }
+
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+
+    // Destroy existing Tagify instances before clearing to prevent memory leaks
+    entriesContainer.querySelectorAll('.sharing-entry').forEach(function(entryDiv) {
+        if (entryDiv._tagify) {
+            entryDiv._tagify.destroy();
+        }
+    });
+    entriesContainer.innerHTML = '';
+
+    // Handle "__everyone__" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    var everyoneSettings = document.getElementById('everyoneSettings');
+    var everyoneTopToShowInput = document.getElementById('everyoneTopToShow');
+    var everyoneTopNamesInput = document.getElementById('everyoneTopNames');
+    var everyoneTopToShowAllCheckbox = document.getElementById('everyoneTopToShowAll');
+    var everyoneTopNamesAllCheckbox = document.getElementById('everyoneTopNamesAll');
+
+    if (currentSharing && currentSharing['__everyone__']) {
+        everyoneCheckbox.checked = true;
+        everyoneSettings.style.display = 'block';
+        var everyoneData = currentSharing['__everyone__'];
+
+        // Set top_to_show
+        var topToShow = everyoneData.top_to_show;
+        if (topToShow === 'all') {
+            everyoneTopToShowAllCheckbox.checked = true;
+            everyoneTopToShowInput.disabled = true;
+            everyoneTopToShowInput.value = totalStudentsForTrainingDay;
+        } else {
+            everyoneTopToShowAllCheckbox.checked = false;
+            everyoneTopToShowInput.disabled = false;
+            everyoneTopToShowInput.value = Number.isFinite(topToShow) ? topToShow : 0;
+        }
+
+        // Set top_names
+        var topNames = everyoneData.top_names;
+        if (topNames === 'all') {
+            everyoneTopNamesAllCheckbox.checked = true;
+            everyoneTopNamesInput.disabled = true;
+            everyoneTopNamesInput.value = totalStudentsForTrainingDay;
+        } else {
+            everyoneTopNamesAllCheckbox.checked = false;
+            everyoneTopNamesInput.disabled = false;
+            everyoneTopNamesInput.value = Number.isFinite(topNames) ? topNames : 0;
+        }
+
+        // Clamp values to valid ranges
+        validateEveryoneFields();
+    } else {
+        everyoneCheckbox.checked = false;
+        everyoneSettings.style.display = 'none';
+        document.getElementById('everyoneTopToShow').value = 0;
+        document.getElementById('everyoneTopNames').value = 0;
+        document.getElementById('everyoneTopToShowAll').checked = false;
+        document.getElementById('everyoneTopNamesAll').checked = false;
+        document.getElementById('everyoneTopToShow').disabled = false;
+        document.getElementById('everyoneTopNames').disabled = false;
+    }
+    document.getElementById('everyoneTopToShow').oninput = validateEveryoneFields;
+    document.getElementById('everyoneTopNames').oninput = validateEveryoneFields;
+
+    // Add existing tag entries (excluding __everyone__)
+    if (currentSharing && typeof currentSharing === 'object') {
+        Object.keys(currentSharing).forEach(function(tag) {
+            if (tag === '__everyone__') return;
+            var settings = currentSharing[tag];
+            addSharingEntry(tag, settings.top_names, settings.top_to_show);
+        });
+    }
+
+    // If no tag entries, add an empty one
+    if (entriesContainer.children.length === 0) {
+        addSharingEntry('', 0, 0);
+    }
+
+    MicroModal.show('modal-scoreboard-sharing');
+}
+
+function toggleEveryoneSettings() {
+    var checkbox = document.getElementById('shareWithEveryone');
+    var settings = document.getElementById('everyoneSettings');
+    settings.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+function toggleEveryoneTopToShowAll() {
+    var checkbox = document.getElementById('everyoneTopToShowAll');
+    var input = document.getElementById('everyoneTopToShow');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        input.value = totalStudentsForTrainingDay;
+    }
+    validateEveryoneFields();
+}
+
+function toggleEveryoneTopNamesAll() {
+    var checkbox = document.getElementById('everyoneTopNamesAll');
+    var input = document.getElementById('everyoneTopNames');
+    input.disabled = checkbox.checked;
+    if (checkbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topToShowVal = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(document.getElementById('everyoneTopToShow').value);
+        input.value = topToShowVal;
+    }
+}
+
+function clampNonNegativeInput(input) {
+    if (!input) return;
+    var value = parseInt(input.value, 10);
+    if (isNaN(value)) return;
+    if (value < 0) {
+        input.value = 0;
+    }
+}
+function parseIntOrZero(value) {
+    var parsed = parseInt(value, 10);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function validateEveryoneFields() {
+    var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+    var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+    var topToShowInput = document.getElementById('everyoneTopToShow');
+    var topNamesInput = document.getElementById('everyoneTopNames');
+
+    // Cap top_to_show to total students
+    if (topToShowAll) {
+        topToShowInput.value = totalStudentsForTrainingDay;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseIntOrZero(topToShowInput.value);
+        if (topToShowVal > totalStudentsForTrainingDay) {
+            topToShowInput.value = totalStudentsForTrainingDay;
+        }
+    }
+
+    // Cap top_names to top_to_show
+    if (topNamesAll) {
+        var allNamesMax = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        topNamesInput.value = allNamesMax;
+    } else {
+        var maxNames = topToShowAll ? totalStudentsForTrainingDay : parseIntOrZero(topToShowInput.value);
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseIntOrZero(topNamesInput.value);
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
+}
+
+function closeScoreboardSharingModal() {
+    MicroModal.close('modal-scoreboard-sharing');
+    currentSharingTrainingDayId = null;
+}
+
+function addSharingEntry(tag, topNames, topToShow) {
+    tag = tag || '';
+    topNames = topNames === undefined ? 0 : topNames;
+    topToShow = topToShow === undefined ? 0 : topToShow;
+
+    var entriesContainer = document.getElementById('scoreboardSharingEntries');
+
+    var tagStudentCount = 0;
+    if (tag && currentSharingTrainingDayId && window.historicalStudentTags && window.historicalStudentTags[currentSharingTrainingDayId]) {
+        Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+            var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+            if (studentTags && studentTags.indexOf(tag) !== -1) {
+                tagStudentCount++;
+            }
+        });
+    }
+
+    var topToShowIsAll = topToShow === 'all';
+    var topNamesIsAll = topNames === 'all';
+    var topToShowVal = topToShowIsAll ? tagStudentCount : topToShow;
+    var topNamesVal = topNamesIsAll ? tagStudentCount : topNames;
+
+    var whitelist = (currentSharingTrainingDayId && tagsPerTrainingDay[currentSharingTrainingDayId]) ?
+        tagsPerTrainingDay[currentSharingTrainingDayId] : allStudentTags;
+
+    var uniqueSuffix = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : (Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+    var entryId = 'sharing-entry-' + uniqueSuffix;
+    var html = '<div class="sharing-entry" id="' + entryId + '" style="display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: var(--tp-bg-secondary); border-radius: 8px; flex-wrap: wrap;">' +
+        '<div style="flex: 1; min-width: 120px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Tag</label>' +
+            '<input type="text" class="sharing-tag" data-sharing-tag-input="true" placeholder="Select a tag" style="width: 160px;" value="' + escapeHtml(tag || '') + '">' +
+        '</div>' +
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Results to Show</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-to-show" value="' + escapeHtml(topToShowVal.toString()) + '" min="0" ' + (topToShowIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="checkbox" class="sharing-top-to-show-all" ' + (topToShowIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
+        '</div>' +
+        '<div style="min-width: 140px;">' +
+            '<label style="display: block; font-size: 0.85rem; color: var(--tp-text-secondary); margin-bottom: 4px;">Full Names</label>' +
+            '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<input type="number" class="sharing-top-names" value="' + escapeHtml(topNamesVal.toString()) + '" min="0" ' + (topNamesIsAll ? 'disabled' : '') + ' style="width: 70px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 4px;">' +
+                '<input type="checkbox" class="sharing-top-names-all" ' + (topNamesIsAll ? 'checked' : '') + ' style="cursor: pointer;">' +
+                '<span style="font-size: 0.85rem;">All</span>' +
+            '</div>' +
+        '</div>' +
+        '<button type="button" class="sharing-remove-btn" style="margin-top: 20px; padding: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">\u00D7</button>' +
+    '</div>';
+
+    entriesContainer.insertAdjacentHTML('beforeend', html);
+
+    var entryDiv = document.getElementById(entryId);
+    var tagInput = entryDiv.querySelector('.sharing-tag');
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
+
+    if (typeof Tagify !== 'undefined') {
+        var tagifyInstance = new Tagify(tagInput, {
+            mode: 'select',
+            whitelist: whitelist,
+            enforceWhitelist: true,
+            dropdown: { maxItems: 20, enabled: 0, closeOnSelect: true },
+            originalInputValueFormat: function(valuesArr) {
+                return valuesArr.length ? valuesArr[0].value : '';
+            }
+        });
+        tagifyInstance.DOM.scope.style.width = '160px';
+        tagifyInstance.on('change', function() {
+            entryDiv.dataset.tag = tagInput.value;
+            normalizeTagEntry(entryDiv);
+        });
+        entryDiv._tagify = tagifyInstance;
+    }
+
+    entryDiv.querySelector('.sharing-remove-btn').onclick = function() {
+        if (entryDiv._tagify) entryDiv._tagify.destroy();
+        entryDiv.remove();
+    };
+    if (tag) entryDiv.dataset.tag = tag;
+
+    topToShowAllCheckbox.onchange = function() {
+        topToShowInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+    topNamesAllCheckbox.onchange = function() {
+        topNamesInput.disabled = this.checked;
+        normalizeTagEntry(entryDiv);
+    };
+    topToShowInput.oninput = function() { normalizeTagEntry(entryDiv); };
+    topNamesInput.oninput = function() { normalizeTagEntry(entryDiv); };
+
+    normalizeTagEntry(entryDiv);
+}
+
+function getTagStudentCount(tag) {
+    if (!tag || !currentSharingTrainingDayId || !window.historicalStudentTags || !window.historicalStudentTags[currentSharingTrainingDayId]) {
+        return 0;
+    }
+    var trimmedTag = tag.trim();
+    if (!trimmedTag) {
+        return 0;
+    }
+    var count = 0;
+    Object.keys(window.historicalStudentTags[currentSharingTrainingDayId]).forEach(function(studentId) {
+        var studentTags = window.historicalStudentTags[currentSharingTrainingDayId][studentId];
+        if (studentTags && studentTags.indexOf(trimmedTag) !== -1) {
+            count++;
+        }
+    });
+    return count;
+}
+
+function getTagFromEntry(entryDiv) {
+    if (!entryDiv) return '';
+    if (entryDiv.dataset && entryDiv.dataset.tag) {
+        return entryDiv.dataset.tag;
+    }
+    var tagSelect = entryDiv.querySelector('.sharing-tag');
+    if (tagSelect && typeof tagSelect.value === 'string') {
+        return tagSelect.value.trim();
+    }
+    return '';
+}
+
+function normalizeTagEntry(entryDiv) {
+    var tag = getTagFromEntry(entryDiv);
+    if (!tag) {
+        return;
+    }
+    var studentCount = getTagStudentCount(tag);
+
+    var topToShowInput = entryDiv.querySelector('.sharing-top-to-show');
+    var topToShowAllCheckbox = entryDiv.querySelector('.sharing-top-to-show-all');
+    var topNamesInput = entryDiv.querySelector('.sharing-top-names');
+    var topNamesAllCheckbox = entryDiv.querySelector('.sharing-top-names-all');
+
+    // Cap top_to_show to student count
+    if (topToShowAllCheckbox.checked) {
+        topToShowInput.value = studentCount;
+    } else {
+        clampNonNegativeInput(topToShowInput);
+        var topToShowVal = parseInt(topToShowInput.value, 10);
+        if (isNaN(topToShowVal)) {
+            topToShowVal = 0;
+            topToShowInput.value = 0;
+        }
+        if (topToShowVal > studentCount) {
+            topToShowInput.value = studentCount;
+        }
+    }
+    topToShowInput.max = studentCount;
+
+    // Cap top_names to top_to_show
+    var parsedTopToShow = parseInt(topToShowInput.value, 10);
+    if (isNaN(parsedTopToShow)) {
+        parsedTopToShow = 0;
+    }
+    var maxNames = topToShowAllCheckbox.checked ? studentCount : parsedTopToShow;
+    if (topNamesAllCheckbox.checked) {
+        topNamesInput.value = maxNames;
+    } else {
+        clampNonNegativeInput(topNamesInput);
+        var topNamesVal = parseInt(topNamesInput.value, 10);
+        if (isNaN(topNamesVal)) {
+            topNamesVal = 0;
+            topNamesInput.value = 0;
+        }
+        if (topNamesVal > maxNames) {
+            topNamesInput.value = maxNames;
+        }
+    }
+    topNamesInput.max = maxNames;
+}
+
+function saveScoreboardSharing(){
+    if (!currentSharingTrainingDayId) return;
+
+    var sharingData = {};
+    var seenTags = {};
+    var hasDuplicate = false;
+
+    // Handle "everyone" option
+    var everyoneCheckbox = document.getElementById('shareWithEveryone');
+    if (everyoneCheckbox.checked) {
+        var topToShowAll = document.getElementById('everyoneTopToShowAll').checked;
+        var topNamesAll = document.getElementById('everyoneTopNamesAll').checked;
+        var topToShow = topToShowAll ? 'all' : parseInt(document.getElementById('everyoneTopToShow').value) || 0;
+        var topNames = topNamesAll ? 'all' : parseInt(document.getElementById('everyoneTopNames').value) || 0;
+        if (!topToShowAll && topToShow < 0) {
+            AdminModals.showError('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAll && topNames < 0) {
+            AdminModals.showError('Full names cannot be negative.');
+            return;
+        }
+
+        sharingData['__everyone__'] = {
+            top_to_show: topToShow,
+            top_names: topNames
+        };
+    }
+
+    // Handle tag entries
+    var entries = Array.from(document.querySelectorAll('#scoreboardSharingEntries .sharing-entry'));
+    for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+        normalizeTagEntry(entry);
+        var tagInput = entry.querySelector('input[data-sharing-tag-input="true"]');
+        var tag = '';
+        if (tagInput && typeof tagInput.value === 'string') {
+            tag = tagInput.value.trim();
+        }
+
+        var topToShowAllCheckbox = entry.querySelector('.sharing-top-to-show-all');
+        var topNamesAllCheckbox = entry.querySelector('.sharing-top-names-all');
+        var topToShowInput = entry.querySelector('.sharing-top-to-show');
+        var topNamesInput = entry.querySelector('.sharing-top-names');
+
+        var topToShow = topToShowAllCheckbox.checked ? 'all' : parseInt(topToShowInput.value, 10);
+        var topNames = topNamesAllCheckbox.checked ? 'all' : parseInt(topNamesInput.value, 10);
+        if (!topToShowAllCheckbox.checked && topToShow < 0) {
+            AdminModals.showError('Results to show cannot be negative.');
+            return;
+        }
+        if (!topNamesAllCheckbox.checked && topNames < 0) {
+            AdminModals.showError('Full names cannot be negative.');
+            return;
+        }
+
+        if (tag) {
+            var normalized = tag.toLowerCase();
+            if (seenTags[normalized]) {
+                hasDuplicate = true;
+            } else {
+                seenTags[normalized] = true;
+                sharingData[tag] = {
+                    top_to_show: (topToShow === 'all') ? 'all' : (isNaN(topToShow) ? 0 : topToShow),
+                    top_names: (topNames === 'all') ? 'all' : (isNaN(topNames) ? 0 : topNames)
+                };
+            }
+        }
+    }
+
+    if (hasDuplicate) {
+        AdminModals.showError('Duplicate tags are not allowed.');
+        return;
+    }
+
+    // Send AJAX request
+    var formData = new FormData();
+    var xsrfEl = document.querySelector('input[name="_xsrf"]');
+    if (!xsrfEl) {
+        AdminModals.showError('XSRF token not found. Please refresh the page.');
+        return;
+    }
+    formData.append('_xsrf', xsrfEl.value);
+    var sharingPayload = Object.keys(sharingData).length > 0 ? JSON.stringify(sharingData) : '';
+    formData.append('scoreboard_sharing', sharingPayload);
+
+    fetch('{{ url("training_program", training_program.id) }}/training_day/' + currentSharingTrainingDayId + '/scoreboard_sharing', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            return response.text().then(function() {
+                throw new Error('Server error: ' + response.status);
+            });
+        }
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            closeScoreboardSharingModal();
+            location.reload();
+        } else {
+            AdminModals.showError(data.error || 'Unknown error');
+        }
+    })
+    .catch(function(error) {
+        AdminModals.showError(error.message);
+    });
+}
+
+// Save button click handler
+document.getElementById('save-scoreboard-sharing-btn').addEventListener('click', saveScoreboardSharing);
+
+function openRemoveTrainingDayModal(btn) {
+    var name = btn.getAttribute('data-td-name');
+    var removeUrl = btn.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var taskCount = Number.parseInt(btn.getAttribute('data-task-count')) || 0;
+    var isArchived = btn.getAttribute('data-is-archived') === 'true';
+
+    var warningHtml;
+    if (isArchived) {
+        warningHtml = 'This training day has been archived. The contest has already been deleted.<br>This operation cannot be undone.';
+    } else {
+        warningHtml = 'This will remove ' + escapeHtml(participationCount.toString()) + ' participation(s) from the training day contest.<br>This operation cannot be undone.';
+    }
+    if (taskCount > 0) {
+        warningHtml += '<br><br>The training day has ' + escapeHtml(taskCount.toString()) + ' task(s) assigned. These tasks will remain in the training program but will no longer be assigned to any training day.';
+    }
+
+    AdminModals.deleteResource({
+        title: 'Remove Training Day',
+        messageHtml: 'Are you sure you want to remove the training day <strong>' + escapeHtml(name) + '</strong>?',
+        warningHtml: warningHtml,
+        deleteUrl: removeUrl,
+        confirmLabel: 'Yes, Remove Training Day'
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var openModal = urlParams.get('open_modal');
+    if (openModal && openModal.startsWith('remove-training-day-')) {
+        var tdId = openModal.replace('remove-training-day-', '');
+        if (!/^\d+$/.test(tdId)) return;
+        var btn = document.querySelector('button[data-remove-url$="/training_day/' + tdId + '/remove"]');
+        if (btn) {
+            openRemoveTrainingDayModal(btn);
+            urlParams.delete('open_modal');
+            window.history.replaceState(null, '', window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
+        }
+    }
+});
+</script>
+
+{% endblock core %}

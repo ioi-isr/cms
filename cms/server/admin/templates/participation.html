@@ -4,24 +4,122 @@
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
-{% import 'macro/markdown_input.html' as macro_markdown %}
+{% import 'macro/message.html' as macro_message with context %}
 
 {% block core %}
-<h1>
-  Participation of <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a> in <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
+<h1 class="title is-spaced">
+  Participation:
+  {# For training day participations, link to the student page in the training program #}
+  {% if contest.training_day is not none and contest.training_day.training_program is not none %}
+  <a href="{{ url("training_program", contest.training_day.training_program.id, "student", selected_user.id, "edit") }}">{{ selected_user.username }}</a>
+  {% else %}
+  <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+  {% endif %}
 </h1>
+<p class="subtitle has-text-grey mb-5">
+  Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
+</p>
 
-<h2 id="title_submissions" class="toggling_on">Submissions</h2>
-<div id="submissions">
-  <p>
-    Reevaluate all {{ submission_count }} submissions for this user in this contest (for all datasets)
-    {{ macro_reevaluation_buttons.reevaluation_buttons(
-           admin.permission_all,
-           url("contest", contest.id, "user", participation.user_id, "edit"),
-           participation_id=participation.id) }}
-    <br/>
-    <a href="{{ url("contest", contest.id, "user", participation.user_id, "submissions", "download") }}">Download all submissions</a>
-  </p>
+<!-- Participation Information -->
+<h2 class="title is-5">Participation Information</h2>
+<div class="box" style="max-width: 1200px;">
+  <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
+  <form enctype="multipart/form-data" action="{{ url("contest", contest.id, "user", selected_user.id, "edit") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+    {% from "macro/bulma_file_input.html" import form_field %}
+
+    <div class="columns is-multiline">
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Team
+            <span class="info" title="Code of the team of the contestant in this contest. Only used in the external ranking."></span>
+          </label>
+          <div class="control">
+            <input class="input" list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+            <datalist id="teams">
+              {% for t in teams %}
+              <option value="{{ t.code }}">
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
+      </div>
+      <div class="column is-full">
+        <div class="field">
+          <label class="label">
+            Password
+            <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used. Caution: stored in plain text."></span>
+            <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
+          </label>
+          {% set hashed_password = participation.password %}
+          {% include "fragments/hashed_password_form.html" %}
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Hidden participation
+            <span class="info" title="Whether the contestant's results will be visible in the external ranking."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+              Hidden
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Unrestricted participation
+            <span class="info" title="Whether the contestant is unrestricted by maximum number of submissions, user tests, and minimum interval between submissions, user tests, and contest time."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
+              Unrestricted
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        {{ form_field('ip', 'IP address or subnet', participation.ip|map("string")|join(", ") if participation.ip is not none else '', info_tooltip='A comma-separated list of IP addresses (or subnets) of the contestant for this contest. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address).') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('starting_time', 'Time of first login (in ' + timezone_name + ')', participation.starting_time|format_datetime_input(timezone), info_tooltip='Time of first login during this contest, used for USACO-style contests. Example: \'2015-12-31 15:00:00\'.') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('delay_time', 'Delay (seconds)', participation.delay_time.total_seconds()|int, info_tooltip='To be set (in seconds) to acknowledge that the contestant lost that amount of time at the beginning of the contest. If this is non-zero, all the events (token generation, end of contest) for this contestant will be shifted of the appropriate amount.') }}
+      </div>
+      <div class="column is-half">
+        {{ form_field('extra_time', 'Extra time (seconds)', participation.extra_time.total_seconds()|int, info_tooltip='To be set (in seconds) to acknowledge that the contestant lost that amount of time during the contest. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this contestant.') }}
+      </div>
+    </div>
+
+    <div class="field is-grouped mt-4">
+      <div class="control">
+        <button type="submit" class="button is-primary is-outlined">Update</button>
+      </div>
+      <div class="control">
+        <button type="reset" class="button is-light">Reset</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Submissions -->
+<h2 class="title is-5 mt-5">Submissions</h2>
+<div>
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("contest", contest.id, "user", participation.user_id, "edit"),
+             participation_id=participation.id),
+         download_url=url("contest", contest.id, "user", participation.user_id, "submissions", "download")) }}
 
   {{ macro_submission.rows(
          admin,
@@ -31,197 +129,48 @@
          submission_page,
          submission_pages,
          timezone=timezone) }}
-
-  <div class="hr"></div>
 </div>
 
-
-<h2 id="title_participation_info" class="toggling_on">Participation information</h2>
-<div id="participation_info">
-  <!-- We use "multipart/form-data" to have Tornado distinguish between missing and empty values. -->
-  <form enctype="multipart/form-data" action="{{ url("contest", contest.id, "user", selected_user.id, "edit") }}" method="POST">
-    {{ xsrf_form_html|safe }}
-    <table>
-      <tr>
-        <td>
-          <span class="info" title="Code of the team of the contestant in this contest. Only used in the external ranking."></span>
-          Team
-        </td>
-        <td>
-          <input list="teams" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
-          <datalist id="teams">
-            {% for t in teams %}
-            <option value="{{ t.code }}">
-            {% endfor %}
-          </datalist>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Contestant password for this contest. If empty, the contestant's main password is used.
-                                     Caution: stored in plain text."></span>
-          Password <strong style="color:#c00; font-weight: 700;">(only inside the contest {{ contest.name }})</strong>
-        </td>
-        <td>
-          {% set hashed_password = participation.password %}
-          {% include "fragments/hashed_password_form.html" %}
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Whether the contestant's results will be visible in the external ranking."></span>
-          Hidden participation
-        </td>
-        <td><input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Whether the contestant is unrestricted by maximum number of submissions, user tests,
-                                    and minimum interval between submissions, user tests, and contest time."></span>
-          Unrestricted participation
-        </td>
-        <td><input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="A comma-separated list of IP addresses (or subnets) of the contestant for this contest.
-                                    Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
-          IP address or subnet
-        </td>
-        <td><input type="text" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="Time of first login during this contest, used for USACO-style contests.
-                                    Example: '2015-12-31 15:00:00'."></span>
-          Time of first login (in {{ timezone_name }})
-        </td>
-        <td><input type="text" name="starting_time" value="{{ participation.starting_time|format_datetime_input(timezone) }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="To be set (in seconds) to acknowledge that the contestant lost that amount of time at the beginning of the contest.
-                                    If this is non-zero, all the events (token generation, end of contest) for this contestant will be shifted of the appropriate amount."></span>
-          Delay
-        </td>
-        <td><input type="text" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"></td>
-      </tr>
-      <tr>
-        <td>
-          <span class="info" title="To be set (in seconds) to acknowledge that the contestant lost that amount of time during the contest.
-                                    If this is non-zero, the end of the contest will be shifted of the appropriate amount for this contestant."></span>
-          Extra time
-        </td>
-        <td><input type="text" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"></td>
-      </tr>
-    </table>
-    <input type="submit" value="Update" />
-    <input type="reset" value="Reset" />
-  </form>
-  <div class="hr"></div>
-</div>
-
-
-<h2 id="title_questions" class="toggling_on">Questions</h2>
-<div id="questions">
+<!-- Questions -->
+<h2 class="title is-5 mt-5">Questions</h2>
+<div>
   {% if participation.questions != [] %}
   <div class="notifications">
     {% for msg in participation.questions %}
       {{ macro_question.question(msg, selected_user.id) }}
     {% endfor %}
   </div>
-
   {% else %}
-  No questions.
-
+  <p class="has-text-grey">No questions.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
 
-
-<h2 id="title_delay_requests" class="toggling_on">Delay Requests</h2>
-<div id="delay_requests">
+<!-- Delay Requests -->
+<h2 class="title is-5 mt-5">Delay Requests</h2>
+<div>
   {% if participation.delay_requests != [] %}
-  <div class="notifications">
+  <div class="delays-history-grid delays-history-grid-single">
     {% for req in participation.delay_requests|reverse %}
       {{ macro_delay_request.delay_request(req, selected_user.id) }}
     {% endfor %}
   </div>
-
   {% else %}
-  No delay requests.
-
+  <p class="has-text-grey">No delay requests.</p>
   {% endif %}
-  <div class="hr"></div>
 </div>
 
+<!-- Messages -->
+<h2 class="title is-5 mt-5">Messages</h2>
+<div>
+  {{ macro_message.send_message_form(url("contest", contest.id, "user", selected_user.id, "message")) }}
 
-<h2 id="title_messages" class="toggling_on">Messages</h2>
-<div id="messages">
-
-  <div class="notifications">
-      <div class="notification communication">
-        <form id="send_message_form" action="{{ url("contest", contest.id, "user", selected_user.id, "message") }}" method="POST">
-          {{ xsrf_form_html|safe }}
-          <div class="notification_msg">
-            <div class="notification_subject">
-              Subject:
-              <input id="send_message_subject" type="text" name="message_subject" style="width: 100%" />
-            </div>
-            <div class="notification_text">
-              Text:
-              {{ macro_markdown.markdown_input("message_text") }}
-            </div>
-          <input type="submit" value="Send"/>
-          {{ macro_markdown.markdown_preview() }}
-          </div>
-        </form>
-      </div>
-
-    {% if participation.messages != [] %}
-
-      {% for msg in participation.messages|reverse %}
-      <div class="notification communication">
-        <div class="notification_msg">
-          <div class="announcement_remove">
-            <a onclick="CMS.AWSUtils.ajax_delete('{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id) }}'); ">Remove</a>
-          </div>
-          <div class="notification_timestamp">{{ msg.timestamp|format_datetime }}</div>
-          <div class="notification_subject">{{ msg.subject }}</div>
-          <div class="notification_text">{{ msg.text | markdown }}</div>
-          <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
-          <textarea class="announcement_raw_text" style="display:none;">{{ msg.text|e }}</textarea>
-          <hr>
-          <div class="notification_admin_owner">
-            By: {{ msg.admin.name if msg.admin is not none else "<unknown>" }}
-          </div>
-          <a href="javascript:void(0);" onclick="utils.announcement_edit_toggle(event, this);">Edit</a>
-          <div class="reply_question">
-            <form method="post" action="{{ url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit") }}" >
-              {{ xsrf_form_html|safe }}
-              <div class="notification_subject">
-                <label for="edit_subject">Edit Message</label>
-                <input type="text" name="subject" id="edit_subject" style="width: 100%">
-              </div>
-              <div class="notification_text">
-                <label for="text">Text</label>
-                {{ macro_markdown.markdown_input("text") }}
-              </div>
-              <input type="submit"
-                     value="Edit message" />
-              {{ macro_markdown.markdown_preview() }}
-            </form>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-
-    {% else %}
-      No messages.
-    {% endif %}
-  </div>
-  <div class="hr"></div>
+  {% if participation.messages != [] %}
+    {% for msg in participation.messages|reverse %}
+      {{ macro_message.message_card(msg, url("contest", contest.id, "user", selected_user.id, "message", msg.id), url("contest", contest.id, "user", selected_user.id, "message", msg.id, "edit")) }}
+    {% endfor %}
+  {% else %}
+    <p class="has-text-grey">No messages.</p>
+  {% endif %}
 </div>
-
 
 {% endblock core %}

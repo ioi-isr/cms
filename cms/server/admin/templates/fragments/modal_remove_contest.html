@@ -1,0 +1,152 @@
+<!-- Remove Contest Modal Fragment -->
+<!-- Include this fragment in pages where the "Remove Contest" modal is needed -->
+<!-- Required context: admin, url, xsrf_form_html, other_contests -->
+<!-- Static mode (single contest page): contest, submission_count -->
+<!-- Dynamic mode (listing page): caller JS populates modal via element IDs before showing -->
+
+{% from "macro/modal.html" import modal_header %}
+{% if admin is defined and admin.permission_all %}
+<div class="modal modal--medium" id="modal-remove-contest" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-remove-contest-title">
+            {{ modal_header("Remove Contest", "modal-remove-contest-title", "modal__header--danger") }}
+            <main class="modal__content">
+                {{ xsrf_form_html|safe }}
+                <p style="margin-bottom: 16px;">
+                    Are you sure you want to remove contest <strong id="remove-contest-name">{% if contest is not none %}{{ contest.name }}{% endif %}</strong>?
+                </p>
+                <div class="modal__warning--danger" id="remove-contest-stats-box">
+                    <p class="modal__warning-title">
+                        <svg class="icon is-small" style="vertical-align: middle;"><use href="#icon-alert-triangle"/></svg>
+                        Warning: This action cannot be undone!
+                    </p>
+                    <ul id="remove-contest-stats" style="margin: 4px 0 0 0; padding-left: 20px;">
+                        {% if contest is not none %}
+                        <li>{{ contest.participations|length }} participation(s) will be deleted.</li>
+                        <li>{{ submission_count|default(0) }} submission(s) will be deleted.</li>
+                        {% if contest.tasks|length > 0 %}
+                        <li>{{ contest.tasks|length }} task(s) will be affected (see options below).</li>
+                        {% endif %}
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div id="remove-contest-task-options" style="{% if contest is none or contest.tasks|length == 0 %}display: none; {% endif %}margin-top: 16px; margin-bottom: 4px;">
+                    <p style="margin-bottom: 12px; font-weight: 500;">
+                        The contest has <strong id="remove-contest-task-count">{% if contest is not none %}{{ contest.tasks|length }}{% endif %}</strong> task(s). What should happen to them?
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="contest_remove_action" value="move" id="contest_action_move" style="margin-top: 3px;">
+                            <div>
+                                <span style="font-weight: 500;">Move to another contest</span>
+                                <select name="contest_target_contest_id" id="contest_target_contest_select" style="display: block; margin-top: 4px; padding: 6px 10px; border: 1px solid var(--tp-border); border-radius: 4px; width: 100%;">
+                                    <option value="">Select a contest...</option>
+                                    {% for c in other_contests|default([]) %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px; border: 1px solid var(--tp-border); border-radius: 6px; cursor: pointer;">
+                            <input type="radio" name="contest_remove_action" value="detach" style="margin-top: 3px;">
+                            <div>
+                                <span style="font-weight: 500;">Detach from contest</span>
+                                <span style="display: block; font-size: 0.85rem; color: var(--tp-text-muted);">Tasks will remain in the system but won't belong to any contest</span>
+                            </div>
+                        </label>
+                        <label class="modal__danger-option">
+                            <input type="radio" name="contest_remove_action" value="delete_all" style="margin-top: 3px;">
+                            <div>
+                                <span class="modal__danger-option-title">Delete all tasks</span>
+                                <span class="modal__danger-option-desc">Tasks will be permanently deleted from the system</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </main>
+            <footer class="modal__footer">
+                <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                <button type="button" class="button is-danger" id="confirm-remove-contest-btn"
+                        data-remove-url="{% if contest is not none %}{{ url("contests", contest.id, "remove") }}{% endif %}">Yes, Remove Contest</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var confirmBtn = document.getElementById('confirm-remove-contest-btn');
+    if (!confirmBtn) return;
+
+    confirmBtn.addEventListener('click', function() {
+        if (confirmBtn.disabled) return;
+        var taskOptionsDiv = document.getElementById('remove-contest-task-options');
+        var hasTaskOptions = taskOptionsDiv && globalThis.getComputedStyle(taskOptionsDiv).display !== 'none';
+        var action = 'detach';
+        var targetContestId = null;
+
+        if (hasTaskOptions) {
+            var selectedAction = document.querySelector('#modal-remove-contest input[name="contest_remove_action"]:checked');
+            if (!selectedAction) {
+                AdminModals.showError('Please select what to do with the tasks.');
+                return;
+            }
+            action = selectedAction.value;
+
+            if (action === 'move') {
+                var targetSelect = document.getElementById('contest_target_contest_select');
+                targetContestId = targetSelect ? targetSelect.value : null;
+                if (!targetContestId) {
+                    AdminModals.showError('Please select a target contest to move tasks to.');
+                    return;
+                }
+            }
+        }
+
+        var removeUrl = confirmBtn.getAttribute('data-remove-url');
+        if (!removeUrl) {
+            AdminModals.showError('Remove URL not set');
+            return;
+        }
+
+        var params = new URLSearchParams();
+        params.append('action', action);
+        if (targetContestId) {
+            params.append('target_contest_id', targetContestId);
+        }
+
+        var modalEl = document.getElementById('modal-remove-contest');
+        var xsrfInput = modalEl ? modalEl.querySelector('input[name="_xsrf"]') : document.querySelector('input[name="_xsrf"]');
+        if (!xsrfInput) {
+            AdminModals.showError('Missing XSRF token');
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('is-loading');
+
+        fetch(removeUrl + '?' + params.toString(), {
+            method: 'DELETE',
+            headers: {
+                'X-XSRFToken': xsrfInput.value
+            }
+        }).then(function(response) {
+            if (response.ok) {
+                return response.text();
+            } else {
+                return response.text().then(function(text) {
+                    throw new Error(text || 'Failed to remove contest');
+                });
+            }
+        }).then(function() {
+            globalThis.location.href = '{{ url("contests") }}';
+        }).catch(function(error) {
+            AdminModals.showError(error.message);
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('is-loading');
+        });
+    });
+})();
+</script>
+{% endif %}

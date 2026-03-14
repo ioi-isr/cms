@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block core %}
+<div class="content-constraint" style="max-width: 900px;">
+    <!-- Header -->
+    <h1 class="title is-spaced">Tasks</h1>
+    <p class="subtitle has-text-grey">
+        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+    </p>
+
+    {% include "fragments/overload_warning.html" %}
+
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="task_id">Add Task:</label>
+        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+            {{ xsrf_form_html|safe }}
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for t in unassigned_tasks %}
+                    <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                <span>Add Task</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Tasks Table -->
+    <div class="tp-section-header">
+        <h2>All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
+    </div>
+
+    <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
+        {{ xsrf_form_html|safe }}
+        <input type="hidden" name="reorder_data" id="reorder-data" value="" />
+        <div class="table-container" style="width: 100%">
+            <table class="ranking-table tp-tasks-table table is-fullwidth" id="tasks-table">
+                <thead>
+                    <tr>
+                        <th class="grip-column no-sort"></th>
+                        <th style="text-align: left;">Task</th>
+                        <th style="text-align: left;">Training Day</th>
+                        <th class="has-text-centered no-sort" style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-tbody">
+                    {% for t in training_program.managing_contest.tasks %}
+                    {% set is_archived = t.training_day is not none and t.training_day.contest is none %}
+                    <tr data-task-id="{{ t.id }}"
+                        data-name="{{ t.name }}"
+                        data-training-day="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('(archived)' if (t.training_day and is_archived) else (t.training_day.name if t.training_day else '')) }}"
+                        data-is-archived="{{ 'true' if is_archived else 'false' }}"
+                        draggable="true">
+                        <!-- Drag handle -->
+                        <td class="grip-cell">
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder task">
+                                <svg class="icon is-small"><use href="#icon-grip"/></svg>
+                            </div>
+                        </td>
+
+                        <!-- Task name and title -->
+                        <td data-value="{{ t.name }}">
+                            <div class="student-name-wrapper">
+                                <div class="student-info">
+                                    <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
+                                        {{ t.name }}
+                                    </a>
+                                    <span class="student-username">{{ t.title }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Training Day -->
+                        <td data-value="{{ t.training_day.contest.name if (t.training_day and t.training_day.contest) else ('zzz_archived_' + (t.training_day.name or '') if (t.training_day and is_archived) else ('zzz_none' if not t.training_day else t.training_day.name)) }}">
+                            <div class="list-cell-wrapper">
+                                {% if t.training_day is not none and t.training_day.contest is not none %}
+                                <a href="{{ url("contest", t.training_day.contest.id) }}" class="tag is-bordered has-text-primary">
+                                    {{ t.training_day.contest.name }}
+                                </a>
+                                {% elif t.training_day is not none %}
+                                <span class="tag is-bordered has-text-warning">
+                                    {{ t.training_day.name or "(archived)" }}
+                                </span>
+                                {% else %}
+                                <span class="has-text-grey-light" style="font-size: 0.85rem;">Not assigned</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="has-text-centered">
+                            <div class="list-cell-wrapper center-content" style="gap: 8px;">
+                                {% if is_archived %}
+                                <!-- Detach button for archived training day tasks -->
+                                <button type="button" class="btn-icon-only btn-detach"
+                                    {% if not admin.permission_all %}disabled{% endif %}
+                                    data-operation="detach_{{ t.id }}"
+                                    onclick="AdminModals.confirmThen('Detach this task from the archived training day? It will become available for new training days.', function() { var form = this.closest('form'); var inp = form.querySelector('input[name=operation]'); if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.name = 'operation'; form.appendChild(inp); } inp.value = this.dataset.operation; form.submit(); }.bind(this), {icon: 'question'}); return false;"
+                                    title="Detach from archived training day" aria-label="Detach task from archived training day">
+                                    <svg class="icon is-small"><use href="#icon-unlock"/></svg>
+                                </button>
+                                {% endif %}
+                                <!-- Remove button - opens modal -->
+                                <button type="button" class="btn-icon-only remove-task-btn"
+                                    data-task-id="{{ t.id }}"
+                                    data-task-name="{{ t.name | e }}"
+                                    data-has-training-day="{{ 'true' if t.training_day else 'false' }}"
+                                    data-training-day-name="{% if t.training_day and t.training_day.contest %}{{ (t.training_day.contest.description or t.training_day.contest.name) | e }}{% elif t.training_day %}{{ (t.training_day.description or t.training_day.name or 'Archived') | e }}{% else %}{% endif %}"
+                                    data-is-active="{{ 'true' if (t.training_day and t.training_day.contest) else 'false' }}"
+                                    {% if not admin.permission_all %}disabled{% endif %}
+                                    title="Remove from program" aria-label="Remove task from program">
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if not training_program.managing_contest.tasks %}
+    <div class="empty-state-box">
+        <h3>No tasks in this program yet</h3>
+        <p>Use the "Add Task" button above to add tasks.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    var programName = {{ training_program.name | tojson }};
+
+    document.querySelectorAll('.remove-task-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            var taskId = this.dataset.taskId;
+            var taskName = this.dataset.taskName;
+            var hasTrainingDay = this.dataset.hasTrainingDay === 'true';
+            var trainingDayName = this.dataset.trainingDayName || null;
+            var isActive = this.dataset.isActive === 'true';
+
+            var warningHtml = null;
+            if (hasTrainingDay && trainingDayName) {
+                var prefix = isActive ? '' : 'archived ';
+                warningHtml = 'This task is also assigned to ' + prefix + 'training day "' + escapeHtml(trainingDayName) + '". Removing it from the training program will also remove it from the training day.';
+            }
+
+            AdminModals.deleteResource({
+                title: 'Remove Task',
+                messageHtml: 'Are you sure you want to remove task "' + escapeHtml(taskName) + '" from training program "' + escapeHtml(programName) + '"?',
+                warningHtml: warningHtml,
+                deleteUrl: '{{ url("training_program", training_program.id) }}/task/' + taskId + '/remove'
+            });
+        });
+    });
+
+// Drag and drop reordering using shared utility
+AdminTableUtils.initDragDropReorder({
+    tbodyId: 'tasks-tbody',
+    rowSelector: 'tr',
+    rowIdAttr: 'task-id',
+    colSpan: 4,
+    confirmMessage: 'Save the new task order?',
+    onSave: function(orderedIds) {
+        var order = orderedIds.map(function(item) {
+            return { task_id: item.id, new_num: item.position };
+        });
+        var form = document.getElementById('tasks-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
+        operationInput.value = 'reorder';
+        form.submit();
+    }
+});
+
+    // Table sorting using CMS.AWSUtils
+    $(document).ready(function() {
+        CMS.AWSUtils.init_table_sort($("#tasks-table"), false, -1);
+    });
+})();
+</script>
+{% endblock core %}

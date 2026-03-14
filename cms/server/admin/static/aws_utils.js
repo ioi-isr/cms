@@ -66,25 +66,14 @@ CMS.AWSUtils.create_url_builder = function(url_root) {
 CMS.AWSUtils.prototype.display_subpage = function(elements) {
     var content = $("#subpage_content");
     content.empty();
-    // TODO: update jQuery to allow appending of arrays of elements.
     for (var i = 0; i < elements.length; ++i) {
         elements[i].appendTo(content);
     }
-    document.getElementById('subpage_popup').show();
+    $('#modal-show-file-title').text('');
+    $('#modal-show-file-download').hide();
+    $('#modal-show-file-copy').hide();
+    MicroModal.show('modal-show-file');
 };
-
-// set up some event listeners for the subpage
-window.addEventListener('DOMContentLoaded', () => {
-    $('#subpage_close').on('click', () => {
-        document.getElementById('subpage_popup').close();
-    });
-});
-
-document.addEventListener('keydown', function(event) {
-    if (event.key === "Escape") {
-        document.getElementById('subpage_popup').close();
-    }
-});
 
 CMS.AWSUtils.filename_to_lang = function(file_name) {
     // TODO: update if adding a new language to cms
@@ -173,37 +162,48 @@ CMS.AWSUtils.filter_languages = function(options, inputs, languages) {
 CMS.AWSUtils.prototype.file_received = function(response, error) {
     var file_name = this.file_asked_name;
     var url = this.file_asked_url;
-    var elements = [];
     if (error != null) {
-        alert("File request failed.");
-    } else {
-        if (response.length > 100000) {
-            elements.push($('<h1>').text(file_name));
-            elements.push($('<a>').text("Download").prop("href", url));
-            this.display_subpage(elements);
-            return;
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('File request failed.');
+        } else {
+            alert('File request failed.');
         }
-        var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+        return;
+    }
 
-        elements.push($('<h1>').text(file_name));
-        elements.push($('<a>').text("Download").prop("href", url));
-        elements.push($('<span>').text(" - "))
-        elements.push($('<a>').text("copy").prop('href', '#').on('click', (event) => {
+    var content = $('#subpage_content');
+    content.empty();
+
+    if (response.length > 100000) {
+        $('#modal-show-file-title').text(file_name);
+        $('#modal-show-file-download').attr('href', url).show();
+        $('#modal-show-file-copy').hide();
+        content.append($('<p>').text('File is too large to display. Use the Download link above.'));
+        MicroModal.show('modal-show-file');
+        return;
+    }
+
+    var lang_name = CMS.AWSUtils.filename_to_lang(file_name);
+    var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
+    content.append($('<pre>').css('margin', '0').append(codearea));
+
+    $('#modal-show-file-title').text(file_name);
+    $('#modal-show-file-download').attr('href', url).show();
+    $('#modal-show-file-copy').show().off('click').on('click', function(event) {
+        var code_el = $('#subpage_content code')[0];
+        if (code_el) {
             var range = document.createRange();
-            var code_area = $('#subpage_content code')[0];
-            range.setStartBefore(code_area);
-            range.setEndAfter(code_area);
+            range.setStartBefore(code_el);
+            range.setEndAfter(code_el);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            // execCommand is deprecated, but this seems much less annoying than the new clipboard api
             document.execCommand('copy');
-            event.preventDefault(); // prevent the <a> from navigating
-        }));
-        var codearea = $('<code>').text(response).addClass('line-numbers').addClass('language-' + lang_name);
-        elements.push($('<pre>').append(codearea));
-        this.display_subpage(elements);
-        Prism.highlightAllUnder(document.getElementById('subpage_content'));
-    }
+        }
+        event.preventDefault();
+    });
+
+    MicroModal.show('modal-show-file');
+    Prism.highlightAllUnder(document.getElementById('subpage_content'));
 };
 
 
@@ -249,52 +249,57 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
         this.last_notification = timestamp;
     }
     var timestamp_int = parseInt(timestamp);
-    var subject_string = $('<span>');
-    if (type == "message") {
-        subject_string = $("<span>").text("Private message. ");
-    } else if (type == "announcement") {
-        subject_string = $("<span>").text("Announcement. ");
-    } else if (type == "question") {
-        subject_string = $("<span>").text("Reply to your question. ");
-    } else if (type == "new_question") {
-        subject_string = $("<a>").text("New question: ")
+    var subject_element = $('<span>');
+    if (type == "message") subject_element.text("Private message. ");
+    else if (type == "announcement") subject_element.text("Announcement. ");
+    else if (type == "question") subject_element.text("Reply to your question. ");
+    else if (type == "new_question") {
+        subject_element = $("<a>").text("New question: ")
             .prop("href", this.url("contest", contest_id, "questions"));
     } else if (type == "new_delay_request") {
-        subject_string = $("<a>").text("New delay request: ")
+        subject_element = $("<a>").text("New delay request: ")
             .prop("href", this.url("contest", contest_id, "delays_and_extra_times"));
     }
 
+    var colorClass = "is-danger";
+    if (subject === "Operation successful.") colorClass = "is-success";
+    else if (type === "new_question" || type === "new_delay_request") colorClass = "is-warning";
+
     var self = this;
     var outer = $("#notifications");
-    var timestamp_div = $("<div>")
-        .addClass("notification_timestamp")
-        .text(timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "");
-    var subject_div = $("<div>")
-        .addClass("notification_subject")
-        .append(subject_string);
-    var close_div = $('<div>').html("&times;").addClass("notification_close")
+    var close_btn = $('<button>').addClass("delete")
         .click(function() { self.close_notification(this); });
-    // Build body: default plain text; special-case manager compilation errors
-    // to render in monospace and preserve newlines.
-    var text_div = $("<div>").addClass("notification_text");
+    var header_div = $('<div>')
+        .addClass("is-flex is-justify-content-space-between is-align-items-start pr-6 mb-1");
+
+    var title_container = $("<strong>")
+        .append(subject_element)
+        .append($("<span>").text(" " + subject));
+
+    var timestamp_str = timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "";
+    var timestamp_span = $("<span>")
+        .addClass("is-size-7 has-text-grey")
+        .css("white-space", "nowrap") // CSS needed here to prevent wrapping
+        .text(timestamp_str);
+
+    header_div.append(title_container).append(timestamp_span);
+
+    var text_div = $("<div>");
     if (subject === "Manager compilation failed") {
-        text_div.empty().append(
-            $('<pre>').text(text).css({ 'white-space': 'pre-wrap', 'margin': 0 })
+        text_div.addClass("content is-small").append(
+            $('<pre>').text(text).css({ 'margin': 0 })
         );
-    } else {
+    } else if (text) {
         text_div.text(text);
     }
-    var inner =
-        $('<div>').addClass("notification").addClass("notification_type_" + type)
-            .append(close_div)
-            .append($('<div>').addClass("notification_msg")
-                    .append(timestamp_div)
-                    .append(subject_div.append($("<span>").text(subject)))
-                    .append(text_div)
-                   );
+
+    var inner = $('<div>')
+        .addClass("notification is-light " + colorClass + " notification_type_" + type)
+        .append(close_btn)
+        .append(header_div)
+        .append(text_div);
     outer.append(inner);
 
-    // Trigger a desktop notification as well (but only if it's needed)
     if (type !== "notification") {
         this.desktop_notification(type, timestamp, subject, text);
     }
@@ -399,166 +404,12 @@ CMS.AWSUtils.prototype.close_notification = function(item) {
                || bubble.className.indexOf("notification_type_message") != -1) {
         this.update_unread_counts(0, -1);
     }
-    bubble.parentNode.removeChild(item.parentNode);
+    bubble.parentNode.removeChild(bubble);
 };
 
 
-/**
- * Provides table row comparator for specified column and order.
- */
-function get_table_row_comparator(column_idx, numeric, ascending) {
-    return function(a, b) {
-        var valA = $(a).children("td").eq(column_idx).text();
-        var valB = $(b).children("td").eq(column_idx).text();
-        var result = numeric
-            ? Number(valA) - Number(valB)
-            : valA.localeCompare(valB);
-        return ascending ? -result : result;
-    }
-}
-
-
-/**
- * Sorts specified table by specified column in specified order.
- */
-CMS.AWSUtils.sort_table = function(table, column_idx, ascending) {
-    var initial_column_idx = table.data("initial_sort_column_idx");
-    var ranks_column = table.data("ranks_column");
-    column_idx += ranks_column ? 1 : 0;
-    var table_rows = table
-        .children("tbody")
-        .children("tr");
-    var column_header = table
-        .children("thead")
-        .children("tr")
-        .children("th")
-        .eq(column_idx);
-    var settings = (column_header.attr("data-sort-settings") || "").split(" ");
-
-    var numeric = settings.indexOf("numeric") >= 0;
-
-    // If specified, flip column's natural order, e.g. due to meaning of values.
-    if (settings.indexOf("reversed") >= 0) {
-        ascending = !ascending;
-    }
-
-    // Normalize column index, converting negative to positive from the end.
-    column_idx = column_header.index();
-
-    // Reassign arrows to headers
-    table.find(".column-sort").html("&varr;");
-    column_header.find(".column-sort").html(ascending ? "&uarr;" : "&darr;");
-
-    // Do the sorting, by initial column and then by selected column.
-    table_rows
-        .sort(get_table_row_comparator(initial_column_idx, numeric, ascending))
-        .sort(get_table_row_comparator(column_idx, numeric, ascending))
-        .each(function(idx, row) {
-            table.children("tbody").append(row)
-        });
-
-    if (ranks_column) {
-        table_rows.each(function(idx, row) {
-            $(row).children("td").first().text(idx + 1)
-        });
-    }
-};
-
-
-/**
- * Makes table sortable, adding ranks column and sorting buttons in header.
- */
-CMS.AWSUtils.init_table_sort = function(table, ranks_column,
-                                        initial_column_idx,
-                                        initial_ascending) {
-    table.addClass("sortable");
-    var table_column_headers = table
-        .children("thead")
-        .children("tr");
-    var table_rows = table
-        .children("tbody")
-        .children("tr");
-
-    // Normalize column index, converting negative to positive from the end.
-    initial_column_idx = table_column_headers
-        .children("th")
-        .eq(initial_column_idx)
-        .index();
-
-    table.data("ranks_column", ranks_column);
-    table.data("initial_sort_column_idx", initial_column_idx);
-
-    // Declaring sort settings.
-    var previous_column_idx = initial_column_idx;
-    var ascending = initial_ascending;
-
-    // Add sorting indicators to column headers
-    table_column_headers
-        .children("th")
-        .each(function(column_idx, header) {
-            $("<a/>", {
-                href: "#",
-                class: "column-sort",
-                click: function() {
-                    ascending = !ascending && previous_column_idx == column_idx;
-                    previous_column_idx = column_idx;
-                    CMS.AWSUtils.sort_table(table, column_idx, ascending);
-                }
-            }).appendTo(header);
-        });
-
-    // Add ranks column
-    if (ranks_column) {
-        table_column_headers.prepend("<th>#</th>");
-        table_rows.prepend("<td></td>");
-    }
-
-    // Do initial sorting
-    CMS.AWSUtils.sort_table(table, initial_column_idx, initial_ascending);
-};
-
-
-/**
- * Filters table rows based on search text.
- *
- * table_id (string): the id of the table to filter.
- * search_text (string): the text to search for in table rows.
- */
-CMS.AWSUtils.filter_table = function(table_id, search_text) {
-    var table = document.getElementById(table_id);
-    if (!table) {
-        return;
-    }
-    var rows = table.querySelectorAll(":scope > tbody > tr");
-    var search_lower = search_text.toLowerCase().trim();
-
-    rows.forEach(function(row) {
-        if (search_lower === "") {
-            row.style.display = "";
-            return;
-        }
-        var text = "";
-        var cells = row.querySelectorAll(":scope > td");
-        cells.forEach(function(td) {
-            if (td.querySelector("table")) {
-                var clone = td.cloneNode(true);
-                var nestedTables = clone.querySelectorAll("table");
-                nestedTables.forEach(function (nested) {
-                    nested.remove();
-                });
-                text += clone.textContent + " ";
-            } else {
-                text += td.textContent + " ";
-            }
-        });
-        text = text.toLowerCase();
-        if (text.indexOf(search_lower) !== -1) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-};
+// Table utilities (get_table_row_comparator, sort_table, init_table_sort, filter_table)
+// have been moved to aws_table_utils.js for better code organization.
 
 
 /**
@@ -624,7 +475,11 @@ CMS.AWSUtils.prototype.update_remaining_time = function() {
 CMS.AWSUtils.prototype.redirect_if_ok = function(url, response) {
     var msg = this.standard_response(response);
     if (msg != "") {
-        alert('Unable to invalidate (' + msg + ').');
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Unable to invalidate (' + msg + ').');
+        } else {
+            alert('Unable to invalidate (' + msg + ').');
+        }
     } else {
         location.href = url;
     }
@@ -847,23 +702,31 @@ CMS.AWSUtils.prototype.standard_response = function(response) {
 CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
     elements_per_page = elements_per_page || 5;
 
-    var children = $("#paged_content_" + item).children();
+    var children = $("#paged_content_" + item).children().filter(function() {
+        return $(this).css('display') !== 'none' || $(this).data('hidden-by-page') === true;
+    });
+    children.each(function() { $(this).removeData('hidden-by-page'); });
     var npages = Math.ceil(children.length / elements_per_page);
     var final_page = Math.min(page, npages) - 1;
+    if (final_page < 0) final_page = 0;
     children.each(function(i, child) {
         if (i >= elements_per_page * final_page
             && i < elements_per_page * (final_page + 1)) {
             $(child).show();
         } else {
             $(child).hide();
+            $(child).data('hidden-by-page', true);
         }
     });
 
     var self = this;
     var selector = $("#page_selector_" + item);
     selector.empty();
+    if (npages <= 1) return;
     selector.append("Pages: ");
-    for (var i = 1; i <= npages; i++) {
+    var windowRadius = 2;
+    var maxAllVisible = windowRadius * 2 + 3;
+    var appendPage = function(i) {
         if (i != page) {
             selector.append($("<a>").text(i + " ")
                             .click(function(j) {
@@ -873,9 +736,23 @@ CMS.AWSUtils.prototype.show_page = function(item, page, elements_per_page) {
                                 };
                             }(i)));
         } else {
-            selector.append(i + " ");
+            selector.append($("<span>").addClass("page-current").text(i + " "));
         }
+    };
+
+    if (npages <= maxAllVisible) {
+        for (let i = 1; i <= npages; i++) appendPage(i);
+        return;
     }
+
+    var start = Math.max(2, page - windowRadius);
+    var end = Math.min(npages - 1, page + windowRadius);
+
+    appendPage(1);
+    if (start > 2) selector.append(" ... ");
+    for (let i = start; i <= end; i++) appendPage(i);
+    if (end < npages - 1) selector.append(" ... ");
+    appendPage(npages);
 };
 
 
@@ -947,6 +824,29 @@ CMS.AWSUtils.ajax_delete = function(url) {
 
 
 /**
+ * Sends a delete request and on success reloads the current page
+ * instead of following the server's redirect URL.
+ */
+CMS.AWSUtils.ajax_delete_reload = function (url) {
+    var settings = {
+        "type": "DELETE",
+        headers: { "X-XSRFToken": get_cookie("_xsrf") }
+    };
+    settings["success"] = function () {
+        window.location.reload();
+    };
+    settings["error"] = function (xhr) {
+        if (window.AdminModals && typeof AdminModals.showError === 'function') {
+            AdminModals.showError('Delete failed (' + xhr.status + ').');
+        } else {
+            alert('Delete failed (' + xhr.status + ').');
+        }
+    };
+    $.ajax(url, settings);
+};
+
+
+/**
  * Sends a post request and on success. See AWSUtils.ajax_request
  * for more details.
  */
@@ -955,50 +855,7 @@ CMS.AWSUtils.ajax_post = function(url) {
 };
 
 
-/**
- * Initialize password strength indicator for a password field.
- * Uses zxcvbn library to calculate password strength and displays
- * a colored bar with text feedback.
- *
- * fieldSelector (string): jQuery selector for the password input field.
- * barSelector (string): jQuery selector for the strength bar element.
- * textSelector (string): jQuery selector for the strength text element.
- */
-CMS.AWSUtils.initPasswordStrength = function(fieldSelector, barSelector, textSelector) {
-    var strengthMessages = ["Very weak", "Weak", "Fair", "Strong", "Very strong"];
-    var strengthColors = ["#dc3545", "#dc3545", "#ffc107", "#28a745", "#28a745"];
-    var strengthWidths = ["20%", "40%", "60%", "80%", "100%"];
-
-    var $field = $(fieldSelector);
-    if (!$field.length) {
-        return;
-    }
-
-    var $bar = $(barSelector);
-    var $text = $(textSelector);
-
-    $field.on("input", function() {
-        var pwd = $(this).val();
-
-        if (!pwd) {
-            $bar.hide();
-            $text.text("");
-            return;
-        }
-
-        if (typeof zxcvbn === "function") {
-            var result = zxcvbn(pwd);
-            var score = result.score;
-
-            $bar.css({
-                "background-color": strengthColors[score],
-                "width": strengthWidths[score]
-            }).show();
-            $text.text("Password strength: " + strengthMessages[score]);
-            $text.css("color", strengthColors[score]);
-        }
-    });
-};
+// initPasswordStrength has been moved to aws_form_utils.js
 
 
 /**
@@ -1006,32 +863,68 @@ CMS.AWSUtils.initPasswordStrength = function(fieldSelector, barSelector, textSel
  * Toggles visibility of the question reply box.
  */
 CMS.AWSUtils.prototype.question_reply_toggle = function(event, invoker) {
-    var obj = invoker.parentElement.parentElement.querySelector(".reply_question");
+    var card = invoker.closest('.question-card');
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide reply";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Reply";
     }
     event.preventDefault();
+};
+
+CMS.AWSUtils.prototype.init_questions_page = function() {
+    var self = this;
+    self.show_page("questions", 1);
+
+    var tabs = document.querySelectorAll('.questions-tab');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            this.classList.add('active');
+            var filter = this.dataset.filter;
+            var cards = document.querySelectorAll('#paged_content_questions .question-card');
+            cards.forEach(function(card) {
+                $(card).removeData('hidden-by-page');
+                if (filter === 'all') {
+                    card.style.display = '';
+                } else {
+                    card.style.display = card.dataset.status === filter ? '' : 'none';
+                }
+            });
+            self.show_page("questions", 1);
+        });
+    });
 }
 
 CMS.AWSUtils.prototype.announcement_edit_toggle = function (event, invoker) {
-    const notification = invoker.closest('.notification_msg');
-    const subjectText = notification.querySelector('.announcement_raw_subject').value;
-    const bodyText = notification.querySelector('.announcement_raw_text').value;
-    const form = notification.querySelector('.reply_question form');
+    const card = invoker.closest('.announcement-card');
+    const subjectText = card.querySelector('.announcement_raw_subject').value;
+    const bodyText = card.querySelector('.announcement_raw_text').value;
+    const form = card.querySelector('.reply_question form');
 
     form.querySelector('input[name="subject"]').value = subjectText;
     form.querySelector('textarea[name="text"]').value = bodyText;
-    var obj = notification.querySelector(".reply_question");
+
+    const visibleToTagsInput = form.querySelector('input[name="visible_to_tags"]');
+    const rawVisibleToTags = card.querySelector('.announcement_raw_visible_to_tags');
+    if (visibleToTagsInput && rawVisibleToTags) {
+        const rawValue = rawVisibleToTags.value;
+        const tagify = visibleToTagsInput._tagify;
+        if (tagify) {
+            tagify.removeAllTags();
+            const tags = rawValue.split(",").map(t => t.trim()).filter(Boolean);
+            if (tags.length) tagify.addTags(tags);
+        } else {
+            visibleToTagsInput.value = rawValue;
+        }
+    }
+
+    var obj = card.querySelector(".reply_question");
     if (obj.style.display != "block") {
         obj.style.display = "block";
-        invoker.innerHTML = "Hide Edit";
     } else {
         obj.style.display = "none";
-        invoker.innerHTML = "Edit";
     }
     event.preventDefault();
 }
@@ -1204,10 +1097,10 @@ CMS.AWSUtils.updateScoreRangeFromSubtasks = function(formOrSolId, options) {
     var minSum = 0;
     var maxSum = 0;
     minInputs.forEach(function(input) {
-        minSum += parseFloat(input.value) || 0;
+        minSum += Number.parseFloat(input.value) || 0;
     });
     maxInputs.forEach(function(input) {
-        maxSum += parseFloat(input.value) || 0;
+        maxSum += Number.parseFloat(input.value) || 0;
     });
 
     if (scoreMinInput) scoreMinInput.value = minSum.toFixed(2);
@@ -1255,7 +1148,7 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
     // Full score button handler
     document.querySelectorAll('.btn-full-score').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var maxScore = parseFloat(this.dataset.maxScore);
+            var maxScore = Number.parseFloat(this.dataset.maxScore);
             var minInput, maxInput, formOrSolId;
 
             if (multiSolution) {
@@ -1352,3 +1245,451 @@ CMS.AWSUtils.initModelSolutionSubtasks = function(options) {
         });
     });
 };
+
+
+/**
+ * ModelSolutionModal - shared modal logic for add/edit model solutions.
+ */
+var ModelSolutionModal = (function() {
+    var _advancedOpen = {};
+
+    function _parse(val, fallback) {
+        var v = Number.parseFloat(val);
+        return Number.isNaN(v) ? (fallback || 0) : v;
+    }
+
+    function _clamp(val, lo, hi) {
+        return Math.min(Math.max(val, lo), hi);
+    }
+
+    function _getUI(dsId) {
+        var p = 'ms-' + dsId;
+        return {
+            form: document.getElementById('ms-form-' + dsId),
+            title: document.getElementById('modal-ms-' + dsId + '-title'),
+            submit: document.getElementById(p + '-submit'),
+            fileSection: document.getElementById(p + '-file-section'),
+            nameInput: document.getElementById(p + '-name'),
+            descInput: document.getElementById(p + '-description'),
+            globalPct: document.getElementById(p + '-global-pct'),
+            cards: document.querySelectorAll('#' + p + '-cards .ms-card-subtask'),
+            advSection: document.getElementById(p + '-advanced'),
+            advArrow: document.getElementById(p + '-adv-arrow'),
+            advLabel: document.getElementById(p + '-adv-label'),
+            calcCheckbox: document.getElementById(p + '-calc-total'),
+            totalDisplay: document.getElementById(p + '-total'),
+            scoreMin: document.getElementById(p + '-score-min'),
+            scoreMax: document.getElementById(p + '-score-max'),
+            scoreMinSimple: document.getElementById(p + '-score-min-simple'),
+            scoreMaxSimple: document.getElementById(p + '-score-max-simple'),
+            advTotalPct: document.getElementById(p + '-adv-total-pct'),
+            advTotalMin: document.getElementById(p + '-adv-total-min'),
+            advTotalMax: document.getElementById(p + '-adv-total-max'),
+            stHidden: function (idx) {
+                return {
+                    min: document.getElementById(p + '-st-' + idx + '-min'),
+                    max: document.getElementById(p + '-st-' + idx + '-max')
+                };
+            },
+            advRow: function (idx) {
+                var sel = '[data-dataset="' + dsId + '"][data-idx="' + idx + '"]';
+                return {
+                    pct: document.querySelector('.ms-adv-pct' + sel),
+                    minInp: document.querySelector('.ms-adv-min-input' + sel),
+                    maxInp: document.querySelector('.ms-adv-max-input' + sel)
+                };
+            }
+        };
+    }
+
+    function _setCardState(card, minScore, maxScore, fullScore) {
+        card.classList.remove('selected', 'partial');
+        if (minScore >= fullScore && fullScore > 0) {
+            card.classList.add('selected');
+        } else if (maxScore > 0) {
+            card.classList.add('partial');
+        }
+    }
+
+    var _ERR_COLOR = 'var(--tp-danger, #dc2626)';
+
+    function _flagInput(inp, errMsg) {
+        if (!inp) return;
+        inp.style.borderColor = errMsg ? _ERR_COLOR : '';
+        inp.setCustomValidity(errMsg || '');
+    }
+
+    function _validateAndClampPercentage(input, allowEmpty) {
+        if (allowEmpty && (input.value === '' || input.value === null)) {
+            return '';
+        }
+        var rawPct = _parse(input.value);
+        var pct = _clamp(rawPct, 0, 100);
+        input.value = pct;
+        return pct;
+    }
+
+    function _validateRow(pctInp, minInp, maxInp) {
+        if (pctInp) _validateAndClampPercentage(pctInp, true);
+        if (minInp) _flagInput(minInp, _parse(minInp.value) < 0 ? 'Value must be non-negative' : '');
+        if (maxInp) _flagInput(maxInp, _parse(maxInp.value) < 0 ? 'Value must be non-negative' : '');
+        if (minInp && maxInp && !minInp.validationMessage && !maxInp.validationMessage) {
+            var bad = _parse(minInp.value) > _parse(maxInp.value) ? 'Min must be ≤ Max' : '';
+            _flagInput(minInp, bad);
+            _flagInput(maxInp, bad);
+        }
+    }
+
+    function _updateSubtask(ui, dsId, idx, source) {
+        var card = document.querySelector('#ms-' + dsId + '-cards .ms-card-subtask[data-idx="' + idx + '"]');
+        if (!card) return;
+        var maxScore = _parse(card.dataset.max);
+        var row = ui.advRow(idx);
+        var hidden = ui.stHidden(idx);
+        var minVal, maxVal, score;
+
+        if (source === 'card') {
+            var isActive = card.classList.contains('selected') || card.classList.contains('partial');
+            var gPct = _clamp(_parse(ui.globalPct ? ui.globalPct.value : 100, 100), 0, 100);
+            score = isActive ? maxScore * gPct / 100 : 0;
+            minVal = maxVal = score;
+            if (row.pct) row.pct.value = isActive ? gPct : 0;
+            if (row.minInp) row.minInp.value = score.toFixed(2);
+            if (row.maxInp) row.maxInp.value = score.toFixed(2);
+        } else if (source === 'pct') {
+            var rowPct = _clamp(_parse(row.pct ? row.pct.value : 0), 0, 100);
+            score = maxScore * rowPct / 100;
+            minVal = maxVal = score;
+            if (row.minInp) row.minInp.value = score.toFixed(2);
+            if (row.maxInp) row.maxInp.value = score.toFixed(2);
+        } else {
+            minVal = _parse(row.minInp ? row.minInp.value : 0);
+            maxVal = _parse(row.maxInp ? row.maxInp.value : 0);
+            if (row.pct) {
+                // Show percentage when min and max are the same, hide when they differ
+                if (Math.abs(minVal - maxVal) < 0.001 && maxScore > 0) {
+                    row.pct.value = Math.round((minVal / maxScore) * 100);
+                } else {
+                    row.pct.value = '';
+                }
+            }
+        }
+
+        if (hidden.min) hidden.min.value = minVal;
+        if (hidden.max) hidden.max.value = maxVal;
+        _setCardState(card, minVal, maxVal, maxScore);
+        _validateRow(row.pct, row.minInp, row.maxInp);
+    }
+
+    function _updateTotals(dsId) {
+        var ui = _getUI(dsId);
+        var calcAuto = ui.calcCheckbox && ui.calcCheckbox.checked;
+
+        [ui.advTotalPct, ui.advTotalMin, ui.advTotalMax].forEach(function (el) {
+            if (el) el.readOnly = calcAuto;
+        });
+
+        if (calcAuto) {
+            var totalMin = 0, totalMax = 0;
+            ui.cards.forEach(function (card) {
+                var h = ui.stHidden(card.dataset.idx);
+                totalMin += _parse(h.min ? h.min.value : 0);
+                totalMax += _parse(h.max ? h.max.value : 0);
+            });
+
+            if (ui.advTotalMin) ui.advTotalMin.value = totalMin.toFixed(2);
+            if (ui.advTotalMax) ui.advTotalMax.value = totalMax.toFixed(2);
+
+            var el = ui.advTotalMax || ui.advTotalMin;
+            var totalScore = el ? _parse(el.dataset.totalScore) : 0;
+            if (ui.advTotalPct && totalScore > 0) {
+                // Show percentage only when min and max are the same, hide when they differ
+                if (Math.abs(totalMin - totalMax) < 0.001) {
+                    ui.advTotalPct.value = Math.round((totalMax / totalScore) * 100);
+                } else {
+                    ui.advTotalPct.value = '';
+                }
+            }
+
+            if (ui.scoreMin) ui.scoreMin.value = totalMin;
+            if (ui.scoreMax) ui.scoreMax.value = totalMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(totalMax);
+            _flagInput(ui.advTotalMin, '');
+            _flagInput(ui.advTotalMax, '');
+            _flagInput(ui.advTotalPct, '');
+        } else {
+            var manMin = _parse(ui.advTotalMin ? ui.advTotalMin.value : 0);
+            var manMax = _parse(ui.advTotalMax ? ui.advTotalMax.value : 0);
+            if (ui.scoreMin) ui.scoreMin.value = manMin;
+            if (ui.scoreMax) ui.scoreMax.value = manMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(manMax);
+            _validateRow(ui.advTotalPct, ui.advTotalMin, ui.advTotalMax);
+        }
+    }
+
+    function _recalcAllFromCards(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'card');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _recalcAllFromPct(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'pct');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _recalcAllFromValues(dsId) {
+        var ui = _getUI(dsId);
+        ui.cards.forEach(function (card) {
+            _updateSubtask(ui, dsId, card.dataset.idx, 'val');
+        });
+        _updateTotals(dsId);
+    }
+
+    function _resetModal(dsId) {
+        var ui = _getUI(dsId);
+        if (!ui.form) return;
+        ui.form.reset();
+        var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+        if (modeInput) modeInput.value = 'add';
+        if (ui.title) ui.title.textContent = 'Add Model Solution';
+        if (ui.submit) ui.submit.textContent = 'Add Model Solution';
+        if (ui.fileSection) ui.fileSection.style.display = '';
+        if (ui.nameInput) { ui.nameInput.value = ''; ui.nameInput.readOnly = false; }
+        if (ui.descInput) ui.descInput.value = '';
+
+        ui.cards.forEach(function (c) { c.classList.remove('partial'); c.classList.add('selected'); });
+        if (ui.globalPct) ui.globalPct.value = 100;
+
+        var advPcts = document.querySelectorAll('.ms-adv-pct[data-dataset="' + dsId + '"]');
+        advPcts.forEach(function (inp) { inp.value = 100; });
+
+        if (ui.advSection) ui.advSection.style.display = 'none';
+        _advancedOpen[dsId] = false;
+        if (ui.advArrow) ui.advArrow.style.transform = '';
+        if (ui.advLabel) ui.advLabel.textContent = 'Show Advanced Scoring';
+        if (ui.calcCheckbox) ui.calcCheckbox.checked = true;
+
+        _recalcAllFromCards(dsId);
+    }
+
+    return {
+        openAdd: function(dsId, addUrl) {
+            _resetModal(dsId);
+            var ui = _getUI(dsId);
+            if (ui.form && addUrl) ui.form.action = addUrl;
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        openEdit: function(dsId, editUrl, name, description, scoreMin, scoreMax, subtaskScores) {
+            _resetModal(dsId);
+            var ui = _getUI(dsId);
+            if (!ui.form) return;
+
+            ui.form.action = editUrl;
+            var modeInput = ui.form.querySelector('input[name="_ms_mode"]');
+            if (modeInput) modeInput.value = 'edit';
+            if (ui.title) ui.title.textContent = 'Edit Model Solution';
+            if (ui.submit) ui.submit.textContent = 'Save Changes';
+            if (ui.fileSection) ui.fileSection.style.display = 'none';
+            if (ui.nameInput) ui.nameInput.value = name || '';
+            if (ui.descInput) ui.descInput.value = description || '';
+
+            if (subtaskScores) {
+                var hasPartial = false;
+                ui.cards.forEach(function (card) {
+                    var idx = card.dataset.idx;
+                    var maxScore = _parse(card.dataset.max);
+                    var stData = subtaskScores[idx] || subtaskScores[String(idx)];
+                    var row = ui.advRow(idx);
+
+                    card.classList.remove('selected', 'partial');
+                    if (row.pct) row.pct.value = 0;
+
+                    if (stData) {
+                        var stMin = _parse(stData.min);
+                        var stMax = _parse(stData.max);
+                        if (stMax > 0) {
+                            card.classList.add('selected');
+                            if (Math.abs(stMin - stMax) >= 0.001) {
+                                hasPartial = true;
+                                if (row.pct) row.pct.value = '';
+                            } else if (maxScore > 0) {
+                                var pct = Math.round((stMax / maxScore) * 100);
+                                if (pct !== 100 && pct !== 0) hasPartial = true;
+                                if (row.pct) row.pct.value = pct;
+                            }
+                        }
+                        if (row.minInp) row.minInp.value = stMin.toFixed(2);
+                        if (row.maxInp) row.maxInp.value = stMax.toFixed(2);
+                    } else {
+                        if (row.minInp) row.minInp.value = "0.00";
+                        if (row.maxInp) row.maxInp.value = "0.00";
+                    }
+                });
+
+                if (hasPartial) {
+                    ModelSolutionModal.toggleAdvanced(dsId);
+                }
+                _recalcAllFromValues(dsId);
+            } else {
+                ui.cards.forEach(function (c) { c.classList.remove('selected', 'partial'); });
+                if (ui.calcCheckbox) ui.calcCheckbox.checked = false;
+                var sm = _parse(scoreMin, 0);
+                var sx = _parse(scoreMax, 0);
+                if (ui.advTotalMin) ui.advTotalMin.value = sm.toFixed(2);
+                if (ui.advTotalMax) ui.advTotalMax.value = sx.toFixed(2);
+                if (ui.advTotalPct) ui.advTotalPct.value = '';
+                _recalcAllFromCards(dsId);
+                if (ui.scoreMinSimple) ui.scoreMinSimple.value = sm;
+                if (ui.scoreMaxSimple) ui.scoreMaxSimple.value = _parse(scoreMax, 100);
+            }
+
+            MicroModal.show('modal-ms-' + dsId);
+        },
+
+        toggleCard: function(cardEl) {
+            var dsId = cardEl.closest('.ms-expected-results').id.replace('ms-', '').replace('-expected', '');
+            if (_advancedOpen[dsId]) return;
+            var wasActive = cardEl.classList.contains('selected') || cardEl.classList.contains('partial');
+            cardEl.classList.remove('selected', 'partial');
+            if (!wasActive) cardEl.classList.add('selected');
+            _recalcAllFromCards(dsId);
+        },
+
+        globalPctChanged: function (input) {
+            _validateAndClampPercentage(input);
+            _recalcAllFromCards(input.dataset.dataset);
+        },
+
+        toggleAdvanced: function(dsId) {
+            var ui = _getUI(dsId);
+            if (!ui.advSection) return;
+
+            _advancedOpen[dsId] = !_advancedOpen[dsId];
+            if (_advancedOpen[dsId]) {
+                ui.advSection.style.display = '';
+                if (ui.advArrow) ui.advArrow.style.transform = 'rotate(180deg)';
+                if (ui.advLabel) ui.advLabel.textContent = 'Hide Advanced Scoring';
+            } else {
+                ui.advSection.style.display = 'none';
+                if (ui.advArrow) ui.advArrow.style.transform = '';
+                if (ui.advLabel) ui.advLabel.textContent = 'Show Advanced Scoring';
+                _recalcAllFromCards(dsId);
+            }
+        },
+
+        pctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            _updateSubtask(ui, dsId, input.dataset.idx, 'pct');
+            _updateTotals(dsId);
+        },
+
+        minMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            _updateSubtask(ui, dsId, input.dataset.idx, 'val');
+            _updateTotals(dsId);
+        },
+
+        totalPctChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            var totalScore = _parse(input.dataset.totalScore);
+            var pct = _validateAndClampPercentage(input);
+
+            var score = totalScore * pct / 100;
+
+            if (ui.advTotalMin) ui.advTotalMin.value = score.toFixed(2);
+            if (ui.advTotalMax) ui.advTotalMax.value = score.toFixed(2);
+            if (ui.scoreMin) ui.scoreMin.value = score;
+            if (ui.scoreMax) ui.scoreMax.value = score;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(score);
+        },
+
+        totalMinMaxChanged: function(input) {
+            var dsId = input.dataset.dataset;
+            var ui = _getUI(dsId);
+            if (ui.advTotalPct) ui.advTotalPct.value = '';
+
+            var totalMin = _parse(ui.advTotalMin ? ui.advTotalMin.value : 0);
+            var totalMax = _parse(ui.advTotalMax ? ui.advTotalMax.value : 0);
+
+            if (ui.scoreMin) ui.scoreMin.value = totalMin;
+            if (ui.scoreMax) ui.scoreMax.value = totalMax;
+            if (ui.totalDisplay) ui.totalDisplay.textContent = Math.round(totalMax);
+            _validateRow(ui.advTotalPct, ui.advTotalMin, ui.advTotalMax);
+        },
+
+        calcFromSubtasksChanged: function(checkbox) {
+            _updateTotals(checkbox.dataset.dataset);
+        }
+    };
+})();
+
+
+// Form utilities (initDateTimeValidation, initReadOnlyTagify, initTagify)
+// have been moved to aws_form_utils.js for better code organization.
+// Backward compatibility aliases are set up in aws_form_utils.js.
+
+/**
+ * Sidebar toggle functionality
+ * Toggles between regular and minimized sidebar views
+ */
+(function () {
+    const STORAGE_KEY = 'cms-sidebar-minimized';
+
+    function initSidebarToggle() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        const regularContent = document.getElementById('sidebar-regular');
+        const minimizedContent = document.getElementById('sidebar-minimized');
+
+        if (!sidebar || !toggleBtn || !regularContent || !minimizedContent) {
+            return;
+        }
+
+        // Restore saved state
+        const isMinimized = localStorage.getItem(STORAGE_KEY) === 'true';
+        if (isMinimized) {
+            applySidebarState(true);
+        }
+
+        // Toggle on button click
+        toggleBtn.addEventListener('click', function () {
+            const willBeMinimized = !sidebar.classList.contains('minimized');
+            applySidebarState(willBeMinimized);
+            localStorage.setItem(STORAGE_KEY, willBeMinimized.toString());
+        });
+
+        function applySidebarState(minimized) {
+            const iconUse = toggleBtn.querySelector('use');
+            if (minimized) {
+                sidebar.classList.add('minimized');
+                regularContent.style.display = 'none';
+                minimizedContent.style.display = 'block';
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-right');
+                toggleBtn.setAttribute('title', 'Expand sidebar');
+            } else {
+                sidebar.classList.remove('minimized');
+                regularContent.style.display = 'block';
+                minimizedContent.style.display = 'none';
+                if (iconUse) iconUse.setAttribute('href', '#icon-chevrons-left');
+                toggleBtn.setAttribute('title', 'Collapse sidebar');
+            }
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarToggle);
+    } else {
+        initSidebarToggle();
+    }
+})();

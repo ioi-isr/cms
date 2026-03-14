@@ -1,0 +1,36 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
+{% extends "base.html" %}
+{% import 'macro/submission.html' as macro_submission %}
+
+{% block core %}
+<h1 class="title is-spaced">
+  Submissions for task <a href="{{ url("task", task.id) }}">{{ task.name }}</a>
+  by <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+</h1>
+<p class="subtitle has-text-grey">
+  Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+  &middot;
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">&larr; Back to Task Archive</a>
+</p>
+
+<div id="submissions">
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("training_program", training_program.id, "student", selected_user.id, "task", task.id, "submissions"),
+             participation_id=participation.id)) }}
+
+  {{ macro_submission.rows(
+         admin,
+         url,
+         url["training_program"][training_program.id]["student"][selected_user.id]["task"][task.id]["submissions"],
+         submissions,
+         submission_page,
+         submission_pages,
+         show_training_day=true) }}
+</div>
+
+{% endblock core %}

@@ -1,0 +1,452 @@
+{% from "macro/modal.html" import modal_header %}
+{% extends "base.html" %}
+{% import 'fragments/info_alert.html' as info_alert %}
+
+{% block js_init %}
+// Initialize filter tagify inputs using shared utility
+AdminTableUtils.initFilterTagify({
+    trainingDayTypesSelector: 'input[name="training_day_types"]',
+    trainingDayTypesWhitelist: {{ all_training_day_types | default([]) | tojson }},
+    studentTagsSelector: 'input[name="student_tags"]',
+    studentTagsWhitelist: {{ all_student_tags | default([]) | tojson }}
+});
+{% endblock js_init %}
+
+{% block core %}
+<h1 class="title is-spaced">Attendance: <a href="{{ url('training_program', training_program.id) }}">{{ training_program.name }}</a></h1>
+
+{{ info_alert.alert(
+    title="Attendance Data",
+    message="This page shows attendance data from archived training days. For active training day attendance and delay requests, go to the appropriate training day's attendance page.",
+    type="info"
+) }}
+
+{% if training_days_with_pending_delays %}
+{% set pending_items = [] %}
+{% for td_info in training_days_with_pending_delays %}
+{% set _ = pending_items.append({
+    'url': url("contest", td_info.contest_id, "delays_and_extra_times"),
+    'label': td_info.name,
+    'count': td_info.pending_count
+}) %}
+{% endfor %}
+{{ info_alert.alert(
+    title="Pending Delay Requests",
+    message="The following training days have pending delay requests that need attention:",
+    items=pending_items,
+    type="warning"
+) }}
+{% endif %}
+
+<form id="attendance-filter-form" action="{{ url('training_program', training_program.id, 'attendance') }}" method="GET" class="tp-filter-card">
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="start_date">From:</label>
+    <input type="date" id="start_date" class="tp-filter-input" name="start_date" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}" />
+  </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="end_date">To:</label>
+    <input type="date" id="end_date" class="tp-filter-input" name="end_date" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}" />
+  </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="training_day_types">Types:</label>
+    <input type="text" id="training_day_types" name="training_day_types" style="min-width: 200px;" value="{{ training_day_types | join(', ') }}" />
+  </div>
+  <div class="tp-filter-group">
+    <label class="tp-filter-label" for="student_tags">Student Tags:</label>
+    <input type="text" id="student_tags" name="student_tags" style="min-width: 200px;" value="{{ student_tags | join(', ') }}" />
+  </div>
+
+  <div class="tp-filter-group" style="margin-left: 5px;">
+      <button type="submit" class="button is-primary"><span>Apply Filter</span></button>
+
+      {% if start_date or end_date or training_day_types or student_tags %}
+      <a href="{{ url('training_program', training_program.id, 'attendance') }}" class="button"><span>Clear</span></a>
+      {% endif %}
+  </div>
+</form>
+
+{% if archived_training_days %}
+<div class="level mb-4">
+  <div class="level-left">
+    <!-- Left side empty -->
+  </div>
+  <div class="level-right">
+    <button type="submit" form="attendance-filter-form" formaction="{{ url('training_program', training_program.id, 'attendance', 'export') }}" class="button">
+      <svg class="icon is-small"><use href="#icon-download"/></svg>
+      <span>Export to Excel</span>
+    </button>
+  </div>
+</div>
+{% endif %}
+
+{% if archived_training_days %}
+<div class="table-container">
+  <table class="attendance-table" id="attendance_table">
+    <thead>
+      <tr>
+        <th class="no-sort" scope="col">Student</th>
+        {% for td in archived_training_days %}
+        <th data-sort-settings="numeric" data-sort-column="{{ loop.index - 1 }}" scope="col">
+          <div class="date-header-main">{{ td.description or td.name or "Session" }}</div>
+          {% if td.start_time %}
+          <div class="date-header-sub">{{ td.start_time.strftime('%a, %b %d') }}</div>
+          {% endif %}
+          {% if td.training_day_types %}
+          <div class="tags is-justify-content-center">
+            {% for type in td.training_day_types %}
+                <span class="tag is-opaque-bg">{{ type }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in sorted_students %}
+      <tr>
+        <th class="no-sort" scope="row">
+          <div class="student-name-wrapper">
+            {% if student.participation %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: baseline; gap: 6px; max-width: 100%;">
+                        <a class="student-name-link"
+                           href="{{ url('training_program', training_program.id, 'student', student.participation.user.id, 'edit') }}"
+                           title="{{ student.participation.user.first_name }} {{ student.participation.user.last_name }}"
+                           style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
+                            {{ student.participation.user.first_name }} {{ student.participation.user.last_name }}
+                        </a>
+                        <span class="student-username is-hidden-mobile">
+                            ({{ student.participation.user.username }})
+                        </span>
+                    </div>
+                    {% if student.student_tags %}
+                    <div class="tags mt-1">
+                        {% for tag in student.student_tags %}
+                          <span class="tag is-bordered has-text-primary-35 is-rounded is-size-7 is-tiny">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <span style="color:#9ca3af;">(Unknown)</span>
+            {% endif %}
+          </div>
+        </th>
+        {% for td in archived_training_days %}
+          {% set att = attendance_data.get(student.id, {}).get(td.id) %}
+          {% if att %}
+            {% set data_value = 3 if att.status == 'missed' and not att.justified else (2.5 if att.status == 'missed' else (2 if att.delay_time else 1)) %}
+            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)" onKeyDown="openAttendanceModal(this)">
+              <div class="cell-wrapper">
+                {% if att.status == "missed" %}
+                  <div class="tag is-bordered is-rounded {% if att.justified %}has-text-warning{% else %}has-text-danger{% endif %}">
+                    {% if att.justified %}
+                      <svg class="icon is-small"><use href="#icon-file-text"/></svg>
+                      <span>Justified</span>
+                    {% else %}
+                      <svg class="icon is-small"><use href="#icon-x"/></svg>
+                      <span>Missed</span>
+                    {% endif %}
+                  </div>
+                {% elif att.delay_time %}
+                  <div class="tag is-bordered is-rounded has-text-warning-75">
+                    <svg class="icon is-small"><use href="#icon-clock"/></svg>
+                    {% set delay_minutes = att.delay_time.total_seconds() / 60 %}
+                    {% if delay_minutes < 60 %}
+                      <span>Delayed ({{ "%.0f"|format(delay_minutes) }}m)</span>
+                    {% else %}
+                      <span>Delayed ({{ "%.1f"|format(delay_minutes / 60) }}h)</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="tag is-bordered is-rounded has-text-success">
+                    <svg class="icon is-small"><use href="#icon-check"/></svg>
+                    <span>On Time</span>
+                  </div>
+                {% endif %}
+
+                {% if att.status != "missed" %}
+                <div class="location-row is-size-7 has-text-grey is-flex is-align-items-center icon-text gap-1 mt-1">
+                  {% if att.location == "class" %}
+                    <svg class="icon is-small"><use href="#icon-school"/></svg>
+                    <span>Class</span>
+                  {% elif att.location == "home" %}
+                    <svg class="icon is-small"><use href="#icon-home"/></svg>
+                    <span>Home</span>
+                  {% elif att.location == "both" %}
+                    <svg class="icon is-small"><use href="#icon-school"/></svg>
+                    <svg class="icon is-small has-text-grey-light"><use href="#icon-swap"/></svg>
+                    <svg class="icon is-small"><use href="#icon-home"/></svg>
+                    <span>Both</span>
+                  {% elif att.location %}
+                    <span>{{ att.location }}</span>
+                  {% else %}
+                    <svg class="icon is-small"><use href="#icon-question-mark"/></svg>
+                    <span>Unknown</span>
+                  {% endif %}
+                  {% if att.recorded %}
+                    <svg class="icon is-small recorded-badge"><title>Recorded</title><use href="#icon-video"/></svg>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+                {% if att.delay_reasons %}
+                  <div class="reason-text" title="{{ att.delay_reasons }}">
+                    {{ att.delay_reasons }}
+                  </div>
+                {% endif %}
+
+                {% if att.comment %}
+                  <div class="comment-text is-flex is-align-items-center gap-1" title="{{ att.comment }}">
+                    <svg class="icon is-small"><use href="#icon-message-circle"/></svg>
+                    <span class="ml-1">{{ att.comment }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            </td>
+          {% else %}
+            <td data-value="">
+              <span class="empty-cell">&middot;</span>
+            </td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 1 + archived_training_days|length }}" style="text-align:center; padding: 20px; color: #6b7280;">
+          No students found in this training program.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  $(document).ready(function() {
+    if (CMS && CMS.AWSUtils) {
+        CMS.AWSUtils.init_table_sort($("#attendance_table"), false, 0, false);
+    }
+  });
+</script>
+
+<!-- Attendance Edit Modal (Micromodal) -->
+<div class="modal" id="modal-attendance" aria-hidden="true">
+  <div class="modal__overlay" tabindex="-1">
+    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-attendance-title">
+      {{ modal_header("Edit Attendance", "modal-attendance-title") }}
+      <main class="modal__content">
+        <div class="modal__checkbox-row" id="justified-row">
+          <label for="modal-justified">
+            <input type="checkbox" id="modal-justified" />
+            Mark as Justified
+          </label>
+          <small class="modal__hint">Check this if the absence was justified (e.g., sick leave)</small>
+        </div>
+        <div class="modal__checkbox-row">
+          <label for="modal-recorded">
+            <input type="checkbox" id="modal-recorded" />
+            Recorded
+          </label>
+          <small class="modal__hint">Check this if the student was recorded (screen recording)</small>
+        </div>
+        <div class="modal__form-group">
+          <label for="modal-comment">Comment:</label>
+          <textarea id="modal-comment" rows="3" placeholder="Add a comment about this attendance..."></textarea>
+        </div>
+      </main>
+      <footer class="modal__footer">
+        <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+        <button type="button" class="button is-primary" id="save-attendance-btn"><span>Save</span></button>
+      </footer>
+    </div>
+  </div>
+</div>
+
+{% else %}
+  <div style="text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 1px dashed #d1d5db;">
+    <h3 style="color: #4b5563; margin-bottom: 8px;">No Data Available</h3>
+    <p style="color: #6b7280;">No archived training days found matching your filter.</p>
+  </div>
+{% endif %}
+
+<!-- Global attendance modal functions for onclick handlers -->
+<script>
+// Attendance edit modal functionality
+var currentAttendanceId = null;
+var currentAttendanceData = {};
+
+function openAttendanceModal(el) {
+    var ds = el.dataset;
+    currentAttendanceId = ds.attendanceId;
+
+    currentAttendanceData = {
+        status: ds.status,
+        justified: ds.justified === 'true',
+        recorded: ds.recorded === 'true',
+        comment: ds.comment
+    };
+
+    document.getElementById('modal-justified').checked = currentAttendanceData.justified;
+    document.getElementById('modal-recorded').checked = currentAttendanceData.recorded;
+    document.getElementById('modal-comment').value = currentAttendanceData.comment;
+
+    var isMissed = currentAttendanceData.status === 'missed';
+    document.getElementById('justified-row').style.display = isMissed ? 'flex' : 'none';
+    document.getElementById('modal-recorded').closest('.modal__checkbox-row').style.display = isMissed ? 'none' : 'flex';
+
+    MicroModal.show('modal-attendance');
+}
+
+function closeAttendanceModal() {
+    MicroModal.close('modal-attendance');
+    currentAttendanceId = null;
+    currentAttendanceData = {};
+}
+
+function updateAttendanceCell(attendanceId, justified, recorded, comment) {
+    // Find the cell by attendance ID
+    var cell = document.querySelector('[data-attendance-id="' + attendanceId + '"]');
+    if (!cell) return;
+
+    // Update the dataset attributes
+    cell.dataset.justified = justified ? 'true' : 'false';
+    cell.dataset.recorded = recorded ? 'true' : 'false';
+    cell.dataset.comment = comment || '';
+
+    // Update data-value for sorting (must match template logic)
+    if (cell.dataset.status === 'missed') {
+        cell.dataset.value = justified ? '2.5' : '3';
+    }
+
+    // Update the visual content
+    var wrapper = cell.querySelector('.cell-wrapper');
+    if (!wrapper) return;
+
+    // Update recorded badge - create or remove as needed
+    var locationRow = wrapper.querySelector('.location-row');
+    if (locationRow && cell.dataset.status !== 'missed') {
+        var recordedBadge = locationRow.querySelector('.recorded-badge');
+        if (recorded && !recordedBadge) {
+            // Create recorded badge
+            var svgNS = 'http://www.w3.org/2000/svg';
+            var badge = document.createElementNS(svgNS, 'svg');
+            badge.setAttribute('class', 'icon is-small recorded-badge');
+            var title = document.createElementNS(svgNS, 'title');
+            title.textContent = 'Recorded';
+            var use = document.createElementNS(svgNS, 'use');
+            use.setAttribute('href', '#icon-video');
+            badge.appendChild(title);
+            badge.appendChild(use);
+            locationRow.appendChild(badge);
+        } else if (!recorded && recordedBadge) {
+            // Remove recorded badge
+            recordedBadge.remove();
+        }
+    }
+
+    // Update justified status for missed entries
+    var statusBadge = wrapper.querySelector('.tag');
+    if (statusBadge && cell.dataset.status === 'missed') {
+        if (justified) {
+            statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
+            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
+        } else {
+            statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
+            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
+        }
+    }
+
+    // Update comment text
+    var existingComment = wrapper.querySelector('.comment-text');
+    if (comment && !existingComment) {
+        // Create comment text
+        var commentDiv = document.createElement('div');
+        commentDiv.className = 'comment-text is-flex is-align-items-center gap-1';
+        commentDiv.title = comment;
+        commentDiv.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+        wrapper.appendChild(commentDiv);
+    } else if (!comment && existingComment) {
+        // Remove comment text
+        existingComment.remove();
+    } else if (comment && existingComment) {
+        // Update existing comment text
+        existingComment.title = comment;
+        existingComment.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+    }
+}
+
+function saveAttendance() {
+    if (!currentAttendanceId) return;
+
+    var justified = document.getElementById('modal-justified').checked;
+    var recorded = document.getElementById('modal-recorded').checked;
+    var comment = document.getElementById('modal-comment').value.trim();
+
+    // Check if justified status changed (for missed entries) and confirm
+    if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
+        var action = justified ? 'mark this absence as justified' : 'remove the justified status';
+        AdminModals.confirmThen('Are you sure you want to ' + action + '?', function() {
+            _doSaveAttendance(justified, recorded, comment);
+        }, {icon: 'question'});
+        return;
+    }
+    _doSaveAttendance(justified, recorded, comment);
+}
+
+function _doSaveAttendance(justified, recorded, comment) {
+
+    var data = {
+        justified: justified,
+        recorded: recorded,
+        comment: comment || null
+    };
+
+    // Add visual feedback
+    var saveBtn = document.getElementById('save-attendance-btn');
+    var originalText = saveBtn.innerText;
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Saving...";
+
+    fetch('{{ url("training_program", training_program.id, "attendance") }}/' + currentAttendanceId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-XSRFToken': get_cookie("_xsrf")
+        },
+        body: JSON.stringify(data)
+    })
+    .then(function(response) {
+        if (!response.ok) {
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(function(result) {
+        if (result.success) {
+            // Success - update the cell dynamically and close modal
+            updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
+            closeAttendanceModal();
+        } else {
+            AdminModals.showError(result.error || 'Unknown error');
+        }
+    })
+    .catch(function(error) {
+        AdminModals.showError(error.message);
+    })
+    .finally(function() {
+        // Always restore button state
+        saveBtn.disabled = false;
+        saveBtn.innerText = originalText;
+    });
+}
+
+// Save button click handler
+var saveAttendanceBtn = document.getElementById('save-attendance-btn');
+if (saveAttendanceBtn) {
+    saveAttendanceBtn.addEventListener('click', saveAttendance);
+}
+</script>
+
+{% endblock core %}

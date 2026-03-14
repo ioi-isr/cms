@@ -167,9 +167,16 @@ class FunctionalTestFramework:
         if parent_id is not None:
             args["parent_id"] = str(parent_id)
         resp = self.admin_req('folders/add', args=args)
-        if not resp.url or not resp.url.endswith('/folders'):
+        # After creation, root folders redirect to /folders and child
+        # folders redirect to /folder/<parent_id>.
+        if not resp.url or not re.search(r'/folders?(?:/\d+)?$', resp.url):
             raise TestException("Unable to create folder.")
-        m = re.search(r'<a class="bold" href="[^"]*/folder/(\d+)">\s*' + re.escape(name) + r'\s*</a>', resp.text)
+        m = re.search(
+            r'<a class="[^"]*\bhas-text-weight-semibold\b[^"]*" href="[^"]*/folder/(\d+)">\s*'
+            + re.escape(name)
+            + r"\s*</a>",
+            resp.text,
+        )
         if not m:
             raise TestException("Unable to find created folder ID.")
         return int(m.group(1))
@@ -241,9 +248,9 @@ class FunctionalTestFramework:
         # Contest ID is returned as HTTP response.
         page = resp.text
         match = re.search(
-            r'<form enctype="multipart/form-data" '
-            r'action="../contest/([0-9]+)" '
-            r'method="POST" name="edit_contest" style="display:inline;">',
+            r'<form(?=[^>]*\bname=["\']edit_contest["\'])'
+            r'(?=[^>]*\baction=["\'][^"\']*contest/([0-9]+))'
+            r'[^>]*>',
             page)
         if match is not None:
             contest_id = int(match.groups()[0])
@@ -274,8 +281,7 @@ class FunctionalTestFramework:
 
         r = self.admin_req('contest/' + kwargs["contest_id"] + '/tasks/add',
                            args={"task_id": str(task_id)})
-        g = re.search('<input type="radio" name="task_id" value="' +
-                      str(task_id) + '"/>', r.text)
+        g = re.search(r'data-task-id="' + str(task_id) + r'"', r.text)
         if g:
             return task_id
         else:
@@ -294,7 +300,7 @@ class FunctionalTestFramework:
         resp = self.admin_req('task/%s' % task_id)
         page = resp.text
         match = re.search(
-            r'id="title_dataset_([0-9]+).* \(Live\)</',
+            r'data-dataset-id="([0-9]+)"[^>]*>[^<]*<[^>]*>Live</',
             page)
         if match is None:
             raise TestException("Unable to create contest.")
@@ -328,8 +334,10 @@ class FunctionalTestFramework:
         kwargs["user_id"] = user_id
         r = self.admin_req('contest/%s/users/add' % kwargs["contest_id"],
                            args=kwargs)
-        g = re.search('<input type="radio" name="user_id" value="' +
-                      str(user_id) + '"/>', r.text)
+        g = re.search(
+            r'href=["\'][^"\']*/user/' + str(user_id) + r'/edit(?:\?[^"\']*)?["\']',
+            r.text,
+        )
         if g:
             return user_id
         else:
@@ -345,7 +353,7 @@ class FunctionalTestFramework:
 
     def cws_start(self, user_id):
         """Press the start button for a user.
-        
+
         This is required before submitting or viewing tasks in regular contests.
         Silently succeeds if the user has already started or if starting is not
         allowed (wrong phase).
@@ -354,14 +362,13 @@ class FunctionalTestFramework:
         sr = StartRequest(browser, base_url=self.CWS_BASE_URL)
         sr.execute()
 
-    def cws_submit(self, task_id, user_id,
-                   submission_format, filenames, language):
-        task = (task_id, self.created_tasks[task_id]['name'])
+    def cws_submit(self, task_id, user_id, submission_format, filenames, language):
+        task = (task_id, self.created_tasks[task_id]["name"])
 
         browser = self.get_cws_browser(user_id)
-        
+
         self.cws_start(user_id)
-        
+
         sr = SubmitRequest(browser, task, base_url=self.CWS_BASE_URL,
                            submission_format=submission_format,
                            filenames=filenames, language=language)

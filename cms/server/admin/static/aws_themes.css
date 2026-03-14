@@ -1,0 +1,831 @@
+/**
+ * CMS Theme System (aws_themes.css)
+ *
+ * Themes are applied via [data-theme="..."] on <html>.
+ * Each theme overrides Bulma CSS variables and sidebar custom properties.
+ * Default (no attribute) = Original IL theme.
+ */
+
+/* ==========================================================================
+   1. Granny Smith (green apple theme)
+   ========================================================================== */
+
+[data-theme="granny-smith"] {
+    --bulma-primary-h: 101deg;
+    --bulma-primary-s: 55%;
+    --bulma-primary-l: 42%;
+    --bulma-link-h: 101;
+    --bulma-link-s: 55%;
+    --bulma-link-l: 38%;
+    --bulma-info-h: 180;
+    --bulma-info-s: 55%;
+    --bulma-info-l: 42%;
+
+    --bulma-body-background-color: #ffffff;
+    --bulma-scheme-main: #ffffff;
+    --bulma-scheme-main-bis: #fafcf9;
+    --bulma-scheme-main-ter: #f5f8f3;
+
+    --sidebar-bg-dark: #EEF3EA;
+    --sidebar-bg-light: #E5EBE0;
+    --sidebar-border: #E5E8E4;
+    --sidebar-text: #3a5a2a;
+    --sidebar-text-light: #2d4a1f;
+    --sidebar-text-bright: #5cb835;
+    --sidebar-text-muted: #8aaa78;
+    --sidebar-accent: #6DC942;
+    --sidebar-accent-light: #5cb835;
+    --sidebar-slate: #6b8a5a;
+    --sidebar-hover-bg: rgba(109, 201, 66, 0.1);
+    --sidebar-hover-border: rgba(109, 201, 66, 0.25);
+    --sidebar-title-hover-bg: rgba(109, 201, 66, 0.12);
+    --sidebar-focus-glow: rgba(109, 201, 66, 0.3);
+}
+
+[data-theme="granny-smith"] #admin-navbar,
+[data-theme="granny-smith"] #sidebar {
+    background: linear-gradient(180deg, #EEF3EA 0%, #E5EBE0 100%);
+    border-right: 1px solid #E5E8E4;
+    scrollbar-color: rgba(213, 235, 203, 0.3) transparent;
+}
+
+
+/* ==========================================================================
+   2. Pink Lady (pink/girly theme)
+   ========================================================================== */
+
+[data-theme="pink-lady"] {
+    --bulma-primary-h: 340deg;
+    --bulma-primary-s: 65%;
+    --bulma-primary-l: 48%;
+    --bulma-link-h: 340;
+    --bulma-link-s: 65%;
+    --bulma-link-l: 45%;
+    --bulma-info-h: 264;
+    --bulma-info-s: 75%;
+    --bulma-info-l: 55%;
+    --bulma-scheme-h: 312;
+
+    --login-gradient: linear-gradient(135deg, #6b1a42 0%, #7a2050 50%, #e880b0 100%);
+
+    --sidebar-bg-dark: #6b1a42;
+    --sidebar-bg-light: #7a2050;
+    --sidebar-border: #9c3068;
+    --sidebar-text: #f0d0e0;
+    --sidebar-text-light: #f5dce8;
+    --sidebar-text-bright: #fdf0f5;
+    --sidebar-text-muted: #c07898;
+    --sidebar-accent: #f0a0c8;
+    --sidebar-accent-light: #f5b8d8;
+    --sidebar-slate: #d890b0;
+    --sidebar-hover-bg: rgba(240, 160, 200, 0.14);
+    --sidebar-hover-border: rgba(240, 160, 200, 0.3);
+    --sidebar-title-hover-bg: rgba(240, 160, 200, 0.18);
+    --sidebar-focus-glow: rgba(220, 120, 170, 0.35);
+}
+
+/* ==========================================================================
+   3. Arkansas Black Theme (Dark)
+   ========================================================================== */
+
+[data-theme="arkansas-black"] {
+    color-scheme: dark;
+    --bulma-white-on-scheme-l: 100%;
+    --bulma-white-on-scheme: hsla(var(--bulma-white-h), var(--bulma-white-s), var(--bulma-white-on-scheme-l), 1);
+    --bulma-black-on-scheme-l: -51%;
+    --bulma-black-on-scheme: hsla(var(--bulma-black-h), var(--bulma-black-s), var(--bulma-black-on-scheme-l), 1);
+    --bulma-light-on-scheme-l: 96%;
+    --bulma-light-on-scheme: hsla(var(--bulma-light-h), var(--bulma-light-s), var(--bulma-light-on-scheme-l), 1);
+    --bulma-dark-on-scheme-l: 56%;
+    --bulma-dark-on-scheme: hsla(var(--bulma-dark-h), var(--bulma-dark-s), var(--bulma-dark-on-scheme-l), 1);
+    --bulma-text-on-scheme-l: 54%;
+    --bulma-text-on-scheme: hsla(var(--bulma-text-h), var(--bulma-text-s), var(--bulma-text-on-scheme-l), 1);
+    --bulma-primary-on-scheme-l: 41%;
+    --bulma-primary-on-scheme: hsla(var(--bulma-primary-h), var(--bulma-primary-s), var(--bulma-primary-on-scheme-l), 1);
+    --bulma-link-on-scheme-l: 73%;
+    --bulma-link-on-scheme: hsla(var(--bulma-link-h), var(--bulma-link-s), var(--bulma-link-on-scheme-l), 1);
+    --bulma-info-on-scheme-l: 70%;
+    --bulma-info-on-scheme: hsla(var(--bulma-info-h), var(--bulma-info-s), var(--bulma-info-on-scheme-l), 1);
+    --bulma-success-on-scheme-l: 53%;
+    --bulma-success-on-scheme: hsla(var(--bulma-success-h), var(--bulma-success-s), var(--bulma-success-on-scheme-l), 1);
+    --bulma-warning-on-scheme-l: 53%;
+    --bulma-warning-on-scheme: hsla(var(--bulma-warning-h), var(--bulma-warning-s), var(--bulma-warning-on-scheme-l), 1);
+    --bulma-danger-on-scheme-l: 70%;
+    --bulma-danger-on-scheme: hsla(var(--bulma-danger-h), var(--bulma-danger-s), var(--bulma-danger-on-scheme-l), 1);
+    --bulma-scheme-brightness: dark;
+    --bulma-scheme-main-l: 9%;
+    --bulma-scheme-main-bis-l: 11%;
+    --bulma-scheme-main-ter-l: 13%;
+    --bulma-soft-l: 20%;
+    --bulma-bold-l: 90%;
+    --bulma-soft-invert-l: 90%;
+    --bulma-bold-invert-l: 20%;
+    --bulma-background-l: 14%;
+    --bulma-border-weak-l: 21%;
+    --bulma-border-l: 24%;
+    --bulma-text-weak-l: 53%;
+    --bulma-text-l: 71%;
+    --bulma-text-strong-l: 93%;
+    --bulma-text-title-l: 100%;
+    --bulma-hover-background-l-delta: 5%;
+    --bulma-active-background-l-delta: 10%;
+    --bulma-hover-border-l-delta: 10%;
+    --bulma-active-border-l-delta: 20%;
+    --bulma-hover-color-l-delta: 5%;
+    --bulma-active-color-l-delta: 10%;
+    --bulma-shadow-h: 0deg;
+    --bulma-shadow-s: 0%;
+    --bulma-shadow-l: 100%;
+
+    --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+
+    --tp-question-unanswered-header-bg: rgba(255, 193, 7, 0.15);
+    --tp-question-unanswered-header-text: hsl(221, 14%, 85%);
+    --tp-question-unanswered-border: rgba(255, 193, 7, 0.25);
+    --tp-question-unanswered-divider: rgba(255, 193, 7, 0.2);
+    --tp-question-claimed-header-bg: rgba(52, 152, 219, 0.15);
+    --tp-question-claimed-header-text: hsl(221, 14%, 85%);
+    --tp-question-claimed-border: rgba(52, 152, 219, 0.25);
+    --tp-question-claimed-divider: rgba(52, 152, 219, 0.2);
+    --tp-question-answered-header-bg: rgba(46, 125, 50, 0.15);
+    --tp-question-answered-header-text: hsl(221, 14%, 85%);
+    --tp-question-answered-border: rgba(46, 125, 50, 0.25);
+    --tp-question-answered-divider: rgba(46, 125, 50, 0.2);
+
+    --login-gradient: linear-gradient(135deg, #0a0f1a 0%, #1a2332 50%, #2d3748 100%);
+
+    --sidebar-bg-dark: #1a202c;
+    --sidebar-bg-light: #2d3748;
+    --sidebar-border: #4a5568;
+    --sidebar-text: #cbd5e0;
+    --sidebar-text-light: #e2e8f0;
+    --sidebar-text-bright: #f7fafc;
+    --sidebar-text-muted: #718096;
+    --sidebar-accent: #805ad5;
+    --sidebar-accent-light: #9f7aea;
+    --sidebar-slate: #4a5568;
+}
+
+[data-theme="arkansas-black"] .button.is-light {
+    background-color: hsl(221, 14%, 20%);
+    color: hsl(221, 14%, 85%);
+    border-color: hsl(221, 14%, 28%);
+}
+
+[data-theme="arkansas-black"] .modal__container {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="arkansas-black"] .modal__header {
+    border-bottom-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="arkansas-black"] .modal__footer {
+    border-top-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="arkansas-black"] .modal__warning {
+    background: hsl(0, 30%, 15%) !important;
+    border-color: hsl(0, 40%, 25%) !important;
+    color: hsl(0, 65%, 75%) !important;
+}
+
+[data-theme="arkansas-black"] .swal2-popup {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="arkansas-black"] table {
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="arkansas-black"] .tp-dialog,
+[data-theme="arkansas-black"] .question-card,
+[data-theme="arkansas-black"] .tp-card,
+[data-theme="arkansas-black"] .tp-dialog-footer {
+    background: hsl(221, 14%, 14%);
+    border-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="arkansas-black"] .tp-dialog {
+    background: hsl(221, 14%, 14%);
+    color: hsl(221, 14%, 85%);
+}
+
+[data-theme="arkansas-black"] .tp-dialog-header {
+    border-bottom-color: hsl(221, 14%, 24%);
+}
+
+/* Make question headers slightly transparent for better dark mode appearance */
+[data-theme="arkansas-black"] #border {
+    border-color: hsl(221, 14%, 22%);
+}
+
+/* Tagify dark mode support */
+[data-theme="arkansas-black"] .tagify {
+    --tags-bg: hsl(221, 14%, 17%);
+    --tag-bg: hsl(221, 14%, 24%);
+    --tag-hover: hsl(221, 14%, 28%);
+    --tag-text-color: hsl(221, 14%, 85%);
+    --tag-remove-bg: hsl(0, 50%, 40%);
+    --tag-remove-btn-bg--hover: hsl(0, 50%, 50%);
+    --tag-inset-shadow-size: 0;
+    --placeholder-color: hsl(221, 14%, 55%);
+    --input-color: hsl(221, 14%, 85%);
+
+    background: hsl(221, 14%, 17%) !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__tag {
+    background: hsl(221, 14%, 24%) !important;
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__tag-text {
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__input {
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__input::before {
+    color: hsl(221, 14%, 55%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown {
+    background: black !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__wrapper {
+    background: black !important;
+    border-color: hsl(221, 14%, 30%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__item {
+    background: black;
+    color: hsl(221, 14%, 85%) !important;
+}
+
+[data-theme="arkansas-black"] .tagify__dropdown__item--active {
+    background: hsl(221, 14%, 24%) !important;
+}
+
+
+/* ==========================================================================
+   4. Golden Theme
+   ========================================================================== */
+
+[data-theme="golden"] {
+    --bulma-primary-h: 45deg;
+    --bulma-primary-s: 75%;
+    --bulma-primary-l: 50%;
+    --bulma-link-h: 45;
+    --bulma-link-s: 75%;
+    --bulma-link-l: 45%;
+    --bulma-info-h: 100;
+    --bulma-info-s: 75%;
+    --bulma-info-l: 50%;
+    --bulma-scheme-h: 50;
+    --bulma-scheme-s: 30%;
+
+    --login-gradient: linear-gradient(135deg, #fef9e7 0%, #f9e79f 50%, #d4af37 100%);
+
+    --sidebar-bg-dark: #fef9e7;
+    --sidebar-bg-light: #fdf5d4;
+    --sidebar-border: #f0e6c8;
+    --sidebar-text: #6b5a2e;
+    --sidebar-text-light: #5a4a24;
+    --sidebar-text-bright: #d4af37;
+    --sidebar-text-muted: #a89968;
+    --sidebar-accent: #d4af37;
+    --sidebar-accent-light: #e6c84f;
+    --sidebar-slate: #9d8b5a;
+    --sidebar-hover-bg: rgba(212, 175, 55, 0.12);
+    --sidebar-hover-border: rgba(212, 175, 55, 0.3);
+    --sidebar-title-hover-bg: rgba(212, 175, 55, 0.15);
+    --sidebar-focus-glow: rgba(212, 175, 55, 0.35);
+    --sidebar-teal: #b8941f;
+}
+
+/* ==========================================================================
+   6. McIntosh Theme (90s website easter egg)
+   ========================================================================== */
+
+@font-face {
+    font-family: RetroPixel;
+    src: url('fonts/RetroPixel.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+[data-theme="mcintosh"] {
+    --bulma-primary-h: 240deg;
+    --bulma-primary-s: 100%;
+    --bulma-primary-l: 50%;
+    --bulma-link-h: 240;
+    --bulma-link-s: 100%;
+    --bulma-link-l: 50%;
+    --bulma-danger-h: 0;
+    --bulma-danger-s: 100%;
+    --bulma-danger-l: 50%;
+    --bulma-success-h: 120;
+    --bulma-success-s: 100%;
+    --bulma-success-l: 30%;
+    --bulma-warning-h: 60;
+    --bulma-warning-s: 100%;
+    --bulma-warning-l: 50%;
+    --bulma-info-h: 180;
+    --bulma-info-s: 100%;
+    --bulma-info-l: 35%;
+
+    --bulma-body-background-color: #c0c0c0;
+    --bulma-scheme-main: #c0c0c0;
+    --bulma-scheme-main-bis: #d4d0c8;
+    --bulma-scheme-main-ter: #bfbfbf;
+    --bulma-border: #808080;
+    --bulma-border-weak: #a0a0a0;
+    --bulma-text: #000000;
+    --bulma-text-strong: #000000;
+    --bulma-text-weak: #404040;
+    --tp-primary-gradient: var(--bulma-primary);
+
+    font-family: RetroPixel, "Courier New", monospace !important;
+
+    --login-gradient: linear-gradient(135deg, #000080 0%, #008080 50%, #c0c0c0 100%);
+}
+
+[data-theme="mcintosh"] * {
+    font-family: RetroPixel, "Courier New", monospace !important;
+    border-radius: 0 !important;
+}
+
+[data-theme="mcintosh"] body {
+    background-color: #008080;
+    image-rendering: pixelated !important;
+}
+
+[data-theme="mcintosh"] #sidebar {
+    --sidebar-bg-dark: #000080;
+    --sidebar-bg-light: #000080;
+    --sidebar-border: #c0c0c0;
+    --sidebar-text: #ffffff;
+    --sidebar-text-light: #ffffff;
+    --sidebar-text-bright: #ffff00;
+    --sidebar-text-muted: #c0c0c0;
+    --sidebar-accent: #ffff00;
+    --sidebar-accent-light: #ffff00;
+    --sidebar-slate: #c0c0c0;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.15);
+    --sidebar-hover-border: #ffffff;
+    --sidebar-title-hover-bg: rgba(255, 255, 255, 0.2);
+    --sidebar-focus-glow: rgba(255, 255, 0, 0.5);
+
+    background: #000080 !important;
+    border-right: 4px groove #c0c0c0;
+    font-size: 0.75rem;
+}
+
+[data-theme="mcintosh"] #mobile-bottom-nav {
+    background: #000080 !important;
+    border-top: 4px ridge #c0c0c0;
+    font-size: 0.6rem;
+}
+
+[data-theme="mcintosh"] #mobile-bottom-nav a {
+    color: #ffff00 !important;
+}
+
+[data-theme="mcintosh"] #mobile-bottom-nav a:hover {
+    color: #ff00ff !important;
+}
+
+[data-theme="mcintosh"] #sidebar .sidebar-section-title {
+    background: var(--sidebar-bg-dark);
+    border: 2px outset #c0c0c0;
+}
+
+[data-theme="mcintosh"] #sidebar a {
+    color: #ffff00 !important;
+    text-decoration: underline;
+}
+
+[data-theme="mcintosh"] #sidebar a:hover {
+    color: #ff00ff !important;
+}
+
+
+[data-theme="mcintosh"] #admin-navbar {
+    background: #808080;
+    border-bottom: 4px ridge #fff;
+    border-right: none;
+    box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 #404040;
+    font-size: 0.65rem;
+    font-weight: bold;
+}
+
+
+[data-theme="mcintosh"] #admin-navbar .navbar-item,
+[data-theme="mcintosh"] #admin-navbar .navbar-link {
+    color: #000;
+    font-size: 0.7rem;
+}
+
+[data-theme="mcintosh"] #admin-navbar .navbar-item:hover,
+[data-theme="mcintosh"] #admin-navbar .navbar-link:hover {
+    background-color: var(--sidebar-bg-dark);
+    color: var(--sidebar-text-bright);
+}
+
+[data-theme="mcintosh"] #admin-navbar .navbar-dropdown {
+    background: var(--sidebar-border);
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+[data-theme="mcintosh"] #admin-navbar .navbar-dropdown .navbar-item {
+    color: #000;
+}
+
+[data-theme="mcintosh"] #admin-navbar .navbar-dropdown .navbar-item:hover {
+    background-color: var(--sidebar-bg-dark);
+    color: var(--sidebar-text-bright);
+}
+
+[data-theme="mcintosh"] #core {
+    background: #c0c0c0;
+}
+
+[data-theme="mcintosh"] #core h1 {
+    color: #000080;
+    text-shadow: 2px 2px #c0c0c0;
+    font-size: 1.5em;
+}
+
+[data-theme="mcintosh"] a,
+[data-theme="mcintosh"] a:visited {
+    color: #0000ff !important;
+}
+
+[data-theme="mcintosh"] a:hover {
+    color: #ff00ff !important;
+}
+
+[data-theme="mcintosh"] table {
+    border: 2px inset #808080;
+    background: #fff;
+}
+
+[data-theme="mcintosh"] table th,
+[data-theme="mcintosh"] table th a {
+    background: #000080;
+    color: #fff;
+    border: 1px outset #c0c0c0;
+    padding: 4px 8px;
+}
+
+[data-theme="mcintosh"] table td {
+    border: 1px inset #c0c0c0;
+    background: #fff;
+    color: #000;
+    padding: 2px 6px;
+}
+
+[data-theme="mcintosh"] .button,
+[data-theme="mcintosh"] button,
+[data-theme="mcintosh"] input[type="submit"],
+[data-theme="mcintosh"] input[type="button"] {
+    background: #c0c0c0;
+    color: #000;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-shadow: none;
+}
+
+[data-theme="mcintosh"] .button:hover,
+[data-theme="mcintosh"] button:hover {
+    background: #d4d0c8;
+}
+
+[data-theme="mcintosh"] .button:active,
+[data-theme="mcintosh"] button:active {
+    border-style: inset;
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080;
+}
+
+[data-theme="mcintosh"] .button.is-primary,
+[data-theme="mcintosh"] .button.is-success {
+    background: #c0c0c0;
+    color: #000;
+}
+
+[data-theme="mcintosh"] .button.is-danger {
+    background: #c0c0c0;
+    color: #ff0000;
+    font-weight: bold;
+}
+
+[data-theme="mcintosh"] input[type="text"],
+[data-theme="mcintosh"] .textarea,
+[data-theme="mcintosh"] input[type="password"],
+[data-theme="mcintosh"] input[type="number"],
+[data-theme="mcintosh"] input[type="email"],
+[data-theme="mcintosh"] textarea,
+[data-theme="mcintosh"] select {
+    background: #fff;
+    color: #000;
+    border: 3px inset #808080;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+}
+
+[data-theme="mcintosh"] .card,
+[data-theme="mcintosh"] .tp-card,
+[data-theme="mcintosh"] .question-card,
+[data-theme="mcintosh"] .modal__container {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+/* Question card header gets the classic blue title bar look */
+[data-theme="mcintosh"] .question-card .question-card-header {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%) !important;
+    color: #fff;
+    border-bottom: 2px outset #c0c0c0;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-subject {
+    color: #fff;
+}
+
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-status-badge {
+    background: #c0c0c0;
+    color: #000;
+    border: 1px outset #fff;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-header .question-header-actions .button {
+    background: #c0c0c0;
+    color: #000;
+    border: 2px outset #fff;
+}
+
+[data-theme="mcintosh"] .question-card .question-card-body,
+[data-theme="mcintosh"] .question-card .question-reply-section,
+[data-theme="mcintosh"] .question-card .question-owner-info,
+[data-theme="mcintosh"] .question-card .question-actions {
+    background: #fff;
+    color: #000;
+}
+
+[data-theme="mcintosh"] .question-card .question-text,
+[data-theme="mcintosh"] .question-card .question-reply-text,
+[data-theme="mcintosh"] .question-card .question-reply-label,
+[data-theme="mcintosh"] .question-card .question-reply-ts,
+[data-theme="mcintosh"] .question-card .question-form-label,
+[data-theme="mcintosh"] .question-card .question-reply-form-header strong {
+    color: #000;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-accent {
+    background-color: #000080;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-form-section {
+    background: #c0c0c0;
+    border: 2px inset #808080;
+}
+
+[data-theme="mcintosh"] .question-card .question-reply-form-header {
+    color: #000080;
+}
+
+[data-theme="mcintosh"] .announcement-card-footer {
+    background: #c0c0c0;
+    color: #000;
+    border-top: 2px groove #808080;
+}
+
+[data-theme="mcintosh"] .question-card .question-form-select {
+    background: #fff;
+    color: #000;
+    border: 2px inset #808080;
+}
+
+[data-theme="mcintosh"] .modal__header {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 4px 8px;
+    border-bottom: none;
+}
+
+[data-theme="mcintosh"] .modal__header .modal__title {
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+[data-theme="mcintosh"] .modal__header .modal__close {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+[data-theme="mcintosh"] .modal__footer {
+    background: #c0c0c0;
+    border-top: 1px solid #808080;
+}
+
+[data-theme="mcintosh"] .notification,
+[data-theme="mcintosh"] .notifications .communication {
+    background: #ffffcc;
+    border: 2px inset #808080;
+    color: #000;
+}
+
+[data-theme="mcintosh"] #border {
+    border-color: #808080;
+}
+
+[data-theme="mcintosh"] .sidebar-section-title,
+[data-theme="mcintosh"] .folder-header {
+    border: 2px outset #c0c0c0 !important;
+}
+
+[data-theme="mcintosh"] .hr {
+    background: #808080;
+    height: 2px;
+}
+
+[data-theme="mcintosh"] .status-badge,
+[data-theme="mcintosh"] .tag,
+[data-theme="mcintosh"] .question-status-badge {
+  background: #fff;
+  border: 4px solid #000;
+  box-shadow: inset -4px -4px #adafbc, inset 4px 4px #fff;
+}
+
+[data-theme="mcintosh"] .swal2-popup {
+    background: #c0c0c0;
+    border: 2px outset #fff;
+    box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+    color: #000;
+}
+
+[data-theme="mcintosh"] .swal2-title {
+    color: #000;
+}
+
+[data-theme="mcintosh"] .swal2-html-container {
+    color: #000;
+}
+
+[data-theme="mcintosh"] ::selection {
+    background: #000080;
+    color: #fff;
+}
+
+[data-theme="mcintosh"] .toggling_on:before,
+[data-theme="mcintosh"] .toggling_off:before {
+    font-family: "Courier New", monospace !important;
+}
+
+[data-theme="mcintosh"] img,
+[data-theme="mcintosh"] .icon,
+[data-theme="mcintosh"] .fa,
+[data-theme="mcintosh"] .fas,
+[data-theme="mcintosh"] .far,
+[data-theme="mcintosh"] .fab,
+[data-theme="mcintosh"] .material-icons,
+[data-theme="mcintosh"] .glyphicon,
+[data-theme="mcintosh"] svg {
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+    border-radius: 0 !important;
+    filter: contrast(1.5) saturate(0.5) blur(1px) !important;
+}
+
+[data-theme="mcintosh"] .student-avatar,
+[data-theme="mcintosh"] img[alt*="avatar"],
+[data-theme="mcintosh"] img[alt*="picture"],
+[data-theme="mcintosh"] img[alt*="profile"] {
+    border-radius: 0 !important;
+    border: 2px inset #808080;
+}
+
+/* Retro icon styling */
+[data-theme="mcintosh"] .icon,
+[data-theme="mcintosh"] .fa,
+[data-theme="mcintosh"] .fas,
+[data-theme="mcintosh"] .far,
+[data-theme="mcintosh"] .fab,
+[data-theme="mcintosh"] .material-icons,
+[data-theme="mcintosh"] .glyphicon {
+    font-family: "Courier New", monospace !important;
+    font-style: normal !important;
+    font-weight: bold !important;
+    text-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+[data-theme="mcintosh"] svg {
+    shape-rendering: crispedges !important;
+}
+
+[data-theme="mcintosh"] svg * {
+    shape-rendering: crispedges !important;
+}
+
+/* ---------- McIntosh retro scrollbars (sidebar + table containers) ---------- */
+
+[data-theme="mcintosh"] #sidebar,
+[data-theme="mcintosh"] .table-container {
+    scrollbar-width: thin;
+    scrollbar-color: #808080 #c0c0c0;
+}
+
+/* Scrollbar width and background */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar {
+    width: 18px;
+    height: 18px;
+}
+
+/* Track - the groove the thumb slides in */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-track,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-track {
+    background: #c0c0c0;
+    box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #ffffff;
+}
+
+/* Thumb - the draggable scrolling handle */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.5);
+    min-height: 30px;
+}
+
+/* Thumb hover state */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb:hover,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb:hover {
+    background: #d4d0c8;
+}
+
+/* Thumb active/pressed state */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-thumb:active,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-thumb:active {
+    background: #a0a0a0;
+    border-color: #808080 #ffffff #ffffff #808080;
+}
+
+/* Scrollbar buttons (arrows) */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button {
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    height: 18px;
+    width: 18px;
+}
+
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button:hover,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button:hover {
+    background: #d4d0c8;
+}
+
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-button:active,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-button:active {
+    background: #a0a0a0;
+    border-color: #808080 #ffffff #ffffff #808080;
+}
+
+/* Scrollbar corner (where horizontal and vertical scrollbars meet) */
+[data-theme="mcintosh"] #sidebar::-webkit-scrollbar-corner,
+[data-theme="mcintosh"] .table-container::-webkit-scrollbar-corner {
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+}

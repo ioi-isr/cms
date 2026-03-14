@@ -36,6 +36,7 @@ import collections
 
 from cms.db.task import Task
 from cms.db.user import Participation
+from cms.db.training_day import get_managing_participation, TrainingDay
 
 try:
     collections.MutableMapping
@@ -81,7 +82,7 @@ class SubmitHandler(ContestHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         # Reject submission if the contest disallow unofficial submission outside of official window or analysis mode
@@ -94,17 +95,39 @@ class SubmitHandler(ContestHandler):
         if task is None:
             raise tornado.web.HTTPError(404)
 
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
         # Only set the official bit when the user can compete and we are not in
         # analysis mode.
         official = self.r_params["actual_phase"] == 0
+
+        # Determine the participation and training day for the submission.
+        # For training day submissions, we use the managing contest's participation
+        # but record which training day the submission was made via.
+        training_day = self.contest.training_day
+        submission_participation = participation
+        if training_day is not None:
+            # This is a training day submission - use managing contest participation
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
+            )
+            if managing_participation is None:
+                # User doesn't have a participation in the managing contest
+                raise tornado.web.HTTPError(403)
+            submission_participation = managing_participation
 
         query_args = dict()
 
         try:
             submission = accept_submission(
-                self.sql_session, self.service.file_cacher, self.current_user,
+                self.sql_session, self.service.file_cacher, submission_participation,
                 task, self.timestamp, self.request.files,
                 self.get_argument("language", None), official)
+            # Set the training day reference if submitting via a training day
+            if training_day is not None:
+                submission.training_day = training_day
             self.sql_session.commit()
         except UnacceptableSubmission as e:
             logger.info("Sent error: `%s' - `%s'", e.subject, e.formatted_text)
@@ -136,41 +159,120 @@ class TaskSubmissionsHandler(ContestHandler):
         participation: Participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         task = self.get_task(task_name)
         if task is None:
             raise tornado.web.HTTPError(404)
 
-        submissions: list[Submission] = (
-            self.sql_session.query(Submission)
-            .filter(Submission.participation == participation)
-            .filter(Submission.task == task)
-            .options(joinedload(Submission.token))
-            .options(joinedload(Submission.results))
-            .all()
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
+            raise tornado.web.HTTPError(404)
+
+        # Determine the context for filtering submissions
+        training_day = self.contest.training_day
+        is_task_archive = (
+            self.training_program is not None and training_day is None
+        )
+
+        # For training day context: submissions are stored with managing contest
+        # participation, so we need to find that participation and filter by
+        # training_day_id
+        managing_participation = None
+        if training_day is not None:
+            # Get the managing contest participation for this user
+            managing_participation = get_managing_participation(
+                self.sql_session, training_day, participation.user
+            )
+            if managing_participation is None:
+                # User doesn't have a participation in the managing contest -
+                # reject early to be consistent with SubmitHandler.post()
+                raise tornado.web.HTTPError(403)
+            else:
+                # Only show submissions made via this training day
+                submissions: list[Submission] = (
+                    self.sql_session.query(Submission)
+                    .filter(Submission.participation == managing_participation)
+                    .filter(Submission.task == task)
+                    .filter(Submission.training_day_id == training_day.id)
+                    .order_by(Submission.timestamp.desc())
+                    .options(joinedload(Submission.token))
+                    .options(joinedload(Submission.results))
+                    .options(
+                        joinedload(Submission.training_day).joinedload(
+                            TrainingDay.contest
+                        )
+                    )
+                    .all()
+                )
+        else:
+            # Regular contest or task archive - show all submissions
+            submissions: list[Submission] = (
+                self.sql_session.query(Submission)
+                .filter(Submission.participation == participation)
+                .filter(Submission.task == task)
+                .order_by(Submission.timestamp.desc())
+                .options(joinedload(Submission.token))
+                .options(joinedload(Submission.results))
+                .options(
+                    joinedload(Submission.training_day).joinedload(TrainingDay.contest)
+                )
+                .all()
+            )
+
+        # For task archive, group submissions by source
+        archive_submissions = []
+        training_day_submissions = {}  # training_day_id -> (training_day, submissions)
+        if is_task_archive:
+            for s in submissions:
+                if s.training_day_id is None:
+                    archive_submissions.append(s)
+                else:
+                    if s.training_day_id not in training_day_submissions:
+                        training_day_submissions[s.training_day_id] = (
+                            s.training_day, []
+                        )
+                    training_day_submissions[s.training_day_id][1].append(s)
+
+        # Use managing_participation for score/token/count calculations in
+        # training-day context, since submissions are stored there
+        score_participation = (
+            managing_participation if managing_participation is not None
+            else participation
         )
 
         public_score, is_public_score_partial = task_score(
-            participation, task, public=True, rounded=True)
+            score_participation,
+            task,
+            public=True,
+            rounded=True,
+            training_day=training_day,
+        )
         tokened_score, is_tokened_score_partial = task_score(
-            participation, task, only_tokened=True, rounded=True)
+            score_participation,
+            task,
+            only_tokened=True,
+            rounded=True,
+            training_day=training_day,
+        )
         # These two should be the same, anyway.
         is_score_partial = is_public_score_partial or is_tokened_score_partial
 
         submissions_left_contest = None
         if self.contest.max_submission_number is not None:
             submissions_c = \
-                get_submission_count(self.sql_session, participation,
+                get_submission_count(self.sql_session, score_participation,
                                      contest=self.contest)
             submissions_left_contest = \
                 self.contest.max_submission_number - submissions_c
 
         submissions_left_task = None
         if task.max_submission_number is not None:
-            submissions_left_task = \
-                task.max_submission_number - len(submissions)
+            submissions_t = get_submission_count(
+                self.sql_session, score_participation, task=task
+            )
+            submissions_left_task = task.max_submission_number - submissions_t
 
         submissions_left = submissions_left_contest
         if submissions_left_task is not None and \
@@ -183,11 +285,14 @@ class TaskSubmissionsHandler(ContestHandler):
         if submissions_left is not None:
             submissions_left = max(0, submissions_left)
 
-        tokens_info = tokens_available(participation, task, self.timestamp)
+        tokens_info = tokens_available(score_participation, task, self.timestamp)
 
         download_allowed = self.contest.submissions_download_allowed
         self.render("task_submissions.html",
                     task=task, submissions=submissions,
+                    archive_submissions=archive_submissions,
+                    training_day_submissions=training_day_submissions,
+                    is_task_archive=is_task_archive,
                     public_score=public_score,
                     tokened_score=tokened_score,
                     is_score_partial=is_score_partial,
@@ -251,19 +356,7 @@ class SubmissionStatusHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         sr = submission.get_result(task.active_dataset)
 
@@ -317,19 +410,7 @@ class SubmissionDetailsHandler(ContestHandler):
     @actual_phase_required(0, 1, 2, 3, 4)
     @multi_contest
     def get(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         sr = submission.get_result(task.active_dataset)
         score_type = task.active_dataset.score_type_object
@@ -367,7 +448,7 @@ class SubmissionFileHandler(FileHandler):
         participation = self.current_user
 
         if not participation.unrestricted:
-            if participation.starting_time is None:
+            if self.training_program is None and participation.starting_time is None:
                 raise tornado.web.HTTPError(403)
 
         if not self.contest.submissions_download_allowed:
@@ -375,6 +456,10 @@ class SubmissionFileHandler(FileHandler):
 
         task = self.get_task(task_name)
         if task is None:
+            raise tornado.web.HTTPError(404)
+
+        # Check task visibility for training day contests
+        if not self.can_access_task(task):
             raise tornado.web.HTTPError(404)
 
         submission = self.get_submission(task, opaque_id)
@@ -416,19 +501,7 @@ class UseTokenHandler(ContestHandler):
     @actual_phase_required(0)
     @multi_contest
     def post(self, task_name, opaque_id):
-        participation = self.current_user
-
-        if not participation.unrestricted:
-            if participation.starting_time is None:
-                raise tornado.web.HTTPError(403)
-
-        task = self.get_task(task_name)
-        if task is None:
-            raise tornado.web.HTTPError(404)
-
-        submission = self.get_submission(task, opaque_id)
-        if submission is None:
-            raise tornado.web.HTTPError(404)
+        task, submission = self.get_validated_submission(task_name, opaque_id)
 
         try:
             accept_token(self.sql_session, submission, self.timestamp)

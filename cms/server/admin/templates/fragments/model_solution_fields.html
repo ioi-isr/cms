@@ -1,111 +1,36 @@
 {#
-  Shared macros for model solution forms (add and replace).
+  Shared macros for model solution modal forms (add and replace).
 
-  base_fields: Name + Description
-  file_fields: file inputs + optional language select
-  score_fields: expected score range + subtasks
+  file_fields: file inputs + optional language select + submission.zip
+  language_filter_script: auto-detect language from uploaded file extensions
 #}
 
-{% macro base_fields(form_id, id_prefix=None) %}
-  {% if id_prefix is none %}
-    {% set id_prefix = form_id if form_id is defined else "ms" %}
-  {% endif %}
-  <div class="ms-form-row">
-    <label class="ms-form-label" for="{{ id_prefix }}-name">Name:</label>
-    <div class="ms-form-field">
-      <input id="{{ id_prefix }}-name"
-             type="text"
-             name="name"
-             class="ms-form-control"
-             pattern="^[\\w\\-\\s()^]+$"
-             title="Allowed: letters, digits, underscores, hyphens, spaces, parentheses, and caret (^)."
-             required />
-      <div class="ms-form-hint">(identifier for export, e.g., 'intended', 'bruteforce')</div>
-    </div>
-  </div>
+{% from "macro/bulma_file_input.html" import bulma_file_input %}
 
-  <div class="ms-form-row">
-    <label class="ms-form-label" for="{{ id_prefix }}-description">Description:</label>
-    <div class="ms-form-field">
-      <input id="{{ id_prefix }}-description" type="text" name="description" class="ms-form-control" required />
-    </div>
-  </div>
-{% endmacro %}
-
-{% macro file_fields(task, allowed_langs, language_required, selected_language=None, form_id=None, id_prefix=None) %}
-  {% if id_prefix is none %}
-    {% set id_prefix = form_id if form_id is defined else "ms" %}
-  {% endif %}
+{% macro file_fields(task, allowed_langs, language_required, allow_partial, id_prefix, selected_language=None) %}
   {% for filename in task.submission_format %}
-    {% set input_id = (id_prefix ~ "-" ~ filename)|replace(".", "-")|replace("%", "")|replace("/", "-")|replace(" ", "-") %}
-    <div class="ms-form-row">
-      <label class="ms-form-label" for="{{ input_id }}">{{ filename }}:</label>
-      <div class="ms-form-field">
-        <input id="{{ input_id }}" type="file" name="{{ filename }}" class="ms-file-input" />
-      </div>
-    </div>
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-file-{{ loop.index0 }}">{{ filename }}:</label>
+      {{ bulma_file_input(id_prefix ~ "-file-" ~ loop.index0, filename, "", button_text="Choose " ~ filename ~ "…") }}
+  </div>
   {% endfor %}
   {% if language_required %}
-    <div class="ms-form-row">
-      <label class="ms-form-label" for="{{ id_prefix }}-language">Language:</label>
-      <div class="ms-form-field">
-        <select id="{{ id_prefix }}-language" name="language" class="ms-form-control">
-  {% for lang in allowed_langs %}
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-language">Language:</label>
+      <select id="{{ id_prefix }}-language" name="language" class="tp-form-input">
+          {% for lang in allowed_langs %}
           <option value="{{ lang }}" {{ "selected" if selected_language is not none and selected_language == lang else "" }}>{{ lang }}</option>
-  {% endfor %}
-        </select>
-      </div>
-    </div>
+          {% endfor %}
+      </select>
+  </div>
   {% endif %}
-{% endmacro %}
-
-{% macro score_fields(form_id, subtasks=None, ms=None, id_prefix=None) %}
-  {% if id_prefix is none %}
-    {% set id_prefix = form_id if form_id is defined else "ms" %}
-  {% endif %}
-  <div class="ms-form-row">
-    <label class="ms-form-label" for="{{ id_prefix }}-expected-min">Expected Score Min:</label>
-    <div class="ms-form-field">
-      <input id="{{ id_prefix }}-expected-min"
-             type="number"
-             step="0.01"
-             min="0"
-             name="expected_score_min"
-             value="0.0"
-             class="ms-form-control"
-             style="width: 100px;"
-             required />
-    </div>
-  </div>
-
-  <div class="ms-form-row">
-    <label class="ms-form-label" for="{{ id_prefix }}-expected-max">Expected Score Max:</label>
-    <div class="ms-form-field">
-      <input id="{{ id_prefix }}-expected-max"
-             type="number"
-             step="0.01"
-             min="0"
-             name="expected_score_max"
-             value="100.0"
-             class="ms-form-control"
-             style="width: 100px;"
-             required />
-    </div>
-  </div>
-
-{% if subtasks and ms %}
-  <div class="ms-form-row ms-form-row-full">
-    <div class="ms-form-field">
-      {{ ms.auto_calc_checkbox(form_id) }}
-    </div>
-  </div>
-  <div class="ms-form-row ms-form-row-full">
-    <strong>Expected Subtask Scores:</strong>
-  </div>
-  <div class="ms-form-row ms-form-row-full">
-    <div class="ms-form-field">
-      {{ ms.subtask_table(subtasks, form_id) }}
-    </div>
+  {% if allow_partial %}
+  <p class="modal__hint">
+      You may submit any subset of files. Alternatively, upload a single <code>submission.zip</code>:
+  </p>
+  <div class="modal__form-group">
+      <label for="{{ id_prefix }}-zip">submission.zip:</label>
+      {{ bulma_file_input(id_prefix ~ "-zip", "submission", ".zip", button_text="Choose submission.zip…") }}
   </div>
   {% endif %}
 {% endmacro %}

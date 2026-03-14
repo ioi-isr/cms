@@ -29,12 +29,13 @@
 
 import csv
 import io
+import json
 import logging
 import re
 from datetime import date
 
 from sqlalchemy import and_, exists
-from cms.db import Contest, Participation, Submission, Team, User
+from cms.db import Contest, Participation, Team, User, TrainingDay, TrainingProgram
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
 )
@@ -193,11 +194,35 @@ class UserHandler(BaseHandler, UserValidationMixin):
 
         self.r_params = self.render_params()
         self.r_params["user"] = user
-        self.r_params["participations"] = (
-            self.sql_session.query(Participation)
-            .filter(Participation.user == user)
+
+        # Get all participations and separate them into categories
+        all_participations = self.sql_session.query(Participation)\
+            .filter(Participation.user == user)\
             .all()
-        )
+
+        # Separate participations into:
+        # 1. Training program participations (managing contest)
+        # 2. Training day participations (hidden from list)
+        # 3. Regular contest participations
+        training_program_participations = []
+        regular_participations = []
+
+        for p in all_participations:
+            # Check if this is a training program's managing contest
+            if p.contest.training_program is not None:
+                training_program_participations.append(p)
+            # Check if this is a training day contest (hide from list)
+            elif p.contest.training_day is not None:
+                # Skip training day participations - they're managed via training program
+                pass
+            else:
+                regular_participations.append(p)
+
+        self.r_params["participations"] = regular_participations
+        self.r_params["training_program_participations"] = training_program_participations
+
+        # Filter out training day contests and managing contests from unassigned list
+        # (users should be added to training programs via the training program UI)
         self.r_params["unassigned_contests"] = exclude_internal_contests(
             self.sql_session.query(Contest).filter(
                 ~exists().where(
@@ -206,6 +231,12 @@ class UserHandler(BaseHandler, UserValidationMixin):
                         Participation.user == user,
                     )
                 )
+            ).filter(
+                # Exclude training day contests
+                ~exists().where(TrainingDay.contest_id == Contest.id)
+            ).filter(
+                # Exclude managing contests (training program contests)
+                ~exists().where(TrainingProgram.managing_contest_id == Contest.id)
             )
         ).all()
         self.render("user.html", **self.r_params)
@@ -303,49 +334,62 @@ class ExportUsersHandler(BaseHandler):
 
 
 class ImportUsersHandler(BaseHandler):
-    """Import users from a CSV file.
+    """Process a CSV file upload and return parsed user data as JSON.
 
-    GET shows the upload form.
-    POST processes the CSV and shows results with conflicts.
+    The upload form lives inside a MicroModal dialog on the users page,
+    so there is no standalone GET page.  The POST endpoint returns JSON
+    when the request includes ``Accept: application/json`` (the normal
+    modal path) or falls back to a redirect for non-AJAX callers.
     """
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        self.r_params = self.render_params()
-        self.render("import_users.html", **self.r_params)
+    def _is_ajax(self):
+        accept = self.request.headers.get("Accept", "")
+        return "application/json" in accept
+
+    def _json_error(self, message, status=400):
+        self.set_status(status)
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps({"error": message}))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("users", "import")
-
         if "csv_file" not in self.request.files:
+            if self._is_ajax():
+                self._json_error("Please select a CSV file to upload.")
+                return
             self.service.add_notification(
                 make_datetime(),
                 "No file uploaded",
                 "Please select a CSV file to upload.",
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         csv_file = self.request.files["csv_file"][0]
         filename = csv_file["filename"]
 
         if not filename.lower().endswith(".csv"):
+            if self._is_ajax():
+                self._json_error("Only CSV files are accepted.")
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid file type", "Only CSV files are accepted."
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         try:
             content = csv_file["body"].decode("utf-8")
         except UnicodeDecodeError:
+            if self._is_ajax():
+                self._json_error("CSV file must be UTF-8 encoded.")
+                return
             self.service.add_notification(
                 make_datetime(),
                 "Invalid file encoding",
                 "CSV file must be UTF-8 encoded.",
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         reader = csv.DictReader(io.StringIO(content))
@@ -362,15 +406,26 @@ class ImportUsersHandler(BaseHandler):
             "Preferred languages",
         }
 
-        if not reader.fieldnames or not expected_headers.issubset(
+        # Only require the required columns, not optional ones
+        required_headers = {
+            "First name",
+            "Last name",
+            "Username",
+            "Password",
+            "Plain text / Hash",
+        }
+
+        if not reader.fieldnames or not required_headers.issubset(
             set(reader.fieldnames)
         ):
+            msg = f"CSV must have headers: {', '.join(sorted(required_headers))}"
+            if self._is_ajax():
+                self._json_error(msg)
+                return
             self.service.add_notification(
-                make_datetime(),
-                "Invalid CSV format",
-                f"CSV must have headers: {', '.join(expected_headers)}",
+                make_datetime(), "Invalid CSV format", msg,
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("users"))
             return
 
         new_users = []
@@ -379,6 +434,7 @@ class ImportUsersHandler(BaseHandler):
         row_num = 1
 
         username_pattern = re.compile(r"^[A-Za-z0-9_-]+$")
+        seen_usernames = {}  # Track usernames to detect duplicates within file
 
         for row in reader:
             row_num += 1
@@ -400,6 +456,14 @@ class ImportUsersHandler(BaseHandler):
                 errors.append(
                     "Username must contain only letters, numbers, hyphens, and underscores"
                 )
+            elif username in seen_usernames:
+                # Duplicate username within the uploaded file
+                errors.append(
+                    f"Duplicate username (already seen in row {seen_usernames[username]})"
+                )
+            else:
+                # Track this username for future duplicate detection
+                seen_usernames[username] = row_num
 
             if not first_name:
                 errors.append("First name is required")
@@ -410,7 +474,9 @@ class ImportUsersHandler(BaseHandler):
             if not password:
                 errors.append("Password is required")
 
-            if password_type and password_type.lower() not in ["plain text", "hash"]:
+            if not password_type:
+                errors.append("Plain text / Hash is required")
+            elif password_type.lower() not in ["plain text", "hash"]:
                 errors.append(
                     f"Invalid password type '{password_type}'. Must be 'Plain text' or 'Hash'"
                 )
@@ -419,10 +485,10 @@ class ImportUsersHandler(BaseHandler):
             date_of_birth = None
             if date_of_birth_str:
                 try:
-                    date_of_birth = date.fromisoformat(date_of_birth_str)
-                except ValueError:
+                    date_of_birth = validate_date_of_birth(date_of_birth_str)
+                except ValueError as e:
                     errors.append(
-                        f"Invalid date of birth format '{date_of_birth_str}'. Use YYYY-MM-DD format."
+                        f"Invalid date of birth '{date_of_birth_str}': {str(e)}"
                     )
 
             if errors:
@@ -445,7 +511,7 @@ class ImportUsersHandler(BaseHandler):
 
             if password_type.lower() == "plain text":
                 password_value = hash_password(password, "bcrypt")
-            else:
+            elif password_type.lower() == "hash":
                 if password.startswith("bcrypt:"):
                     password_value = password
                 else:
@@ -482,32 +548,58 @@ class ImportUsersHandler(BaseHandler):
             else:
                 new_users.append(user_data)
 
-        self.r_params = self.render_params()
-        self.r_params["new_users"] = new_users
-        self.r_params["failed_users"] = failed_users
-        self.r_params["existing_users"] = existing_users
-        self.render("import_users_confirm.html", **self.r_params)
+        result = {
+            "new_users": new_users,
+            "failed_users": failed_users,
+            "existing_users": existing_users,
+        }
+
+        if self._is_ajax():
+            self.set_header("Content-Type", "application/json")
+            self.write(json.dumps(result))
+            return
+
+        # Fallback for non-AJAX: redirect back to users page
+        self.redirect(self.url("users"))
 
 
 class ImportUsersConfirmHandler(BaseHandler):
-    """Confirm and execute the user import."""
+    """Confirm and execute the user import via AJAX."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        import json
-
-        new_users_json = self.get_argument("new_users", "[]")
-        existing_users_json = self.get_argument("existing_users", "[]")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
-            new_users = json.loads(new_users_json)
-            existing_users = json.loads(existing_users_json)
-        except json.JSONDecodeError:
-            self.service.add_notification(
-                make_datetime(), "Invalid data", "Failed to parse user data."
-            )
-            self.redirect(self.url("users"))
-            return
+            body = json.loads(self.request.body)
+            new_users = body.get("new_users", [])
+            existing_users = body.get("existing_users", [])
+            update_user_ids = [
+                str(uid) for uid in body.get("update_user_ids", [])
+            ]
+        except (json.JSONDecodeError, AttributeError):
+            # Fallback for form-encoded requests
+            new_users_json = self.get_argument("new_users", "[]")
+            existing_users_json = self.get_argument("existing_users", "[]")
+            try:
+                new_users = json.loads(new_users_json)
+                existing_users = json.loads(existing_users_json)
+            except json.JSONDecodeError:
+                if is_ajax:
+                    self.set_status(400)
+                    self.set_header("Content-Type", "application/json")
+                    self.write(json.dumps(
+                        {"error": "Failed to parse user data."}
+                    ))
+                    return
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid data",
+                    "Failed to parse user data.",
+                )
+                self.redirect(self.url("users"))
+                return
+            update_user_ids = self.get_arguments("update_user")
 
         created_count = 0
         updated_count = 0
@@ -515,11 +607,17 @@ class ImportUsersConfirmHandler(BaseHandler):
 
         for user_data in new_users:
             try:
+                username = user_data.get("username")
+                if not username:
+                    raise ValueError("username is required")
+                if username.startswith("__"):
+                    raise ValueError("Username cannot start with '__'")
+
                 date_of_birth = None
                 if user_data.get("date_of_birth"):
-                    date_of_birth = date.fromisoformat(user_data["date_of_birth"])
+                    date_of_birth = validate_date_of_birth(user_data["date_of_birth"])
                 user = User(
-                    username=user_data["username"],
+                    username=username,
                     first_name=user_data["first_name"],
                     last_name=user_data["last_name"],
                     password=user_data["password"],
@@ -532,126 +630,103 @@ class ImportUsersConfirmHandler(BaseHandler):
                 created_count += 1
             except Exception as error:
                 errors.append(
-                    f"Failed to create user {user_data['username']}: {str(error)}"
+                    f"Failed to create user {user_data.get('username', '<unknown>')}: {str(error)}"
                 )
 
-        update_user_ids = self.get_arguments("update_user")
-
         for user_data in existing_users:
-            user_id = str(user_data["existing_id"])
-            if user_id in update_user_ids:
-                try:
-                    user = (
-                        self.sql_session.query(User)
-                        .filter(User.id == user_data["existing_id"])
-                        .first()
-                    )
-                    if user:
-                        user.first_name = user_data["first_name"]
-                        user.last_name = user_data["last_name"]
-                        user.password = user_data["password"]
-                        user.email = user_data.get("email")
-                        if user_data.get("date_of_birth"):
-                            user.date_of_birth = date.fromisoformat(
-                                user_data["date_of_birth"]
-                            )
-                        else:
-                            user.date_of_birth = None
-                        user.timezone = user_data.get("timezone")
-                        user.preferred_languages = user_data.get(
-                            "preferred_languages", []
-                        )
-                        updated_count += 1
-                except Exception as error:
-                    errors.append(
-                        f"Failed to update user {user_data['username']}: {str(error)}"
-                    )
+            try:
+                existing_id = user_data.get("existing_id")
+                if existing_id is None:
+                    raise ValueError("existing_id is required")
+                user_id = str(existing_id)
+                if user_id not in update_user_ids:
+                    continue
 
-        if self.try_commit():
+                user = (
+                    self.sql_session.query(User).filter(User.id == existing_id).first()
+                )
+                if user:
+                    user.first_name = user_data["first_name"]
+                    user.last_name = user_data["last_name"]
+                    user.password = user_data["password"]
+                    user.email = user_data.get("email")
+                    if user_data.get("date_of_birth"):
+                        user.date_of_birth = validate_date_of_birth(
+                            user_data["date_of_birth"]
+                        )
+                    else:
+                        user.date_of_birth = None
+                    user.timezone = user_data.get("timezone")
+                    user.preferred_languages = user_data.get("preferred_languages", [])
+                    updated_count += 1
+            except Exception as error:
+                errors.append(
+                    f"Failed to update user {user_data.get('username', '<unknown>')}: {str(error)}"
+                )
+
+        commit_ok = self.try_commit()
+        if commit_ok:
             self.service.proxy_service.reinitialize()
-            message = f"Successfully created {created_count} user(s) and updated {updated_count} user(s)."
+            message = (f"Successfully created {created_count} user(s)"
+                       f" and updated {updated_count} user(s).")
             if errors:
                 message += f" Errors: {'; '.join(errors)}"
-            self.service.add_notification(make_datetime(), "Import completed", message)
+            self.service.add_notification(
+                make_datetime(), "Import completed", message
+            )
+
+        if is_ajax:
+            self.set_header("Content-Type", "application/json")
+            if not commit_ok:
+                self.set_status(500)
+                self.write(json.dumps({
+                    "error": "Database commit failed. No users were imported.",
+                    "created": 0,
+                    "updated": 0,
+                    "errors": errors,
+                }))
+                return
+            self.write(json.dumps({
+                "created": created_count,
+                "updated": updated_count,
+                "errors": errors,
+            }))
+            return
 
         self.redirect(self.url("users"))
 
 
 class TeamListHandler(SimpleHandler("teams.html")):
-    """Get returns the list of all teams, post perform operations on
-    a specific team (removing them from CMS).
+    """Get returns the list of all teams."""
 
-    """
-
-    REMOVE = "Remove"
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        team_id: str = self.get_argument("team_id")
-        operation: str = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            asking_page = self.url("teams", team_id, "remove")
-            self.redirect(asking_page)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, ""
-            )
-            self.redirect(self.url("contests"))
+    pass
 
 
 class RemoveUserHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the user from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, user_id):
-        user = self.safe_get_item(User, user_id)
-        submission_query = (
-            self.sql_session.query(Submission)
-            .join(Submission.participation)
-            .filter(Participation.user == user)
-        )
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.user == user
-        )
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["user"] = user
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("user_remove.html", **self.r_params)
+    """Delete removes the user from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, user_id):
         user = self.safe_get_item(User, user_id)
-
-        self.sql_session.delete(user)
-        if self.try_commit():
+        try:
+            self.sql_session.delete(user)
+            if not self.try_commit():
+                self.set_status(500)
+                self.write("error")
+                return
             self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception("Unexpected error removing user %s", user_id)
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another user)
         self.write("../../users")
 
 
 class RemoveTeamHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the team from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, team_id):
-        team = self.safe_get_item(Team, team_id)
-        participation_query = self.sql_session.query(Participation).filter(
-            Participation.team == team
-        )
-
-        self.r_params = self.render_params()
-        self.r_params["team"] = team
-        self.r_params["participation_count"] = participation_query.count()
-        self.render("team_remove.html", **self.r_params)
+    """Delete removes the team from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, team_id):
@@ -666,10 +741,18 @@ class RemoveTeamHandler(BaseHandler):
             self.sql_session.delete(team)
             if self.try_commit():
                 self.service.proxy_service.reinitialize()
+            else:
+                self.set_status(500)
+                self.write("error")
+                return
         except Exception as fallback_error:
+            logger.exception("Unexpected error removing team %s", team_id)
             self.service.add_notification(
                 make_datetime(), "Error removing team", repr(fallback_error)
             )
+            self.set_status(500)
+            self.write("error")
+            return
 
         # Maybe they'll want to do this again (for another team)
         self.write("../../teams")
@@ -678,19 +761,18 @@ class RemoveTeamHandler(BaseHandler):
 class TeamHandler(BaseHandler):
     """Manage a single team.
 
-    If referred by GET, this handler will return a pre-filled HTML form.
-    If referred by POST, this handler will sync the team data with the form's.
+    GET redirects to the teams list (the old team.html page has been
+    replaced by an inline edit modal on the teams page).
+    POST accepts both regular form submissions and AJAX (JSON) requests.
     """
 
     def get(self, team_id):
-        team = self.safe_get_item(Team, team_id)
+        self.redirect(self.url("teams"))
 
-        self.r_params = self.render_params()
-        self.r_params["team"] = team
-        self.render("team.html", **self.r_params)
-
+    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, team_id):
-        fallback_page = self.url("team", team_id)
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
+        fallback_page = self.url("teams")
 
         team = self.safe_get_item(Team, team_id)
 
@@ -702,11 +784,17 @@ class TeamHandler(BaseHandler):
 
             if attrs.get("code") is None:
                 raise ValueError("No team code specified.")
+            if attrs.get("name") is None:
+                raise ValueError("No team name specified.")
 
             # Update the team.
             team.set_attrs(attrs)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error)
             )
@@ -716,13 +804,27 @@ class TeamHandler(BaseHandler):
         if self.try_commit():
             # Update the team on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write(
+                    {"ok": True, "id": team.id,
+                     "code": team.code, "name": team.name}
+                )
+                return
+        else:
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save team. The code may already exist."}
+                )
+                return
+
         self.redirect(fallback_page)
 
 
-class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
+class AddTeamHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("teams", "add")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
             attrs = dict()
@@ -730,34 +832,49 @@ class AddTeamHandler(SimpleHandler("add_team.html", permission_all=True)):
             self.get_string(attrs, "code")
             self.get_string(attrs, "name")
 
-            if attrs.get("code") is None:
+            if not attrs.get("code"):
                 raise ValueError("No team code specified.")
+            if not attrs.get("name"):
+                raise ValueError("No team name specified.")
 
             # Create the team.
             team = Team(**attrs)
             self.sql_session.add(team)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error)
             )
-            self.redirect(fallback_page)
+            self.redirect(self.url("teams"))
             return
 
         if self.try_commit():
             # Create the team on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write(
+                    {"ok": True, "id": team.id, "code": team.code, "name": team.name}
+                )
+                return
+        else:
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save team. The code may already exist."}
+                )
+                return
 
-        # In case other teams need to be added.
-        self.redirect(fallback_page)
+        self.redirect(self.url("teams"))
 
 
-class AddUserHandler(
-    SimpleHandler("add_user.html", permission_all=True), UserValidationMixin
-):
+class AddUserHandler(BaseHandler, UserValidationMixin):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("users", "add")
+        fallback_page = self.url("users")
 
         user = self.save_user(None, fallback_page)
         if user:

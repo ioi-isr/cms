@@ -1,110 +1,150 @@
 {% extends "base.html" %}
 
 {% block core %}
-<div class="core_title">
-  <h1>Users list</h1>
-</div>
+<!-- Header -->
+<h1 class="title is-spaced">Users list</h1>
+<p class="subtitle has-text-grey">
+    Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-primary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
+</p>
 
 {% include "fragments/overload_warning.html" %}
 
-<form action="{{ url("contest", contest.id, "users", "bulk_add") }}" method="POST" enctype="multipart/form-data">
-  {{ xsrf_form_html|safe }}
-  Add users from a list:
-  <input type="file" name="users_file" accept=".txt"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <input type="submit"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Upload and add users" />
-  <br/>
-  <small>Upload a .txt file with whitespace-separated usernames</small>
-</form>
+<!-- Action Buttons Row -->
+<div class="buttons are-centered">
+    <!-- Add Users from List Button -->
+    <form id="bulk-add-form" action="{{ url("contest", contest.id, "users", "bulk_add") }}" method="POST" enctype="multipart/form-data" style="display: inline;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" name="users_file" accept=".txt" class="file-input-hidden" id="users-file-input"
+            {% if not admin.permission_all %}disabled{% endif %}
+            onchange="if(this.files.length) this.form.submit();" />
+        <label for="users-file-input" class="button is-medium{% if not admin.permission_all %} is-disabled{% endif %}" {% if not admin.permission_all %}aria-disabled="true"{% endif %}>
+            <svg class="icon is-small"><use href="#icon-upload"/></svg>
+            <span>Add Users from List</span>
+        </label>
+    </form>
 
+    <!-- Add User Button -->
+    {% if admin.permission_all %}
+    <button type="button" class="button is-medium is-primary" onclick="document.getElementById('add-user-dialog').showModal()">
+        <svg class="icon"><use href="#icon-plus"/></svg>
+        <span>Add User</span>
+    </button>
+    {% endif %}
+</div>
+
+<!-- Add User Dialog (native HTML dialog element) -->
+{% if admin.permission_all %}
+<dialog id="add-user-dialog" class="tp-dialog">
+    <div class="tp-dialog-header">
+        <h3>Add User</h3>
+        <form method="dialog">
+            <button type="submit" class="tp-dialog-close" aria-label="Close add user dialog">&times;</button>
+        </form>
+    </div>
+    <form action="{{ url("contest", contest.id, "users", "add") }}" method="POST">
+        {{ xsrf_form_html|safe }}
+        <div class="p-4">
+            <label class="has-text-weight-semibold is-size-s" for="user_id">Select a user to add:</label>
+            <select name="user_id" id="user_id" class="searchable-select mt-2" style="width: 100%;" required>
+                <option value="" selected disabled hidden>Search for a user...</option>
+                {% for u in unassigned_users %}
+                <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="tp-dialog-footer">
+            <button type="button" class="button" onclick="document.getElementById('add-user-dialog').close()"><span>Cancel</span></button>
+            <button type="submit" class="button is-primary">
+                <span>Add to Contest</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endif %}
+
+<!-- Bulk Add Results (if any) -->
 {% if bulk_add_results %}
-<h2>Bulk Add Results</h2>
-<p>{{ users_added }} user(s) successfully added to the contest.</p>
-<table class="bordered">
-  <thead>
-    <tr>
-      <th>Username</th>
-      <th>Status</th>
-      <th>Message</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for result in bulk_add_results %}
-    <tr>
-      <td>{{ result.username }}</td>
-      <td>
-        {% if result.status == "success" %}
-        <span style="color: green;">✓ Success</span>
-        {% elif result.status == "already_exists" %}
-        <span style="color: orange;">⚠ Already in contest</span>
-        {% else %}
-        <span style="color: red;">✗ Not found</span>
+<div class="tp-filter-card" style="margin-bottom: 24px;">
+    <div style="width: 100%;">
+        <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--tp-text-primary);">Bulk Add Results</h3>
+        <p style="margin: 0 0 12px 0; color: var(--tp-text-muted);">{{ users_added }} user(s) successfully added to the contest.</p>
+        <table class="ranking-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Username</th>
+                    <th style="text-align: left;">Status</th>
+                    <th style="text-align: left;">Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in bulk_add_results %}
+                <tr>
+                    <td><div class="list-cell-wrapper">{{ result.username }}</div></td>
+                    <td>
+                        <div class="list-cell-wrapper">
+                            {% if result.status == "success" %}
+                            <span class="tag is-bordered has-text-primary">Success</span>
+                            {% elif result.status == "already_exists" %}
+                            <span class="tag is-bordered has-text-warning">Already in contest</span>
+                            {% else %}
+                            <span class="tag is-bordered has-text-danger">Not found</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td><div class="list-cell-wrapper">{{ result.message }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Users Section -->
+<h2 class="title is-5">All Users ({{ contest.participations|length }})</h2>
+
+{% if contest.participations|length == 0 %}
+<div class="empty-state-box">
+    <h3>No users in this contest yet</h3>
+    <p>Use the "Add User" button above to add users.</p>
+</div>
+{% else %}
+<!-- Search -->
+<div class="table-search" style="margin-bottom: 16px;">
+    <input type="text" class="input" placeholder="Search users..." aria-label="Search users" oninput="CMS.AWSUtils.filter_elements('users-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+</div>
+
+<!-- Users Cards Grid -->
+<div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="users-grid">
+    {% for p in contest.participations|sort(attribute="user.username") %}
+    {% set u = p.user %}
+    <div class="tp-program-card" style="padding: 20px; position: relative;">
+        {% if admin.permission_all %}
+        <button type="button" class="btn-icon-only" title="Remove user" style="position: absolute; top: 12px; right: 12px;"
+            onclick='AdminModals.deleteResource({
+                title: "Remove Participation",
+                message: "Are you sure you want to remove user " + {{ u.username|tojson }} + " from contest " + {{ contest.name|tojson }} + "?",
+                warnings: [{{ (p.submissions|length|string + " submission(s) will be deleted.")|tojson }}],
+                deleteUrl: {{ url("contest", contest.id, "user", u.id, "remove")|tojson }},
+                confirmLabel: "Yes, Remove"
+            })'>
+            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+        </button>
         {% endif %}
-      </td>
-      <td>{{ result.message }}</td>
-    </tr>
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+            {% if u.picture %}
+            <img class="student-avatar" src="{{ url("file", u.picture, "picture") }}" alt="{{ u.first_name }} {{ u.last_name }}" style="width: 48px; height: 48px; border-radius: 50%;"/>
+            {% else %}
+            <div class="student-avatar-placeholder" style="width: 48px; height: 48px; font-size: 1rem;">{{ u.first_name[:1] or '?' }}{{ u.last_name[:1] }}</div>
+            {% endif %}
+            <div style="min-width: 0;">
+                <a href="{{ url("contest", contest.id, "user", u.id, "edit") }}" style="font-weight: 600; color: var(--tp-text-primary); font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; display: block;">{{ u.first_name }} {{ u.last_name }}</a>
+                <a href="{{ url("contest", contest.id, "user", u.id, "edit") }}" style="font-size: 0.85rem; color: var(--tp-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.username }}</a>
+            </div>
+        </div>
+    </div>
     {% endfor %}
-  </tbody>
-</table>
+</div>
 {% endif %}
-
-<form action="{{ url("contest", contest.id, "users", "add") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Add a new user:
-  <select name="user_id" class="searchable-select">
-    <option value="" selected disabled hidden>Select a new user...</option>
-    {% for u in unassigned_users %}
-    <option value="{{ u.id }}">
-      {{ u.username }}
-    </option>
-    {% endfor %}
-  </select>
-  <input type="submit"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         value="Add user" />
-</form>
-
-<form action="{{ url("contest", contest.id, "users") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected user:
-  <input type="submit"
-         name="operation"
-         value="Remove from contest"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Username</th>
-        <th>First name</th>
-        <th>Last name</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in contest.participations|map(attribute="user")|sort(attribute="username") %}
-      <tr>
-        <td>
-          <input type="radio" name="user_id" value="{{ u.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", contest.id, "user", u.id, "edit") }}">{{ u.username }}</a></td>
-        <td>{{ u.first_name }}</td>
-        <td>{{ u.last_name }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
 
 {% endblock core %}

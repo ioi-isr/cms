@@ -1,0 +1,154 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+{% from "macro/modal.html" import modal_header, modal_footer %}
+{#
+Activate Dataset Modal Fragment.
+Renders one modal per non-active dataset.
+Required context: admin, task, activate_data, url, xsrf_form_html
+#}
+
+{% if admin is defined and admin.permission_all %}
+{% for dataset in task.datasets|sort(attribute="description") %}
+{% if dataset is not sameas (task.active_dataset) %}
+{% set ds_activate = activate_data.get(dataset.id, {"changes": [], "default_notify_participations": []}) %}
+<div class="modal modal--wide" id="modal-activate-dataset-{{ dataset.id }}" aria-hidden="true" data-no-reset>
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true"
+             aria-labelledby="modal-activate-dataset-title-{{ dataset.id }}"
+             style="max-width: 760px;">
+            {{ modal_header("Make Live: " ~ dataset.description, "modal-activate-dataset-title-" ~ dataset.id) }}
+            <form action="{{ url("dataset", dataset.id, "activate") }}" method="POST">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+
+                    <div style="display: flex; gap: 24px; margin-bottom: 16px; font-size: 0.9rem;">
+                        <div>
+                            <span style="color: var(--tp-text-muted);">Current:</span>
+                            <strong>{{ task.active_dataset.description }}</strong>
+                            <a href="{{ url("dataset", task.active_dataset_id) }}" style="margin-left: 6px; font-size: 0.8rem;">[View results]</a>
+                        </div>
+                        <div>
+                            <span style="color: var(--tp-text-muted);">New:</span>
+                            <strong>{{ dataset.description }}</strong>
+                            <a href="{{ url("dataset", dataset.id) }}" style="margin-left: 6px; font-size: 0.8rem;">[View results]</a>
+                        </div>
+                    </div>
+
+                    <div style="background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.85rem; color: var(--tp-text-secondary);">
+                        <strong>Note:</strong> This preview uses existing scoring data. If you have modified the dataset,
+                        ensure scores are up to date before activating. Use the reevaluation buttons below if needed.<br/>
+                        Reevaluate all submissions for <em>{{ dataset.description }}</em>:
+                        <span style="margin-left: 6px;">
+                            {{ macro_reevaluation_buttons.reevaluation_buttons(
+                                   admin.permission_all,
+                                   url("dataset", dataset.id),
+                                   dataset_id=dataset.id) }}
+                        </span>
+                    </div>
+
+                    {% if ds_activate.changes|length == 0 %}
+                    <p style="color: var(--tp-text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
+                        Good news! Switching to this dataset will have no effect on scores. No notifications will be sent.
+                    </p>
+                    {% else %}
+                    <p style="font-size: 0.9rem; margin-bottom: 8px;">Switching to this dataset will cause the following changes:</p>
+
+                    <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--tp-border); border-radius: 6px; margin-bottom: 12px;">
+                        <table class="table is-bordered is-striped is-hoverable" style="margin: 0; font-size: 0.85rem; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">Notify</th>
+                                    <th>User</th>
+                                    <th>Submission</th>
+                                    <th>Change</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for p, changes_by_participation in ds_activate.changes|groupby("submission.participation.id")|sort %}
+                                {% for c in changes_by_participation|sort(attribute="submission.id") %}
+                                <tr>
+                                    <td style="text-align: center; vertical-align: middle;">
+                                        {% if loop.first %}
+                                        <input type="checkbox"
+                                               class="notify_user_box_{{ dataset.id }} default_notify_{{ "on" if c.submission.participation.id in ds_activate.default_notify_participations else "off" }}_{{ dataset.id }}"
+                                               {% if c.submission.participation.id in ds_activate.default_notify_participations %}checked{% endif %}
+                                               name="notify_{{ c.submission.participation.id }}" />
+                                        {% endif %}
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        {% if loop.first %}
+                                        <a href="{{ url("user", c.submission.participation.user.id) }}">{{ c.submission.participation.user.username }}</a>
+                                        {% endif %}
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <a href="{{ url("submission", c.submission.id) }}">{{ c.submission.id }}</a>{{ " (Tokened)" if c.submission.tokened() else "" }}
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        {% if c.old_score is not none or c.new_score is not none %}
+                                        Score: {{ c.old_score }} &rarr; {{ c.new_score }}<br/>
+                                        {% endif %}
+                                        {% if c.old_public_score is not none or c.new_public_score is not none %}
+                                        Public score: {{ c.old_public_score }} &rarr; {{ c.new_public_score }}<br/>
+                                        {% endif %}
+                                        {% if c.old_ranking_score_details is not none or c.new_ranking_score_details is not none %}
+                                        Ranking score: {{ c.old_ranking_score_details|tojson|forceescape }} &rarr; {{ c.new_ranking_score_details|tojson|forceescape }}<br/>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="font-size: 0.85rem; margin-bottom: 12px;">
+                        Notify:
+                        <a href="javascript:void(0)" onclick="setAllActivateNotify({{ dataset.id }}, true);">[All users]</a>
+                        <a href="javascript:void(0)" onclick="setAllActivateNotify({{ dataset.id }}, false);">[No users]</a>
+                        <a href="javascript:void(0)" onclick="setDefaultActivateNotify({{ dataset.id }});">[Users with visible changes only]</a>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--tp-text-muted); margin-bottom: 12px;">
+                        By default, users with changes to their public score, or changes to the score of a tokened submission, will be notified.
+                    </p>
+
+                    <p style="font-size: 0.85rem; margin-bottom: 8px;">The following message will be sent to the selected users:</p>
+                    <div style="border: 1px solid var(--tp-border); border-radius: 6px; padding: 12px; background: var(--tp-bg-light);">
+                        <div style="margin-bottom: 8px;">
+                            <label for="activate-dataset-message-subject-{{ dataset.id }}" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Subject:</label>
+                            <input type="text" id="activate-dataset-message-subject-{{ dataset.id }}" name="message_subject" class="tp-form-input"
+                                   value="Task {{ task.name }} has been rejudged" />
+                        </div>
+                        <div>
+                            <label for="activate-dataset-message-text-{{ dataset.id }}" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Text:</label>
+                            <textarea id="activate-dataset-message-text-{{ dataset.id }}" name="message_text" class="tp-form-input" rows="3">The task "{{ task.name }}" has been rejudged and the score on your submissions has been updated.</textarea>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </main>
+                {{ modal_footer("Activate Dataset", submit_icon="#icon-play-circle") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+globalThis.setAllActivateNotify = function(datasetId, state) {
+    var boxes = document.querySelectorAll('.notify_user_box_' + datasetId);
+    for (var i = 0; i < boxes.length; i++) {
+        boxes[i].checked = state;
+    }
+};
+globalThis.setDefaultActivateNotify = function(datasetId) {
+    var onBoxes = document.querySelectorAll('.default_notify_on_' + datasetId);
+    for (var i = 0; i < onBoxes.length; i++) {
+        onBoxes[i].checked = true;
+    }
+    var offBoxes = document.querySelectorAll('.default_notify_off_' + datasetId);
+    for (var i = 0; i < offBoxes.length; i++) {
+        offBoxes[i].checked = false;
+    }
+};
+</script>
+{% endif %}

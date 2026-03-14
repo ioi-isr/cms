@@ -137,14 +137,13 @@ def _parse_subtask_scores(score_details, score: float) -> dict[str, float] | Non
 
     This is similar to the subtask parsing in cms/grading/scoring.py task_score().
     """
-    if score_details == [] and score == 0.0:
+    if score_details == [] and abs(score) < 1e-9:
         return None
 
     try:
-        subtask_scores = dict(
-            (str(subtask["idx"]), subtask["score"])
-            for subtask in score_details
-        )
+        subtask_scores = {
+            str(subtask["idx"]): subtask["score"] for subtask in score_details
+        }
     except (KeyError, TypeError):
         subtask_scores = None
 
@@ -212,6 +211,41 @@ def _invalidate(
     ).delete(synchronize_session=False)
 
 
+def _update_score_cache_for_participation(
+    session: Session,
+    participation: Participation,
+    submission: Submission,
+    submission_result,
+) -> None:
+    """Update a single participation/task cache entry incrementally."""
+    task = submission.task
+
+    # Acquire advisory lock to serialize concurrent updates
+    _acquire_cache_lock(session, participation.id, task.id)
+
+    cache_entry = _get_or_create_cache_entry(session, participation, task)
+    old_score = cache_entry.score
+
+    # Incremental update based on score mode
+    _update_cache_entry_incremental(cache_entry, task, submission, submission_result)
+
+    # Mark history as invalid if submission arrived out of order
+    if (
+        cache_entry.last_submission_timestamp is not None
+        and submission.timestamp < cache_entry.last_submission_timestamp
+    ):
+        cache_entry.history_valid = False
+
+    # Update has_submissions flag (partial is computed at render time)
+    cache_entry.has_submissions = True
+
+    cache_entry.last_update = _utc_now()
+
+    # Only add history entry if score changed and history is still valid
+    if cache_entry.score != old_score and cache_entry.history_valid:
+        _add_history_entry(session, participation, task, submission, cache_entry.score)
+
+
 def update_score_cache(
     session: Session,
     submission: Submission,
@@ -221,6 +255,11 @@ def update_score_cache(
     This function updates the cached score for the participation/task
     pair of the given submission using O(1) incremental updates instead
     of recomputing from all submissions.
+
+    For training day submissions, it also updates the cache for the
+    training day's participation (which is distinct from the managing
+    contest participation) so training day rankings stay current without
+    full invalidation.
 
     IMPORTANT - Locking and Transaction Behavior:
     This function acquires a PostgreSQL advisory lock (pg_advisory_xact_lock)
@@ -258,33 +297,28 @@ def update_score_cache(
     if score is None:
         return
 
-    # Acquire advisory lock to serialize concurrent updates
     participation = submission.participation
-    _acquire_cache_lock(session, participation.id, task.id)
-
-    cache_entry = _get_or_create_cache_entry(session, participation, task)
-    old_score = cache_entry.score
-
-    # Incremental update based on score mode
-    _update_cache_entry_incremental(
-        cache_entry, task, submission, submission_result
+    _update_score_cache_for_participation(
+        session, participation, submission, submission_result
     )
 
-    # Mark history as invalid if submission arrived out of order
-    if (cache_entry.last_submission_timestamp is not None and
-            submission.timestamp < cache_entry.last_submission_timestamp):
-        cache_entry.history_valid = False
+    training_day = submission.training_day
+    if training_day is None or training_day.contest_id is None:
+        return
 
-    # Update has_submissions flag (partial is computed at render time)
-    cache_entry.has_submissions = True
-
-    cache_entry.last_update = _utc_now()
-
-    # Only add history entry if score changed and history is still valid
-    if cache_entry.score != old_score and cache_entry.history_valid:
-        _add_history_entry(
-            session, participation, task, submission,
-            cache_entry.score
+    # If this is a training day submission, also update the training day
+    # participation cache (submissions are stored on the managing contest).
+    td_participation = (
+        session.query(Participation)
+        .filter(
+            Participation.contest_id == training_day.contest_id,
+            Participation.user_id == participation.user_id,
+        )
+        .one_or_none()
+    )
+    if td_participation is not None:
+        _update_score_cache_for_participation(
+            session, td_participation, submission, submission_result
         )
 
 
@@ -690,13 +724,7 @@ def _update_cache_entry_incremental(
         cache_entry.last_submission_score = score
         cache_entry.last_submission_timestamp = submission.timestamp
 
-    # Update score based on score mode
-    if task.score_mode == SCORE_MODE_MAX:
-        # Simple max - just compare with current score
-        new_score = max(cache_entry.score or 0.0, score)
-        cache_entry.score = round(new_score, task.score_precision)
-
-    elif task.score_mode == SCORE_MODE_MAX_SUBTASK:
+    if task.score_mode == SCORE_MODE_MAX_SUBTASK:
         # Update per-subtask max scores
         # Normalize keys to strings since JSONB stores keys as strings
         subtask_max_scores = {
@@ -712,19 +740,18 @@ def _update_cache_entry_incremental(
 
         cache_entry.subtask_max_scores = subtask_max_scores if subtask_max_scores else None
         new_score = sum(subtask_max_scores.values()) if subtask_max_scores else 0.0
-        cache_entry.score = round(new_score, task.score_precision)
 
     elif task.score_mode == SCORE_MODE_MAX_TOKENED_LAST:
         # Score is max of last submission score and max tokened score
         last_score = cache_entry.last_submission_score or 0.0
         tokened_score = cache_entry.max_tokened_score or 0.0
         new_score = max(last_score, tokened_score)
-        cache_entry.score = round(new_score, task.score_precision)
 
     else:
         # Default to max mode
         new_score = max(cache_entry.score or 0.0, score)
-        cache_entry.score = round(new_score, task.score_precision)
+
+    cache_entry.score = round(new_score, task.score_precision)
 
 
 def _get_sorted_official_submissions(
@@ -732,7 +759,41 @@ def _get_sorted_official_submissions(
     participation: Participation,
     task: Task,
 ) -> list[Submission]:
-    """Get official submissions for a task, sorted by timestamp."""
+    """Get official submissions for a task, sorted by timestamp.
+
+    For training day participations, submissions are stored with the managing
+    contest's participation, so we need to query from there and filter by
+    training_day_id.
+
+    Raises:
+        ValueError: When managing participation is None for training days
+    """
+    from cms.db.training_day import get_managing_participation
+
+    training_day = participation.contest.training_day
+    if training_day is not None:
+        # This is a training day participation - submissions are stored with
+        # the managing contest's participation
+        managing_participation = get_managing_participation(
+            session, training_day, participation.user
+        )
+
+        if managing_participation is None:
+            # User doesn't have a participation in the managing contest
+            # This indicates a configuration or data integrity issue
+            raise ValueError(
+                f"User {participation.user_id} does not have participation in managing contest "
+                f"{training_day.training_program.managing_contest_id} for training day {training_day.id}"
+            )
+
+        return session.query(Submission).filter(
+            Submission.participation_id == managing_participation.id,
+            Submission.task_id == task.id,
+            Submission.training_day_id == training_day.id,
+            Submission.official.is_(True)
+        ).order_by(Submission.timestamp.asc()).all()
+
+    # Regular contest - query submissions directly
     return session.query(Submission).filter(
         Submission.participation_id == participation.id,
         Submission.task_id == task.id,

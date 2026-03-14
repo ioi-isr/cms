@@ -413,4 +413,366 @@ ALTER TABLE public.statements ADD COLUMN source_extension character varying;
 ALTER TABLE public.users ADD COLUMN date_of_birth date;
 ALTER TABLE public.users ADD COLUMN picture public.digest;
 
+-- Training programs table for organizing year-long training with multiple sessions
+CREATE TABLE public.training_programs (
+    id integer NOT NULL,
+    name public.codename NOT NULL,
+    description character varying NOT NULL,
+    managing_contest_id integer NOT NULL
+);
+
+CREATE SEQUENCE public.training_programs_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_programs_id_seq OWNED BY public.training_programs.id;
+
+ALTER TABLE ONLY public.training_programs
+    ALTER COLUMN id SET DEFAULT nextval('public.training_programs_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_name_key UNIQUE (name);
+
+ALTER TABLE ONLY public.training_programs
+    ADD CONSTRAINT training_programs_managing_contest_id_fkey FOREIGN KEY (managing_contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX ix_training_programs_managing_contest_id ON public.training_programs USING btree (managing_contest_id);
+
+-- Students table for training program participation with tags
+CREATE TABLE public.students (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    participation_id integer NOT NULL,
+    student_tags character varying[] NOT NULL DEFAULT '{}'
+);
+
+CREATE SEQUENCE public.students_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.students_id_seq OWNED BY public.students.id;
+
+ALTER TABLE ONLY public.students
+    ALTER COLUMN id SET DEFAULT nextval('public.students_id_seq'::regclass);
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_participation_id_fkey FOREIGN KEY (participation_id) REFERENCES public.participations(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_students_training_program_id ON public.students USING btree (training_program_id);
+
+CREATE UNIQUE INDEX ix_students_participation_id ON public.students USING btree (participation_id);
+
+ALTER TABLE ONLY public.students
+    ALTER COLUMN student_tags DROP DEFAULT;
+
+-- Training days table for organizing training days within a training program
+CREATE TABLE public.training_days (
+    id integer NOT NULL,
+    training_program_id integer NOT NULL,
+    contest_id integer NOT NULL,
+    "position" integer
+);
+
+CREATE SEQUENCE public.training_days_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_days_id_seq OWNED BY public.training_days.id;
+
+ALTER TABLE ONLY public.training_days
+    ALTER COLUMN id SET DEFAULT nextval('public.training_days_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_fkey FOREIGN KEY (training_program_id) REFERENCES public.training_programs(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_days_training_program_id ON public.training_days USING btree (training_program_id);
+
+CREATE UNIQUE INDEX ix_training_days_contest_id ON public.training_days USING btree (contest_id);
+
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_training_program_id_position_key UNIQUE (training_program_id, "position");
+
+-- Add training_day_id and training_day_num to tasks table for training day-specific tasks
+-- Tasks keep their contest_id (managing contest) and can also be assigned to a training day
+ALTER TABLE public.tasks ADD COLUMN training_day_id integer;
+ALTER TABLE public.tasks ADD COLUMN training_day_num integer;
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_tasks_training_day_id ON public.tasks USING btree (training_day_id);
+
+-- Ensure a task's position is unique within a training day
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT tasks_training_day_id_training_day_num_key UNIQUE (training_day_id, training_day_num);
+
+-- https://github.com/ioi-isr/cms/pull/83 - Add allow_delay_requests to contests
+ALTER TABLE public.contests ADD COLUMN allow_delay_requests boolean NOT NULL DEFAULT true;
+ALTER TABLE public.contests ALTER COLUMN allow_delay_requests DROP DEFAULT;
+
+-- Set allow_delay_requests=false for existing training program managing contests
+UPDATE public.contests SET allow_delay_requests = false WHERE id IN (
+    SELECT managing_contest_id FROM public.training_programs
+);
+
+-- Add visible_to_tags column to tasks for controlling task visibility based on student tags
+-- If empty, the task is visible to all students. If set, only students with at least one matching tag can see the task.
+ALTER TABLE public.tasks ADD COLUMN visible_to_tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.tasks ALTER COLUMN visible_to_tags DROP DEFAULT;
+
+-- Training day groups table for per-group configuration of training days
+-- Each group (identified by a student tag) can have its own start/end times and task display order
+CREATE TABLE public.training_day_groups (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    tag_name character varying NOT NULL,
+    start_time timestamp without time zone,
+    end_time timestamp without time zone,
+    alphabetical_task_order boolean NOT NULL DEFAULT false
+);
+
+CREATE SEQUENCE public.training_day_groups_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.training_day_groups_id_seq OWNED BY public.training_day_groups.id;
+
+ALTER TABLE ONLY public.training_day_groups
+    ALTER COLUMN id SET DEFAULT nextval('public.training_day_groups_id_seq'::regclass);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_training_day_groups_training_day_id ON public.training_day_groups USING btree (training_day_id);
+
+ALTER TABLE ONLY public.training_day_groups
+    ADD CONSTRAINT training_day_groups_training_day_id_tag_name_key UNIQUE (training_day_id, tag_name);
+
+ALTER TABLE ONLY public.training_day_groups
+    ALTER COLUMN alphabetical_task_order DROP DEFAULT;
+
+-- Add GIN index on student_tags for efficient querying
+CREATE INDEX ix_students_student_tags_gin ON public.students USING gin (student_tags);
+
+-- Add training_day_id to submissions table to track which training day a submission was made via
+-- If NULL, the submission was made directly to the task archive or via a regular contest
+-- When set, the submission was made via a training day's contest interface
+ALTER TABLE public.submissions ADD COLUMN training_day_id integer;
+
+ALTER TABLE ONLY public.submissions
+    ADD CONSTRAINT submissions_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_submissions_training_day_id ON public.submissions USING btree (training_day_id);
+
+-- Student tasks table for tracking which tasks each student has access to in the task archive
+-- Tasks can be assigned automatically when a student starts a training day, or manually by an admin
+CREATE TABLE public.student_tasks (
+    id integer NOT NULL,
+    student_id integer NOT NULL,
+    task_id integer NOT NULL,
+    source_training_day_id integer,
+    assigned_at timestamp without time zone NOT NULL
+);
+
+CREATE SEQUENCE public.student_tasks_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.student_tasks_id_seq OWNED BY public.student_tasks.id;
+
+ALTER TABLE ONLY public.student_tasks
+    ALTER COLUMN id SET DEFAULT nextval('public.student_tasks_id_seq'::regclass);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_student_id_task_id_key UNIQUE (student_id, task_id);
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.student_tasks
+    ADD CONSTRAINT student_tasks_source_training_day_id_fkey FOREIGN KEY (source_training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+CREATE INDEX ix_student_tasks_student_id ON public.student_tasks USING btree (student_id);
+
+CREATE INDEX ix_student_tasks_task_id ON public.student_tasks USING btree (task_id);
+
+CREATE INDEX ix_student_tasks_source_training_day_id ON public.student_tasks USING btree (source_training_day_id);
+
+-- Archive training day feature: add name and description fields to training_days
+-- These are synced with contest while contest exists, preserved after archiving
+ALTER TABLE public.training_days ADD COLUMN name public.codename;
+ALTER TABLE public.training_days ADD COLUMN description character varying;
+
+-- Make contest_id nullable (will be NULL after archiving)
+ALTER TABLE public.training_days ALTER COLUMN contest_id DROP NOT NULL;
+
+-- Change ON DELETE behavior from CASCADE to SET NULL for contest_id
+ALTER TABLE ONLY public.training_days DROP CONSTRAINT training_days_contest_id_fkey;
+ALTER TABLE ONLY public.training_days
+    ADD CONSTRAINT training_days_contest_id_fkey FOREIGN KEY (contest_id) REFERENCES public.contests(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+-- Archived attendance table for storing attendance data after archiving
+CREATE TABLE public.archived_attendances (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    student_id integer NOT NULL,
+    status character varying NOT NULL,
+    location character varying,
+    delay_time interval,
+    delay_reasons character varying,
+    justified boolean NOT NULL DEFAULT false,
+    comment character varying,
+    recorded boolean NOT NULL DEFAULT false
+);
+
+CREATE SEQUENCE public.archived_attendances_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.archived_attendances_id_seq OWNED BY public.archived_attendances.id;
+
+ALTER TABLE ONLY public.archived_attendances
+    ALTER COLUMN id SET DEFAULT nextval('public.archived_attendances_id_seq'::regclass);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_training_day_id_student_id_key UNIQUE (training_day_id, student_id);
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.archived_attendances
+    ADD CONSTRAINT archived_attendances_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_archived_attendances_training_day_id ON public.archived_attendances USING btree (training_day_id);
+
+CREATE INDEX ix_archived_attendances_student_id ON public.archived_attendances USING btree (student_id);
+
+-- Archived student ranking table for storing ranking data after archiving
+CREATE TABLE public.archived_student_rankings (
+    id integer NOT NULL,
+    training_day_id integer NOT NULL,
+    student_id integer NOT NULL,
+    student_tags character varying[] NOT NULL,
+    task_scores jsonb,
+    submissions jsonb,
+    history jsonb
+);
+
+CREATE SEQUENCE public.archived_student_rankings_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.archived_student_rankings_id_seq OWNED BY public.archived_student_rankings.id;
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ALTER COLUMN id SET DEFAULT nextval('public.archived_student_rankings_id_seq'::regclass);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_training_day_id_student_id_key UNIQUE (training_day_id, student_id);
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_training_day_id_fkey FOREIGN KEY (training_day_id) REFERENCES public.training_days(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.archived_student_rankings
+    ADD CONSTRAINT archived_student_rankings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE INDEX ix_archived_student_rankings_training_day_id ON public.archived_student_rankings USING btree (training_day_id);
+
+CREATE INDEX ix_archived_student_rankings_student_id ON public.archived_student_rankings USING btree (student_id);
+
+CREATE INDEX ix_archived_student_rankings_student_tags_gin ON public.archived_student_rankings USING gin (student_tags);
+
+-- Add start_time column to training_days for storing the contest start time after archiving
+ALTER TABLE public.training_days ADD COLUMN start_time timestamp without time zone;
+
+-- Add archived_tasks_data column to training_days for storing task metadata after archiving
+ALTER TABLE public.training_days ADD COLUMN archived_tasks_data jsonb;
+
+-- Add duration column to training_days for storing the training day duration after archiving
+-- Calculated as max of main groups duration (if any) or training day duration
+ALTER TABLE public.training_days ADD COLUMN duration interval;
+
+-- Add visible_to_tags column to announcements for controlling announcement visibility based on student tags
+-- If empty, the announcement is visible to all students. If set, only students with at least one matching tag can see the announcement.
+ALTER TABLE public.announcements ADD COLUMN visible_to_tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.announcements ALTER COLUMN visible_to_tags DROP DEFAULT;
+
+-- Add GIN index on visible_to_tags for efficient querying
+CREATE INDEX ix_announcements_visible_to_tags_gin ON public.announcements USING gin (visible_to_tags);
+
+-- Add training_day_types column to training_days for categorization (e.g., "online", "competition")
+-- Used for filtering in attendance and combined ranking views
+ALTER TABLE public.training_days ADD COLUMN training_day_types character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.training_days ALTER COLUMN training_day_types DROP DEFAULT;
+
+-- Add GIN index on training_day_types for efficient querying
+CREATE INDEX ix_training_days_training_day_types_gin ON public.training_days USING gin (training_day_types);
+
+-- Add scoreboard_sharing column to training_days for configuring scoreboard sharing with students
+-- Format: {"tag": {"top_names": X, "top_to_show": Y}, "__everyone__": {"top_names": X, "top_to_show": Y}, ...}
+-- - Keys are student tags that the scoreboard is shared with
+-- - "__everyone__" is a special key that applies to all students regardless of their tags
+-- - top_names: number of top students to show full names (others show rank only)
+-- - top_to_show: number of top students to show in the scoreboard results
+-- Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
+ALTER TABLE public.training_days ADD COLUMN scoreboard_sharing jsonb;
+
 COMMIT;

@@ -1,0 +1,2898 @@
+/**
+ * Training Program Styles (aws_tp_styles.css)
+ *
+ * This file contains styles specific to training program pages in the admin interface.
+ * It uses CSS custom properties (variables) for colors to enable easy theming.
+ */
+
+/* ==========================================================================
+   Color Variables for Theming
+   ========================================================================== */
+
+:root,
+[data-theme="original"] {
+    color-scheme: light;
+    /* Primary colors (Bulma theme) */
+    --tp-primary: var(--bulma-primary);
+    --tp-primary-hover: var(--bulma-primary-dark);
+    --tp-primary-gradient: linear-gradient(135deg, var(--bulma-primary) 0%, var(--bulma-primary-70) 100%);
+
+    /* Status colors */
+    --tp-success: var(--bulma-success);
+    --tp-success-light: var(--bulma-success-90);
+    --tp-success-dark: var(--bulma-success-20);
+
+    --tp-warning: var(--bulma-warning);
+    --tp-warning-light: var(--bulma-warning-90);
+    --tp-warning-dark: var(--bulma-warning-20);
+
+    --tp-danger: var(--bulma-danger);
+    --tp-danger-light: var(--bulma-danger-95);
+    --tp-danger-dark: var(--bulma-danger-20);
+    --tp-danger-border: var(--bulma-danger-80);
+
+    /* Info colors (blue) */
+    --tp-info: var(--bulma-info);
+    --tp-info-hover: var(--bulma-info-45);
+    --tp-info-light: var(--bulma-info-95);
+    --tp-info-border: var(--bulma-info-80);
+    --tp-info-dark: var(--bulma-info-25);
+
+    /* Neutral colors */
+    --tp-text-primary: var(--bulma-text-strong);
+    --tp-text-secondary: var(--bulma-text);
+    --tp-text-muted: var(--bulma-text-75, var(--bulma-text-weak));
+    --tp-text-light: var(--bulma-text-65, var(--bulma-text-weak));
+    --tp-text-lighter: var(--bulma-text-55, var(--bulma-text-weak));
+
+    /* Background colors */
+    --tp-bg-white: var(--bulma-scheme-main);
+    --tp-bg-light: var(--bulma-scheme-main-bis);
+    --tp-bg-gray: var(--bulma-scheme-main-ter);
+    --tp-bg-hover: var(--bulma-scheme-main-bis);
+    --tp-bg-secondary: var(--bulma-scheme-main-bis);
+
+    /* Border colors */
+    --tp-border: var(--bulma-border-weak);
+    --tp-border-light: var(--bulma-border-weak);
+    --tp-border-dark: var(--bulma-border);
+
+    /* Shadow */
+    --tp-shadow-sm: 0 1px 2px color-mix(in srgb, var(--bulma-text) 5%, transparent);
+    --tp-shadow-md: 0 4px 6px -1px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-lg: 0 10px 25px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    --tp-shadow-xl: 0 20px 60px color-mix(in srgb, var(--bulma-text) 30%, transparent);
+}
+
+/* ==========================================================================
+   Hidden File Input (for file upload buttons)
+   ========================================================================== */
+
+.file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+}
+
+/* ==========================================================================
+   Native Dialog Element Styles
+   ========================================================================== */
+
+.tp-dialog {
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: var(--tp-shadow-lg);
+    max-width: 400px;
+    width: 90%;
+    overflow: visible;
+}
+
+.tp-dialog::backdrop {
+    background: color-mix(in srgb, var(--bulma-text) 50%, transparent);
+}
+
+.tp-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-dialog-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+}
+
+.tp-dialog-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--tp-text-secondary);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.tp-dialog-close:hover {
+    color: var(--tp-text-primary);
+}
+
+.tp-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--tp-border);
+    background: var(--tp-bg-light);
+    border-radius: 0 0 12px 12px;
+}
+
+/* ==========================================================================
+   Progress Link and Modern Progress Bar
+   ========================================================================== */
+
+.progress-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.progress-link.no-tasks {
+    color: var(--tp-text-light);
+    font-size: 0.85rem;
+}
+
+.progress-percentage {
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 45px;
+    /* Color based on percentage using CSS custom property */
+    color: hsl(calc(var(--pct, 0) * 1.2), 70%, 35%);
+}
+
+.progress-score {
+    font-size: 0.8rem;
+    color: var(--tp-text-lighter);
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Student Table Styles
+   ========================================================================== */
+
+.student-name-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+}
+
+.student-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--tp-border);
+}
+
+.student-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--tp-primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.student-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.student-name-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tp-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+    max-width: 150px;
+    display: block;
+}
+
+.student-name-link:hover {
+    color: var(--tp-primary);
+}
+
+.student-username {
+    font-size: 0.8em;
+    color: var(--tp-text-muted);
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Icon-only Button (for actions like delete)
+   ========================================================================== */
+
+.btn-icon-only {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--tp-text-light) !important;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.btn-icon-only:hover {
+    color: var(--tp-danger)  !important;
+    background: var(--tp-danger-light) !important;
+}
+
+.btn-icon-warn:hover {
+    color: var(--tp-warning) !important;
+    background: var(--tp-warning-light) !important;
+}
+
+.btn-icon-success:hover {
+    color: var(--tp-success) !important;
+    background: var(--tp-success-light) !important;
+}
+
+/* Validator action links hover effects */
+.validator-column a:hover {
+    color: var(--tp-danger) !important;
+    background: var(--tp-danger-light) !important;
+    border-radius: 50%;
+}
+
+/* Disabled state for both buttons and anchors */
+.btn-icon-only:disabled,
+.btn-icon-only[aria-disabled="true"],
+.btn-icon-only.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   List Cell Wrapper (for table cells)
+   ========================================================================== */
+
+.list-cell-wrapper {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+}
+
+.list-cell-wrapper.center-content {
+    justify-content: center;
+}
+
+/* ==========================================================================
+   Form Groups (for modals and forms)
+   ========================================================================== */
+
+.tp-form-group {
+    margin-bottom: 16px;
+}
+
+.tp-form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-bottom: 6px;
+}
+
+.tp-form-group input[type="text"],
+.tp-form-group select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Ensure Tagify dropdown appears above the modal */
+.tagify__dropdown {
+    z-index: 10001 !important;
+}
+
+/* ==========================================================================
+   Table Styles
+   ========================================================================== */
+
+/* Common Table Styles */
+.attendance-table,
+.ranking-table {
+    width: auto;
+    border-collapse: separate; /* Required for sticky headers */
+    border-spacing: 0;
+    background-color: var(--tp-bg-white);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+/* Force border-box for consistency */
+.ranking-table *, .attendance-table * {
+    box-sizing: border-box;
+}
+
+.attendance-table th,
+.attendance-table td,
+.ranking-table th,
+.ranking-table td {
+    padding: 0; /* Reset padding, inner divs handle it */
+    border-bottom: 1px solid var(--tp-border);
+    border-right: 1px solid var(--tp-border);
+    background-clip: padding-box;
+    vertical-align: middle;
+    height: 1px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    vertical-align: top;
+}
+
+/* --- Sticky Headers & Columns --- */
+
+/* 1. Header Rows */
+.attendance-table thead th,
+.ranking-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: var(--tp-bg-light);
+    z-index: 10;
+    color: var(--tp-text-secondary);
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 1px 0 var(--tp-border); /* Visual bottom border */
+    padding: 10px 12px; /* Headers get direct padding */
+}
+
+.ranking-table thead th.student-header {
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* 2. First Column (Students) - Sticky on desktop only */
+.attendance-table tbody th,
+.ranking-table tbody th {
+    position: sticky;
+    left: 0;
+    background-color: var(--tp-bg-white);
+    z-index: 8;
+    text-align: left;
+    min-width: 250px;
+    max-width: 300px;
+    box-shadow: 4px 0 8px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    clip-path: inset(0px -10px 0px 0px);
+    border-right: 1px solid var(--tp-border);
+    border-bottom: 1px solid var(--tp-bg-gray);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--tp-text-primary);
+    padding: 0;
+}
+
+/* 3. Top-Left Corner */
+.attendance-table thead tr:first-child th:first-child,
+.ranking-table thead tr:first-child th:first-child {
+    left: 0;
+    z-index: 20;
+    background-color: var(--tp-bg-light);
+    box-shadow: 1px 1px 0 var(--tp-border);
+}
+
+/* --- Attendance Table Specifics --- */
+.date-header-main {
+    font-size: 0.95rem;
+    color: var(--tp-text-primary);
+}
+
+.date-header-sub {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+/* Wrapper for cell content */
+.cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+    padding: 10px 12px;
+}
+
+.reason-text {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    background: var(--tp-bg-hover);
+    border-left: 2px solid var(--tp-border);
+    padding: 2px 6px;
+    margin-top: 2px;
+    white-space: normal;
+    max-width: 200px;
+}
+
+.attendance-table .empty-cell {
+    color: var(--tp-border);
+    font-size: 1.5rem;
+    line-height: 0.5;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Content wrapper for Ranking cells */
+.cell-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-radius: 6px;
+    margin: 4px;
+    height: calc(100% - 8px);
+    width: calc(100% - 8px);
+    color: var(--tp-text-primary);
+}
+
+/* Score cell coloring using CSS custom properties with transparency for dark mode
+   Uses --score (0-100) to calculate hue: 0 (Red) -> 60 (Yellow) -> 120 (Green)
+   The hue is clamped between 0 and 120 using min/max */
+.cell-content.score-cell {
+    --safe-score: clamp(0, var(--score, 0), 100);
+    --hue: calc(var(--safe-score) * 1.2);
+
+    background-color: hsl(var(--hue), 70%, var(--bulma-background-l));
+    color: hsl(var(--hue), 70%, var(--bulma-text-strong-l));
+}
+
+/* Modern progress bar using CSS custom properties
+   Uses --pct (0-100) to set width and color automatically */
+.progress-bar-modern {
+    height: 6px;
+    background: var(--tp-border);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    width: 120px;
+}
+
+.progress-bar-modern::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc(var(--pct, 0) * 1%);
+    /* HSL color transitions from red (0) to green (120) based on percentage */
+    background: hsl(calc(var(--pct, 0) * 1.2), 70%, 45%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Hover effects */
+.ranking-table tbody tr:hover td {
+    background-color: var(--tp-bg-hover);
+}
+
+.ranking-table tbody tr:hover th {
+    background-color: var(--tp-bg-hover);
+}
+
+.ranking-table tbody tr:nth-child(even) {
+    background-color: var(--tp-bg-light); /* Very light gray */
+}
+
+.ranking-table thead th {
+    position: sticky;
+}
+
+.ranking-table thead tr:first-child th {
+    height: auto;
+    padding: 12px 8px;
+    background-color: var(--tp-bg-white);
+    border-bottom: 2px solid var(--tp-border);
+}
+
+.ranking-table thead tr:nth-child(2) th {
+    top: var(--ranking-header-top);
+    z-index: 15;
+    box-shadow: 0 2px 4px -2px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    background-color: var(--tp-bg-white);
+}
+
+.ranking-table thead tr:first-child th[rowspan="2"] {
+    top: 0;
+    height: auto;
+    z-index: 30;
+    background-color: var(--tp-bg-light);
+    vertical-align: middle;
+}
+
+.ranking-table thead tr:first-child th.student-header {
+    left: 0;
+    z-index: 40;
+    border-right: 2px solid var(--tp-border);
+    width: 250px;
+}
+
+.ranking-table thead th.global-total-header {
+    z-index: 25;
+}
+
+/* ==========================================================================
+   Training Program Layout & Components
+   ========================================================================== */
+
+/* Page Constraint */
+.content-constraint {
+    max-width: 1200px;
+    margin: 0 0 0 20px;
+    padding-bottom: 40px;
+}
+
+/* Filter Bar */
+.tp-filter-card {
+    background-color: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tp-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-filter-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+}
+
+.tp-filter-input {
+    padding: 6px 10px;
+    border: 1px solid var(--tp-border-dark);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--tp-text-primary);
+    background: var(--bulma-scheme-main);
+    color-scheme: var(--bulma-scheme);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tp-filter-input:focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+    outline: none;
+}
+
+/* Override Bulma default button styles to match tp-btn-primary */
+.button {
+    padding: 6px 16px !important;
+    font-size: 0.9rem !important;
+}
+
+/* Override Bulma button sizes */
+.button.is-small {
+    padding: 4px 12px !important;
+    font-size: 0.85rem !important;
+}
+
+.button.is-medium {
+    padding: 8px 20px !important;
+    font-size: 1rem !important;
+}
+
+.button.is-large {
+    padding: 12px 24px !important;
+    font-size: 1.1rem !important;
+}
+
+
+/* ==========================================================================
+   Training Day & Ranking Table Styles
+   ========================================================================== */
+
+/* Training Day Headers */
+.training-day-header {
+    background-color: var(--tp-bg-light) !important;
+    text-align: center;
+    border-bottom: none !important;
+    pointer-events: none;
+}
+
+.global-total-header {
+    background-color: var(--tp-bg-light) !important;
+    color: var(--tp-text-primary);
+    font-weight: 800;
+    border-left: none !important;
+    border-right: 1px solid var(--tp-border-light) !important;
+}
+
+.ranking-table td.global-cell {
+    background-color: var(--tp-bg-gray) !important;
+    font-weight: 700;
+    border-left: none !important;
+    border-right: 1px solid var(--tp-border-light) !important;
+}
+
+.global-total-header::after,
+.ranking-table td.global-cell::after {
+    content: none !important;
+    display: none !important;
+}
+
+.training-day-header-main {
+    font-size: 0.95rem;
+    color: var(--tp-text-primary);
+    font-weight: 700;
+}
+
+.training-day-header-sub {
+    font-size: 0.75rem;
+    color: var(--tp-text-muted);
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+.task-header {
+    background-color: var(--tp-bg-white) !important;
+    font-size: 0.8rem;
+    color: var(--tp-text-secondary);
+    vertical-align: bottom;
+    border-left: 1px solid var(--tp-border-light) !important;
+    border-top: 3px solid var(--tp-border-light);
+}
+
+/* Total Column specific styling */
+.total-col {
+    border-left: 2px solid var(--tp-border-light) !important;
+    background-color: var(--tp-bg-light);
+}
+
+.ranking-table thead th.total-col {
+    background-color: var(--tp-bg-light) !important;
+    color: var(--tp-text-primary);
+    font-weight: 800;
+}
+
+.ranking-table tbody td.total-col {
+    background-color: var(--tp-bg-light) !important;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col,
+.ranking-table td.total-col {
+    border-right: none !important;
+}
+
+.ranking-table th.training-day-header,
+.ranking-table th.total-col {
+    position: sticky;
+    z-index: 11;
+}
+
+.ranking-table td.total-col {
+    position: relative;
+    z-index: 5;
+}
+
+.ranking-table th.training-day-header::after,
+.ranking-table th.total-col::after,
+.ranking-table td.total-col::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 4px;
+    background-color: var(--tp-border-dark);
+    z-index: 10;
+}
+
+.inaccessible-cell {
+    background-color: var(--tp-bg-gray);
+    background-image: radial-gradient(var(--tp-border) 1px, transparent 1px);
+    background-size: 10px 10px;
+    color: var(--tp-text-light);
+}
+
+/* Attendance badges for combined ranking */
+.attendance-badge {
+    margin-left: 4px;
+    font-size: 0.75em;
+    vertical-align: middle;
+}
+
+.home-badge {
+    opacity: 0.7;
+}
+
+.recorded-badge {
+    opacity: 0.8;
+    font-size: 1.1em !important;
+}
+
+.attendance-cell {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.attendance-cell:hover {
+    background-color: var(--tp-border) !important;
+    box-shadow: 0 0 0 2px var(--tp-info);
+}
+
+.attendance-table tbody tr:hover {
+    background-color: var(--tp-bg-gray);
+    cursor: pointer;
+}
+
+.attendance-table tbody tr:hover th {
+    background-color: var(--tp-border);
+    font-weight: 600;
+}
+
+.attendance-badges {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.recorded-badge, .comment-indicator, .justified-badge {
+    font-size: 0.85em;
+    cursor: help;
+}
+
+.comment-text {
+    font-size: 0.75rem;
+    color: var(--bulma-grey);
+    margin-top: 4px;
+    line-height: 1.3;
+    overflow-wrap: break-word;
+    cursor: help;
+}
+
+/* ==========================================================================
+   Navigation & Header Components
+   ========================================================================== */
+
+.nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--tp-text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-back-link:hover {
+    color: var(--tp-primary);
+}
+
+/* ==========================================================================
+   Progress Card Styles
+   ========================================================================== */
+
+.progress-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--tp-shadow-sm);
+}
+
+.progress-card-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-lighter);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.progress-item {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.progress-item:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   Histogram Content Styles
+   ========================================================================== */
+
+.histogram-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.histogram-filter-row label {
+    font-weight: 500;
+    color: var(--tp-text-secondary);
+    white-space: nowrap;
+}
+
+.histogram-chart-container {
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.histogram-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 200px;
+    gap: 4px;
+}
+
+.histogram-bar-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.histogram-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.histogram-bar {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+}
+
+.histogram-label {
+    font-size: 10px;
+    color: var(--tp-text-lighter);
+    margin-top: 4px;
+    text-align: center;
+}
+
+.histogram-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin-top: 2px;
+}
+
+.histogram-stats {
+    border: 1px solid var(--tp-info-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: var(--tp-info-dark);
+}
+
+.histogram-text-section {
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.histogram-text-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.histogram-text-header span {
+    font-weight: 500;
+    color: var(--tp-text-secondary);
+}
+
+.copy-btn {
+    background: var(--tp-info);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.copy-btn:hover {
+    background: var(--tp-info-hover);
+}
+
+#histogramTextData {
+    width: 100%;
+    border: none;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    resize: vertical;
+    background: var(--tp-bg-white);
+}
+
+
+/* ==========================================================================
+   Combined Ranking Page Specific Styles
+   ========================================================================== */
+
+.combined-ranking-student-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+}
+
+.combined-ranking-student-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.combined-ranking-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.combined-ranking-name-link {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 180px;
+}
+
+.history-link {
+    margin-left: auto;
+    text-decoration: none;
+}
+
+.inaccessible-cell span {
+    opacity: 0.5;
+}
+
+.empty-state-box {
+    text-align: center;
+    padding: 40px;
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    border: 1px dashed var(--tp-border-dark);
+    margin-top: 20px;
+}
+
+.empty-state-box h3 {
+    color: var(--tp-text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.empty-state-box p {
+    color: var(--tp-text-lighter);
+}
+
+/* ==========================================================================
+   Tasks Page Styles
+   ========================================================================== */
+
+/* Section header */
+.tp-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.tp-section-header h2 {
+    font-size: 1.25rem;
+    color: var(--tp-text-primary);
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Tasks table specific styles */
+.tp-tasks-table {
+    width: 100%;
+}
+
+.tp-tasks-table thead th {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bulma-text-55);
+    padding: 14px 16px !important;
+}
+
+/* Task page specific compact styling for test cases table */
+.testcases-table .list-cell-wrapper {
+    padding: 6px 8px;
+}
+
+.testcases-table .tp-tasks-table thead th {
+    padding: 6px 8px !important;
+}
+
+.testcases-table .tp-tasks-table td {
+    vertical-align: middle;
+}
+
+/* Statements table vertical alignment */
+.statements-table .tp-tasks-table td {
+    vertical-align: middle;
+}
+
+/* Tagify inputs inside tables */
+.tp-tasks-table .tagify {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--tp-border-dark);
+    border-radius: 6px;
+    padding: 4px 6px;
+    min-height: 34px;
+    background: var(--tp-bg-white);
+    box-shadow: none;
+}
+
+.tp-tasks-table .tagify--focus {
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 8%, transparent);
+}
+
+.tp-tasks-table .tagify__input {
+    margin: 0;
+    min-width: 0;
+}
+
+.tp-tasks-table .tagify__tag {
+    margin: 2px 4px 2px 0;
+}
+
+/* Subtask score validation table: sticky first column within horizontal scroll */
+.subtask-score-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.subtask-score-table thead th:first-child,
+.subtask-score-table tbody td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2;
+    background: var(--tp-bg-white);
+    border-right: 1px solid var(--tp-border);
+}
+
+.subtask-score-table thead th:first-child {
+    z-index: 3;
+    background: var(--tp-bg-secondary);
+}
+
+/* Grip handle for drag and drop */
+.grip-column {
+    width: 40px;
+    text-align: center;
+}
+
+.grip-cell {
+    width: 40px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.grip-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: grab;
+    color: var(--tp-text-light);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.grip-handle:hover {
+    color: var(--tp-text-secondary);
+    background: var(--tp-bg-gray);
+}
+
+.grip-handle:active {
+    cursor: grabbing;
+}
+
+/* Drag and drop states */
+.tp-tasks-table tbody tr[draggable="true"] {
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.tp-tasks-table tbody tr.dragging {
+    opacity: 0.5;
+    background: var(--tp-bg-gray);
+}
+
+.drag-placeholder {
+    background: var(--tp-info-light);
+    border: 2px dashed var(--tp-info);
+}
+
+.drag-placeholder td {
+    height: 50px;
+}
+
+/* Detach button hover state */
+.btn-detach:hover {
+    color: var(--tp-info-hover) !important;
+    background: var(--tp-info-light) !important;
+}
+
+/* Archive button hover state */
+.btn-archive:hover {
+    color: var(--tp-warning) !important;
+    background: var(--tp-warning-light) !important;
+}
+
+/* ==========================================================================
+   Info Alert (Bulma .message overrides for icon/badge positioning)
+   ========================================================================== */
+
+.info-alert-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.info-alert-content {
+    flex: 1;
+}
+
+.info-alert-content strong {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.info-alert-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.info-alert-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: color-mix(in srgb, var(--bulma-white) 60%, transparent);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none !important;
+    transition: all 0.2s;
+}
+
+.info-alert-badge:hover {
+    background: color-mix(in srgb, var(--bulma-white) 90%, transparent);
+}
+
+.info-alert-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.message.is-warning .info-alert-count {
+    background: hsl(var(--bulma-warning-h), var(--bulma-warning-s), var(--bulma-warning-l));
+    color: white;
+}
+
+.message.is-info .info-alert-count {
+    background: hsl(var(--bulma-info-h), var(--bulma-info-s), var(--bulma-info-l));
+    color: white;
+}
+
+/* ==========================================================================
+   Training Programs Page - Card Layout
+   ========================================================================== */
+
+.tp-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: var(--tp-shadow-sm);
+}
+
+.tp-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tp-stat-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.tp-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+    line-height: 1;
+}
+
+/* Program Card */
+.tp-program-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--tp-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.tp-program-card:hover {
+    box-shadow: var(--tp-shadow-md);
+    border-color: var(--tp-border-dark);
+}
+
+/* Card Header */
+.tp-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.tp-card-title-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.tp-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--tp-text-primary);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.tp-card-title:hover {
+    color: var(--tp-primary);
+}
+
+.tp-card-description {
+    font-size: 0.9rem;
+    color: var(--bulma-text-weak);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Card Menu */
+.tp-card-menu {
+    position: relative;
+    margin-left: 8px;
+}
+
+.tp-menu-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--tp-text-light);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.tp-menu-btn:hover {
+    background: var(--tp-bg-gray);
+    color: var(--tp-text-secondary);
+}
+
+.tp-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    box-shadow: var(--tp-shadow-lg);
+    min-width: 180px;
+    z-index: 50;
+    padding: 8px 0;
+}
+
+.tp-menu-dropdown.show {
+    display: block;
+}
+
+.tp-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    color: var(--tp-text-secondary) !important;
+    text-decoration: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    box-sizing: border-box;
+}
+
+.tp-menu-item:hover {
+    background: var(--tp-bg-hover) !important;
+    color: var(--tp-text-primary) !important;
+}
+
+.tp-menu-item svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.tp-menu-item-danger {
+    color: var(--tp-danger) !important;
+}
+
+.tp-menu-item-danger:hover {
+    background: var(--tp-danger-light) !important;
+    color: var(--tp-danger-dark) !important;
+}
+
+.tp-menu-divider {
+    height: 1px;
+    background: var(--tp-border);
+    margin: 8px 0;
+}
+
+/* Card Stats */
+.tp-card-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+}
+
+.tp-card-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--bulma-text-weak);
+    font-size: 0.9rem;
+}
+
+.tp-card-stat svg {
+    color: var(--bulma-text-weak);
+}
+
+/* Card Dates */
+.tp-card-dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--bulma-text-weak);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+/* Active Training Days Section */
+.tp-card-training-days {
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.tp-training-days-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.tp-training-days-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--tp-text-muted);
+    letter-spacing: 0.05em;
+}
+
+.tp-training-days-link {
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.tp-training-days-link:hover {
+    color: var(--tp-primary);
+    text-decoration: underline;
+}
+
+.tp-training-days-count {
+    background: var(--tp-primary);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.tp-training-days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tp-training-day-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--tp-bg-white);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+
+.tp-training-day-item:hover {
+    border-color: var(--tp-border);
+    box-shadow: var(--tp-shadow-sm);
+}
+
+.tp-training-day-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tp-info);
+    flex-shrink: 0;
+}
+
+.tp-training-day-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.tp-training-day-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tp-training-day-tasks-badge {
+    background: var(--tp-danger);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.tp-training-day-arrow {
+    color: var(--tp-text-light);
+    flex-shrink: 0;
+}
+
+.tp-training-day-more {
+    font-size: 0.85rem;
+    color: var(--tp-primary);
+    text-decoration: none;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.tp-training-day-more:hover {
+    text-decoration: underline;
+}
+
+/* Create New Program Card */
+.tp-create-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--tp-bg-white);
+    border: 2px dashed var(--tp-border-dark);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-decoration: none;
+    transition: all 0.2s;
+    min-height: 300px;
+}
+
+.tp-create-card:hover {
+    border-color: var(--tp-primary);
+    background: var(--tp-bg-light);
+}
+
+.tp-create-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--tp-bg-gray);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tp-text-light);
+    margin-bottom: 16px;
+    transition: all 0.2s;
+}
+
+.tp-create-card:hover .tp-create-icon {
+    background: var(--tp-primary);
+    color: white;
+}
+
+/* Training Day Indicators */
+.tp-training-day-indicators {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+}
+
+
+/* Bottom stats row (for archived days counter) */
+.tp-card-stats-bottom {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--tp-border);
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Form Card Styles
+   ========================================================================== */
+
+.tp-form-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.tp-form-input:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+}
+
+.tp-form-input::placeholder {
+    color: var(--tp-text-light);
+}
+
+/* Sticky floating box utility */
+.box.is-float {
+    position: sticky;
+    top: calc(var(--bulma-navbar-height) + 12px);
+    z-index: 40;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+    transition: box-shadow 0.3s ease;
+}
+
+.box.is-float:hover {
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--bulma-text) 15%, transparent);
+}
+
+/* ==========================================================================
+   Training Day Form Styles (add/edit training day)
+   ========================================================================== */
+
+.tp-form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 20px;
+}
+
+.tp-form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    margin: 0 0 8px 0;
+}
+
+.tp-form-section-desc {
+    font-size: 13px;
+    color: var(--tp-text-lighter);
+    margin: 0 0 20px 0;
+}
+
+.tp-groups-table-container {
+    overflow-x: auto;
+    margin-bottom: 15px;
+}
+
+.tp-groups-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tp-groups-table th {
+    text-align: left;
+    padding: 8px 8px;
+    background: var(--tp-bg-light);
+    border-bottom: 2px solid var(--tp-border);
+    font-weight: 600;
+    color: var(--tp-text-secondary);
+    font-size: 13px;
+}
+
+.tp-groups-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--tp-border);
+    vertical-align: middle;
+}
+
+.tp-groups-table tbody tr:hover {
+    background: var(--tp-bg-light);
+}
+
+.tp-groups-table input[type="text"],
+.tp-groups-table input[type="datetime-local"],
+.tp-groups-table input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.tp-groups-table input[type="number"] {
+    width: 50px;
+    padding: 8px 6px;
+}
+
+.tp-groups-table .tp-group-duration {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.tp-groups-table .tp-group-duration span {
+    font-size: 12px;
+    color: var(--tp-text-lighter);
+}
+
+/* ==========================================================================
+   Modern Grid & Card Layout (Redesign)
+   ========================================================================== */
+
+/* Card Component */
+.tp-card {
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    box-shadow: var(--tp-shadow-sm);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card Header */
+.tp-card-header-modern {
+    padding: 16px 20px;
+    background: var(--tp-bg-white);
+    border-bottom: 1px solid var(--tp-border-light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tp-card-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: color-mix(in srgb, var(--bulma-info) 12%, transparent);
+    color: var(--tp-primary);
+    border-radius: 8px;
+}
+
+.tp-card-title-modern {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin: 0;
+}
+
+/* Card Body */
+.tp-card-body {
+    padding: 24px;
+    flex: 1;
+}
+
+/* Remove padding for validator sections */
+.tp-card-body:has(.validator-table) {
+    padding: 0;
+}
+
+/* Modern Toggle Switch */
+.tp-toggle-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--tp-bg-gray);
+}
+
+.tp-toggle-wrapper:last-child {
+    border-bottom: none;
+}
+
+.tp-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--tp-text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.tp-toggle-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 44px;
+    height: 24px;
+    background: var(--bulma-border-weak);
+    border-radius: 24px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+
+.tp-toggle-input::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--bulma-text) 10%, transparent);
+}
+
+.tp-toggle-input:checked {
+    background: var(--bulma-primary);
+}
+
+.tp-toggle-input:checked::after {
+    transform: translateX(20px);
+}
+
+.tp-toggle-input:focus-visible {
+    box-shadow: 0 0 0 2px var(--tp-bg-white), 0 0 0 4px var(--bulma-primary-30);
+}
+
+/* Language Grid */
+.tp-language-container {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    padding: 8px;
+    background-color: var(--tp-bg-gray);
+}
+
+.tp-language-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.tp-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.tp-checkbox-card:hover {
+    background: var(--bulma-scheme-main-ter);
+}
+
+.tp-checkbox-card input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--tp-primary);
+    margin: 0;
+}
+
+.tp-checkbox-card span {
+    font-size: 0.85rem;
+    color: var(--tp-text-secondary);
+    line-height: 1.1;
+}
+
+/* ==========================================================================
+   Delays & Extra Times Page
+   ========================================================================== */
+
+.delays-pending-section {
+    margin-bottom: 28px;
+}
+
+.delays-pending-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.delays-pending-title-icon {
+    color: var(--tp-warning);
+}
+
+.delays-pending-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    background: var(--tp-primary);
+}
+
+.delays-ineligible-section {
+    margin-bottom: 28px;
+}
+
+.delays-alert-card {
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+}
+
+.delays-alert-card-danger {
+    background: color-mix(in srgb, var(--bulma-danger) 12%, transparent);
+    border: 1px solid var(--tp-danger-border);
+}
+
+.delays-alert-count {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+}
+
+.delays-alert-card-danger .delays-alert-count {
+    background: var(--tp-danger);
+}
+
+.delays-alert-content {
+    background: var(--tp-bg-white);
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--bulma-text) 6%, transparent);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.delays-section-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.delays-search-input {
+    padding: 7px 12px 7px 34px;
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    background: var(--tp-bg-white);
+    color: var(--tp-text-primary);
+    width: 200px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.delays-search-input:focus {
+    outline: none;
+    border-color: var(--tp-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
+}
+
+.delays-search-wrapper {
+    position: relative;
+}
+
+.delays-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--tp-text-muted);
+    pointer-events: none;
+}
+
+.delays-timing-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--tp-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 12px;
+    display: inline-block;
+    width: 100px;
+}
+
+.delays-timing-value {
+    font-size: 0.85rem;
+    color: var(--tp-text-primary);
+}
+
+.delays-timing-none {
+    color: var(--tp-text-light);
+}
+
+.delays-time-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+}
+
+.delays-request-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    background: var(--bulma-warning-95);
+    border: 1px solid var(--bulma-warning-75);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--tp-warning-dark);
+}
+
+/* Icon sizing in buttons */
+.button .icon.is-small {
+    width: 18px;
+    height: 18px;
+}
+
+.delays-request-warning .icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.delays-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--tp-border);
+}
+
+.delays-btn-approve {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--tp-success);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delays-btn-approve:hover {
+    background: var(--tp-success-dark);
+}
+
+.delays-btn-reject {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--tp-danger);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delays-btn-reject:hover {
+    background: var(--tp-danger-dark);
+}
+
+.delays-reject-form {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 10px;
+}
+
+.delays-status-pre-contest {
+    color: var(--bulma-link);
+}
+
+.delays-status-can-start {
+    color: var(--tp-warning);
+}
+
+.delays-status-in-contest {
+    color: var(--tp-primary);
+}
+
+.delays-status-finished {
+    color: var(--tp-success);
+}
+
+.delays-status-missed {
+    color: var(--tp-danger);
+}
+
+.delays-archive-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: color-mix(in srgb, var(--tp-success-light) 42%, transparent);
+    border: 1px solid var(--bulma-success-75);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 18px;
+}
+
+.delays-archive-btn {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.main-group-tags-display {
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    background: var(--tp-bg-light);
+    color: var(--tp-text-secondary);
+    cursor: default;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.delays-ineligible-reason {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--tp-danger);
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-danger-border);
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+
+.delays-inline-form {
+    display: inline;
+    margin: 0;
+}
+
+.delays-th-hint {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.delays-text-light {
+    color: var(--tp-text-light);
+}
+
+
+.delays-history-section {
+    margin-top: 36px;
+}
+
+.delays-history-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--tp-text-muted);
+}
+
+.delays-history-pagination a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    color: var(--tp-text-secondary);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.delays-history-pagination a:hover {
+    background: var(--tp-bg-gray);
+    border-color: var(--tp-border-dark);
+}
+
+.delays-history-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.delays-history-grid.delays-history-grid-single {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+    .delays-history-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .delays-history-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.delays-history-card {
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    background: var(--tp-bg-white);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s;
+}
+
+.delays-history-card:hover {
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--bulma-text) 7%, transparent);
+}
+
+.delays-history-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+}
+
+.delays-history-card-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.delays-history-card-body {
+    padding: 0 20px 16px;
+    flex: 1;
+}
+
+.delays-history-card-field {
+    margin-bottom: 12px;
+}
+
+.delays-history-card-field:last-child {
+    margin-bottom: 0;
+}
+
+.delays-history-card-reason-label,
+.delays-history-card-field-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bulma-text-65);
+    margin-bottom: 4px;
+}
+
+.delays-history-card-field-value {
+    font-size: 0.9rem;
+    color: var(--tp-text-primary);
+}
+
+.delays-history-card-reason {
+    margin-bottom: 0;
+}
+
+.delays-history-card-reason-box {
+    padding: 8px 12px;
+    background: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--tp-text-primary);
+    min-height: 36px;
+}
+
+.delays-history-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--tp-border-light);
+}
+
+.delays-history-card-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--bulma-text-70);
+    margin-bottom: 4px;
+}
+
+.delays-history-card-meta-row:last-child {
+    margin-bottom: 0;
+}
+
+.delays-empty-state {
+    text-align: center;
+    padding: 24px;
+    background: var(--tp-bg-light);
+    border-radius: 8px;
+    border: 1px solid var(--tp-border-light);
+    margin-top: 12px;
+    color: var(--tp-text-muted);
+    font-size: 0.9rem;
+}
+
+.delays-modal-description {
+    color: var(--tp-text-muted);
+    font-size: 0.85rem;
+    margin-top: 0;
+}
+
+.delays-modal-textarea {
+    resize: vertical;
+}
+
+/* Archive Training Day Modal Styles */
+.network-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.network-group {
+    border: 1px solid var(--tp-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--tp-bg-white);
+    transition: box-shadow 0.15s ease;
+}
+
+.network-group:hover {
+    box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+}
+
+.network-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    background: var(--tp-bg-light);
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.network-header:hover {
+    background: var(--tp-bg-gray);
+}
+
+.network-header:focus-visible {
+    outline: 2px solid var(--tp-primary);
+    outline-offset: -2px;
+}
+
+.network-toggle-icon {
+    font-size: 0.7rem;
+    color: var(--tp-text-muted);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+}
+
+.network-group.expanded .network-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.network-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.network-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary);
+}
+
+.network-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--tp-text-primary);
+    font-family: monospace;
+}
+
+.network-count {
+    font-size: 0.8rem;
+    color: var(--tp-text-muted);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.network-ips {
+    border-top: 1px solid var(--tp-border);
+    padding: 4px 0;
+}
+
+.ip-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px 7px 46px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    font-size: 0.85rem;
+}
+
+.ip-row:hover {
+    background: var(--tp-bg-hover);
+}
+
+.ip-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--tp-primary);
+}
+
+.ip-addr {
+    color: var(--tp-text-secondary);
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.ip-count {
+    font-size: 0.78rem;
+    color: var(--tp-text-light);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Task Page - Main Tabs
+   ========================================================================== */
+
+.task-page-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--tp-border);
+    margin-bottom: 0;
+}
+
+.task-page-tab {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.task-page-tab:hover {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+}
+
+.task-page-tab:focus-visible {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
+}
+
+.task-page-tab.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+}
+
+.task-page-tab-content {
+    display: none;
+    padding-top: 20px;
+}
+
+.task-page-tab-content.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Page - Dataset Tabs
+   ========================================================================== */
+
+.dataset-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 2px solid var(--tp-border);
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.dataset-tab-wrapper {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.dataset-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.dataset-tab-btn:hover {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+}
+
+.dataset-tab-btn:focus-visible {
+    color: var(--tp-text-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
+}
+
+.dataset-tab-btn.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+}
+
+.dataset-tab-add {
+    padding: 8px 14px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--tp-text-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.dataset-tab-add:hover {
+    color: var(--tp-primary);
+    background: var(--tp-bg-light);
+}
+
+.dataset-tab-add:focus-visible {
+    color: var(--tp-primary);
+    background: var(--tp-bg-light);
+    outline: 2px solid var(--tp-primary);
+    outline-offset: 2px;
+}
+
+.dataset-panel {
+    display: none;
+}
+
+.dataset-panel.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Page - Dataset Sub-tabs
+   ========================================================================== */
+
+.dataset-subtabs-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--tp-border);
+    margin-top: 12px;
+    margin-bottom: 0;
+    background: var(--tp-bg-light);
+    border-radius: 8px 8px 0 0;
+    padding: 0 8px;
+}
+
+.dataset-subtab-btn {
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--tp-text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+}
+
+.dataset-subtab-btn:hover {
+    color: var(--tp-text-primary);
+}
+
+.dataset-subtab-btn:focus-visible {
+    outline: 2px solid var(--tp-primary);
+    outline-offset: -2px;
+}
+
+.dataset-subtab-btn.active {
+    color: var(--tp-primary);
+    border-bottom-color: var(--tp-primary);
+    font-weight: 600;
+    background: var(--tp-bg-white);
+    border-radius: 6px 6px 0 0;
+}
+
+.dataset-subtab-content {
+    display: none;
+    padding-top: 20px;
+}
+
+.dataset-subtab-content.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Task Type Options (parameter form groups)
+   ========================================================================== */
+
+.tp-task-type-options {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--tp-bg-light);
+    border: 1px solid var(--tp-border);
+    border-radius: 10px;
+}
+
+.tp-task-type-options .tp-form-group {
+    margin-bottom: 12px;
+}
+
+.tp-task-type-options .tp-form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Overview Page
+   ========================================================================== */
+
+.overview-status-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--tp-bg-white);
+    border: 1px solid var(--tp-border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--tp-shadow-sm);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.overview-status-card:hover {
+    box-shadow: var(--tp-shadow-md);
+}
+
+.overview-status-card-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Status card color variants */
+.overview-status-success .overview-status-card-icon {
+    background: color-mix(in srgb, var(--bulma-success) 24%, transparent);
+    color: var(--tp-success);
+}
+.overview-status-success {
+    border-left: 3px solid var(--tp-success);
+}
+
+.overview-status-info .overview-status-card-icon {
+    background: color-mix(in srgb, var(--bulma-info) 24%, transparent);
+    color: var(--tp-info);
+}
+.overview-status-info {
+    border-left: 3px solid var(--tp-info);
+}
+
+.overview-status-warning .overview-status-card-icon {
+    background: color-mix(in srgb, var(--bulma-warning) 24%, transparent);
+    color: var(--tp-warning);
+}
+.overview-status-warning {
+    border-left: 3px solid var(--tp-warning);
+}
+
+.overview-status-danger .overview-status-card-icon {
+    background: color-mix(in srgb, var(--bulma-danger) 24%, transparent);
+    color: var(--tp-danger);
+}
+.overview-status-danger {
+    border-left: 3px solid var(--tp-danger);
+}
+
+/* Two-column layout for queue & workers */
+.overview-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.overview-two-col > * {
+    min-width: 0;
+}
+
+@media (max-width: 1100px) {
+    .overview-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+.overview-empty-row {
+    text-align: center;
+    padding: 24px !important;
+    color: var(--tp-text-muted) !important;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Analysis Modal Extras
+   ========================================================================== */
+
+.modal__container--wide {
+    max-width: 640px;
+}
+
+.modal__section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tp-text-primary);
+    margin: 0 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--tp-primary);
+    display: inline-block;
+}
+
+/* ==========================================================================
+   Mobile Responsive: Combined Ranking, Attendance, Ranking Tables
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* --- Un-stick first column on mobile --- */
+    .attendance-table tbody th,
+    .ranking-table tbody th {
+        position: static;
+        box-shadow: none;
+        clip-path: none;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .attendance-table thead tr:first-child th:first-child,
+    .ranking-table thead tr:first-child th:first-child {
+        position: sticky;
+        top: 0;
+        left: auto;
+        z-index: 10;
+    }
+
+    .ranking-table thead th.student-header {
+        left: auto;
+        z-index: 10;
+        width: auto;
+    }
+
+    /* --- Smaller fonts on mobile --- */
+    .attendance-table,
+    .ranking-table {
+        font-size: 0.75rem;
+    }
+
+    .attendance-table thead th,
+    .ranking-table thead th {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+
+    .attendance-table th:first-child,
+    .attendance-table td:first-child {
+        max-width: 150px;
+        min-width: 120px;
+    }
+
+    .cell-wrapper {
+        min-width: 100px;
+        padding: 6px 8px;
+    }
+
+    .cell-content {
+        font-size: 1rem;
+        padding: 8px 4px;
+    }
+
+    .student-name-wrapper,
+    .combined-ranking-student-wrapper {
+        padding: 4px 6px;
+        gap: 6px;
+    }
+
+    .student-name-link {
+        font-size: 0.8rem;
+        max-width: 120px;
+    }
+
+    .student-username {
+        font-size: 0.65em;
+    }
+
+    .training-day-header-main,
+    .date-header-main {
+        font-size: 0.8rem;
+    }
+
+    .training-day-header-sub,
+    .date-header-sub {
+        font-size: 0.65rem;
+    }
+
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+    }
+
+    .location-row {
+        font-size: 0.65rem;
+    }
+
+    /* Ranking page toolbar stacks vertically on mobile */
+    .td-ranking-table {
+        font-size: 0.8rem;
+    }
+
+    /* --- Histogram modal mobile responsive --- */
+    .modal--wide .modal__container {
+        max-width: 95vw;
+        padding: 10px;
+    }
+
+    .histogram-chart-container {
+        overflow-x: auto;
+    }
+}

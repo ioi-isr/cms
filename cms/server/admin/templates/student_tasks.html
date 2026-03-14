@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block core %}
+<style>
+    /* Table visual fixes - page-specific overrides */
+    .ranking-table th {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #64748b;
+        background: #f8fafc;
+        padding: 14px 16px !important;
+    }
+
+    /* Disable sticky positioning for student tasks table */
+    #student-tasks-table thead th {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: auto !important;
+        box-shadow: none !important;
+    }
+
+    .ranking-table td {
+        padding: 0;
+    }
+</style>
+
+<div class="content-constraint">
+
+    <!-- Navigation -->
+    <div class="mb-3">
+        <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" class="nav-back-link">
+            <span>&larr;</span> Back to Student
+        </a>
+    </div>
+
+    <!-- Header -->
+    <h1 class="title is-spaced">Task Archive: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a></h1>
+    <p class="subtitle has-text-grey">
+        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+    </p>
+
+    <!-- Add Task Card -->
+    <div class="tp-filter-card">
+        <label class="tp-filter-label" for="task_selector">Manual Task Assignment:</label>
+        <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px;">
+            {{ xsrf_form_html|safe }}
+
+            <div style="flex-grow: 1;">
+                <select name="task_id" id="task_selector" class="searchable-select" placeholder="Search for a task..." style="width: 100%;">
+                    <option value="" selected disabled hidden>Select a task...</option>
+                    {% for task in available_tasks %}
+                    <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
+                <span>Add Task</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- List Header -->
+    <div class="tp-section-header">
+        <h2>Assigned Tasks ({{ student_tasks|length }})</h2>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        {% if student_tasks %}
+        <table class="ranking-table" id="student-tasks-table" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Task</th>
+                    <th class="no-sort" style="width: 15%;">Source</th>
+                    <th data-sort-settings="numeric" style="width: 15%;">Assigned At</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Training</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Home</th>
+                    <th data-sort-settings="numeric reversed" class="has-text-centered" style="width: 10%;">Submissions</th>
+                    <th class="has-text-centered no-sort" style="width: 10%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for st in student_tasks %}
+                <tr>
+                    <!-- Task -->
+                    <td data-value="{{ st.task.name }}">
+                        <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
+                            <div style="font-weight: 600; font-size: 0.95rem;">
+                                <a href="{{ url("task", st.task.id) }}" class="student-name-link">{{ st.task.name }}</a>
+                            </div>
+                            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">{{ st.task.title }}</div>
+                        </div>
+                    </td>
+
+                    <!-- Source -->
+                    <td>
+                        <div class="list-cell-wrapper">
+                            {% if st.source_training_day %}
+                                {% if st.source_training_day.contest %}
+                                    <a href="{{ url("contest", st.source_training_day.contest.id) }}" class="tag is-bordered has-text-primary">
+                                        {{ st.source_training_day.contest.description }}
+                                    </a>
+                                {% else %}
+                                    <span class="tag is-bordered has-text-warning">
+                                        {{ st.source_training_day.description or st.source_training_day.name or "Archived Training" }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="tag is-bordered has-text-grey">Manual Assignment</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Date -->
+                    <td data-value="{{ st.assigned_at.timestamp() if st.assigned_at else 0 }}">
+                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                            <div>{{ st.assigned_at.strftime('%Y-%m-%d') if st.assigned_at else '-' }}</div>
+                            <div style="color: #94a3b8; font-size: 0.9em;">{{ st.assigned_at.strftime('%H:%M') if st.assigned_at else '' }}</div>
+                        </div>
+                    </td>
+
+                    <!-- Training Score -->
+                    <td class="has-text-centered" data-value="{{ training_scores.get(st.task.id, -1) }}">
+                        <div class="list-cell-wrapper center-content">
+                            {% if st.task.id in training_scores %}
+                                {% set score = training_scores[st.task.id] %}
+                                {% set score_type = get_score_type(dataset=st.task.active_dataset) %}
+                                {% set max_score = score_type.max_score if score_type else 100 %}
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= max_score else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                    {{ "%.0f"|format(score) }}
+                                </span>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Home Score -->
+                    <td class="has-text-centered" data-value="{{ home_scores.get(st.task.id, -1) }}">
+                        <div class="list-cell-wrapper center-content">
+                            {% if st.task.id in home_scores %}
+                                {% set score = home_scores[st.task.id] %}
+                                {% set score_type = get_score_type(dataset=st.task.active_dataset) %}
+                                {% set max_score = score_type.max_score if score_type else 100 %}
+                                <span style="font-weight: 700; font-family: monospace; font-size: 1rem; color: {{ '#059669' if score >= max_score else '#d97706' if score > 0 else '#cbd5e1' }};">
+                                    {{ "%.0f"|format(score) }}
+                                </span>
+                            {% else %}
+                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Submissions -->
+                    <td class="has-text-centered" data-value="{{ submission_counts.get(st.task.id, 0) }}">
+                        <div class="list-cell-wrapper center-content">
+                            {% set sub_count = submission_counts.get(st.task.id, 0) %}
+                            {% if sub_count > 0 %}
+                                <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "submissions") }}" style="text-decoration: none; color: #0F766E; font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 2px;">
+                                    {{ sub_count }}<svg class="icon is-small" style="opacity: 0.6;" aria-hidden="true" focusable="false"><use href="#icon-external-link"/></svg>
+                                </a>
+                            {% else %}
+                                <span style="color: #cbd5e1; font-weight: 500;">0</span>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="has-text-centered">
+                        <div class="list-cell-wrapper center-content">
+                            <form action="{{ url("training_program", training_program.id, "student", selected_user.id, "task", st.task.id, "remove") }}" method="POST" style="margin: 0;">
+                                {{ xsrf_form_html|safe }}
+                                <button type="submit" class="btn-icon-only" {% if not admin.permission_all %}disabled{% endif %} onclick="AdminModals.confirmThen('Are you sure you want to remove this task from the student\'s archive?', function() { this.closest('form').submit(); }.bind(this)); return false;" title="Remove task" aria-label="Remove task">
+                                    <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 80px 20px; color: #64748b;">
+            <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">📂</div>
+            <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No tasks assigned yet</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the manual assignment box above to add one.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Table sorting using CMS.AWSUtils
+$(document).ready(function() {
+    CMS.AWSUtils.init_table_sort($("#student-tasks-table"), false, 0);
+});
+</script>
+{% endblock core %}

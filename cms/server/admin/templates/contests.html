@@ -1,47 +1,145 @@
 {% extends "base.html" %}
 
 {% block core %}
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title is-spaced">Contests</h1>
+        </div>
+        <div class="level-right">
+            {% if admin.permission_all %}
+            <button type="button" class="button" onclick="MicroModal.show('modal-import-contest')">
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                <span>Import from ZIP</span>
+            </button>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Contest</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<div class="core_title">
-  <h1>Contests list</h1>
-</div>
+    {% if contest_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No contests have been created yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddContestDialog("{{ url("contests", "add") }}", "{{ url("contest", "") }}")'>
+                <span>Create your first contest</span>
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search contests..." oninput="CMS.AWSUtils.filter_elements('contests-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
 
-{% if admin.permission_all %}
-<div style="margin-bottom: 10px;">
-  <a href="{{ url("contests", "import") }}" class="button">Import Contest from ZIP</a>
-</div>
-{% endif %}
+    <!-- Contests Cards Grid -->
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="contests-grid">
+        {% for c in contest_list %}
+        {% set ns = namespace(sub_count=0) %}
+        {% for p in c.participations %}{% set ns.sub_count = ns.sub_count + p.submissions|length %}{% endfor %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <button type="button" class="btn-icon-only" title="Remove contest" style="position: absolute; top: 12px; right: 12px;"
+                aria-label="Remove contest"
+                onclick="openContestRemoveModal(this)"
+                data-contest-id="{{ c.id }}"
+                data-contest-name="{{ c.name|e }}"
+                data-remove-url="{{ url("contests", c.id, "remove") }}"
+                data-participation-count="{{ c.participations|length }}"
+                data-submission-count="{{ ns.sub_count }}"
+                data-task-count="{{ c.tasks|length }}">
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="tp-stat-icon is-opaque-bg has-text-info">
+                    <svg class="icon"><use href="#icon-trophy"/></svg>
+                </div>
+                <div style="min-width: 0;">
+                    <a href="{{ url("contest", c.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ c.name }}">{{ c.name }}</a>
+                    <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.description }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
-<form action="{{ url("contests") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected contest:
-   <input type="submit"
-         name="operation"
-         value="Remove"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in contest_list %}
-      <tr>
-        <td>
-          <input type="radio" name="contest_id" value="{{ c.id }}"/>
-        </td>
-        <td><a href="{{ url("contest", c.id) }}">{{ c.name }}</a></td>
-        <td>{{ c.description }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
+{% include "fragments/modal_remove_contest.html" %}
+{% include "fragments/modal_import_contest.html" %}
 
+<script>
+function openContestRemoveModal(btn) {
+    var name = btn.getAttribute('data-contest-name');
+    var removeUrl = btn.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(btn.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(btn.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(btn.getAttribute('data-task-count')) || 0;
+
+    document.getElementById('remove-contest-name').textContent = name;
+
+    var statsTarget = document.getElementById('remove-contest-stats');
+    if (!statsTarget) {
+        statsTarget = document.createElement('ul');
+        statsTarget.id = 'remove-contest-stats';
+        statsTarget.setAttribute('style', 'margin: 4px 0 0 0; padding-left: 20px;');
+        var statsBox = document.getElementById('remove-contest-stats-box');
+        if (statsBox) {
+            statsBox.appendChild(statsTarget);
+        }
+    } else {
+        statsTarget.innerHTML = '';
+    }
+
+    var participationLi = document.createElement('li');
+    participationLi.textContent = participationCount + ' participation(s) will be deleted.';
+    statsTarget.appendChild(participationLi);
+
+    var submissionLi = document.createElement('li');
+    submissionLi.textContent = submissionCount + ' submission(s) will be deleted.';
+    statsTarget.appendChild(submissionLi);
+
+    if (taskCount > 0) {
+        var taskLi = document.createElement('li');
+        taskLi.textContent = taskCount + ' task(s) will be affected (see options below).';
+        statsTarget.appendChild(taskLi);
+    }
+
+    var taskOptionsDiv = document.getElementById('remove-contest-task-options');
+    if (taskCount > 0) {
+        taskOptionsDiv.style.display = 'block';
+        document.getElementById('remove-contest-task-count').textContent = taskCount;
+    } else {
+        taskOptionsDiv.style.display = 'none';
+    }
+
+    var contestId = btn.getAttribute('data-contest-id');
+    var targetSelect = document.getElementById('contest_target_contest_select');
+    if (targetSelect && contestId) {
+        var options = targetSelect.querySelectorAll('option');
+        options.forEach(function(option) {
+            option.style.display = '';
+        });
+        targetSelect.value = '';
+        options.forEach(function(option) {
+            if (option.value === contestId) {
+                option.style.display = 'none';
+            }
+        });
+    }
+
+    document.querySelectorAll('#modal-remove-contest input[name="contest_remove_action"]').forEach(function(r) {
+        r.checked = false;
+    });
+
+    document.getElementById('confirm-remove-contest-btn').setAttribute('data-remove-url', removeUrl);
+
+    MicroModal.show('modal-remove-contest');
+}
+</script>
 {% endblock core %}

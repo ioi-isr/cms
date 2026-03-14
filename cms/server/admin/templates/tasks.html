@@ -1,47 +1,73 @@
 {% extends "base.html" %}
 
 {% block core %}
+    <!-- Header -->
+    <div class="level">
+        <div class="level-left">
+            <h1 class="title is-spaced">Tasks</h1>
+        </div>
+        <div class="level-right">
+            {% if admin.permission_all %}
+            <button type="button" class="button" onclick="MicroModal.show('modal-import-task')">
+                <svg class="icon is-small"><use href="#icon-upload"/></svg>
+                <span>Import from ZIP</span>
+            </button>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Task</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
 
-<div class="core_title">
-  <h1>Tasks list</h1>
-</div>
+    {% if task_list|length == 0 %}
+    <div class="empty-state-box">
+        <h3>No tasks have been created yet</h3>
+        {% if admin.permission_all %}
+        <p>
+            <button type="button" class="button is-primary" onclick='AdminModals.showAddTaskDialog({{ url("tasks", "add")|tojson }}, {{ url("task", "")|tojson }})'>
+                <span>Create your first task</span>
+            </button>
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Search -->
+    <div class="table-search" style="margin-bottom: 16px;">
+        <input type="text" class="input" placeholder="Search tasks..." oninput="CMS.AWSUtils.filter_elements('tasks-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+    </div>
 
-{% if admin.permission_all %}
-<div style="margin-bottom: 10px;">
-  <a href="{{ url("tasks", "import") }}" class="button">Import Task from ZIP</a>
-</div>
-{% endif %}
-
-<form action="{{ url("tasks") }}" method="POST">
-  {{ xsrf_form_html|safe }}
-  Edit selected task:
-   <input type="submit"
-         name="operation"
-         value="Remove"
-{% if not admin.permission_all %}
-         disabled
-{% endif %}
-         />
-  <table class="bordered">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Title</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in task_list %}
-      <tr>
-        <td>
-          <input type="radio" name="task_id" value="{{ t.id }}"/>
-        </td>
-        <td><a href="{{ url("task", t.id) }}">{{ t.name }}</a></td>
-        <td>{{ t.title }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</form>
-
+    <!-- Tasks Cards Grid -->
+    <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="tasks-grid">
+        {% for t in task_list %}
+        <div class="tp-program-card" style="padding: 20px; position: relative;">
+            {% if admin.permission_all %}
+            <button type="button" class="btn-icon-only" title="Remove task" style="position: absolute; top: 12px; right: 12px;"
+                aria-label="Remove task"
+                onclick='AdminModals.deleteResource({
+                    title: "Remove Task",
+                    message: "Are you sure you want to remove task " + {{ t.name|tojson }} + ", including all related data?",
+                    warnings: [
+                        {{ (t.submissions|length|string ~ " submission(s) will be deleted.")|tojson }}
+                    ],
+                    deleteUrl: {{ url("tasks", t.id, "remove")|tojson }},
+                    confirmLabel: "Yes, Remove"
+                })'>
+                <svg class="icon is-small"><use href="#icon-trash"/></svg>
+            </button>
+            {% endif %}
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="tp-stat-icon is-opaque-bg has-text-info">
+                    <svg class="icon"><use href="#icon-puzzle"/></svg>
+                </div>
+                <div style="min-width: 0;">
+                    <a href="{{ url("task", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.title }}">{{ t.name }}</a>
+                    <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.title }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% include "fragments/modal_import_task.html" %}
 {% endblock core %}

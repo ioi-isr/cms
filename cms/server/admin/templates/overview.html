@@ -4,33 +4,48 @@
 
 function update_submissions_status(response)
 {
-    var table = $("#submissions_status_table > tbody");
+    var container = $("#submissions_status_cards");
     var msg = utils.standard_response(response);
     if (msg != "")
     {
-        table.html('<tr><td style="text-align: center;" colspan="2">'+ msg + '</td></tr>');
+        container.html('<div class="overview-status-message">' + msg + '</div>');
         return;
     }
 
-    var strings = []
-    strings.push('<tr><td>Scored</td><td>' + response['data']['scored'] + '</td></tr>');
-    if (response['data']['scoring'] != 0)
-        strings.push('<tr><td>Scoring...</td><td>' + response['data']['scoring'] + '</td></tr>');
-    if (response['data']['compilation_fail'] != 0)
-        strings.push('<tr><td>Compilation failed</td><td>' + response['data']['compilation_fail'] + '</td></tr>');
-    if (response['data']['evaluation_fail'] != 0)
-        strings.push('<tr><td>Evaluation failed</td><td>' + response['data']['evaluation_fail'] + '</td></tr>');
-    if (response['data']['compiling'] != 0)
-        strings.push('<tr><td>Compiling...</td><td>' + response['data']['compiling'] + '</td></tr>');
-    if (response['data']['evaluating'] != 0)
-        strings.push('<tr><td>Evaluating...</td><td>' + response['data']['evaluating'] + '</td></tr>');
-    if (response['data']['max_compilations'] != 0)
-        strings.push('<tr><td>Cannot compile (please check)</td><td>' + response['data']['max_compilations'] + '</td></tr>');
-    if (response['data']['max_evaluations'] != 0)
-        strings.push('<tr><td>Cannot evaluate (please check)</td><td>' + response['data']['max_evaluations'] + '</td></tr>');
+    var d = response['data'];
+    var cards = [];
 
-    table.html(strings.join(""));
+    cards.push(build_status_card('Scored', d['scored'], 'icon-check', 'success'));
+
+    if (d['scoring'] != 0)
+        cards.push(build_status_card('Scoring', d['scoring'], 'icon-clock', 'info'));
+    if (d['compiling'] != 0)
+        cards.push(build_status_card('Compiling', d['compiling'], 'icon-compile', 'info'));
+    if (d['evaluating'] != 0)
+        cards.push(build_status_card('Evaluating', d['evaluating'], 'icon-evaluate', 'info'));
+    if (d['compilation_fail'] != 0)
+        cards.push(build_status_card('Compilation Failed', d['compilation_fail'], 'icon-x', 'warning'));
+    if (d['evaluation_fail'] != 0)
+        cards.push(build_status_card('Evaluation Failed', d['evaluation_fail'], 'icon-x', 'warning'));
+    if (d['max_compilations'] != 0)
+        cards.push(build_status_card('Cannot Compile', d['max_compilations'], 'icon-alert-triangle', 'danger'));
+    if (d['max_evaluations'] != 0)
+        cards.push(build_status_card('Cannot Evaluate', d['max_evaluations'], 'icon-alert-triangle', 'danger'));
+
+    container.html(cards.join(""));
 };
+
+function build_status_card(label, count, icon, color) {
+    return '<div class="overview-status-card overview-status-' + color + '">' +
+           '<div class="overview-status-card-icon">' +
+           '<svg class="icon is-medium"><use href="#' + icon + '"/></svg>' +
+           '</div>' +
+           '<div class="is-flex is-flex-direction-column">' +
+           '<div class="is-size-4 has-text-weight-bold">' + count + '</div>' +
+           '<div class="has-text-grey is-size-6">' + label + '</div>' +
+           '</div>' +
+           '</div>';
+}
 
 function update_queue_status(response)
 {
@@ -45,7 +60,7 @@ function update_queue_status(response)
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="100">Queue empty.</td></tr>');
+        table.html('<tr><td colspan="4" class="overview-empty-row">Queue empty.</td></tr>');
         return;
     }
 
@@ -54,17 +69,19 @@ function update_queue_status(response)
     {
         var job = utils.repr_job(response['data'][i]['item']);
         var date = utils.repr_time_ago(response['data'][i]['timestamp']);
-        strings.push('<tr><td style="text-align: center;">' + (i + 1) + '</td>');
+        strings.push('<tr>');
+        strings.push('<td class="has-text-centered">' + (i + 1) + '</td>');
         strings.push('<td>' + job + '</td>');
-        strings.push('<td style="text-align: center;">' + response['data'][i]['priority'] + '</td>');
-        strings.push('<td>' + date + '</td></tr>');
+        strings.push('<td class="has-text-centered"><span class="tag is-opaque-bg">' + response['data'][i]['priority'] + '</span></td>');
+        strings.push('<td class="has-text-right">' + date + '</td>');
+        strings.push('</tr>');
     }
 
     table.html(strings.join(""));
 };
 
 function enable_worker(shard) {
-    if (confirm("Do you really want to enable worker " + shard + "?")) {
+    AdminModals.confirmThen("Do you really want to enable worker " + shard + "?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "enable_worker",
                        {"shard":shard},
@@ -74,11 +91,11 @@ function enable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    }
+    }, {icon: 'question'});
 }
 
 function disable_worker(shard) {
-    if (confirm("Do you really want to disable worker " + shard + "?")) {
+    AdminModals.confirmThen("Do you really want to disable worker " + shard + "?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "disable_worker",
                        {"shard":shard},
@@ -88,7 +105,7 @@ function disable_worker(shard) {
                                          {},
                                          update_workers_status);
                        });
-    }
+    }, {icon: 'question'});
 }
 
 var total_workers_configured = 0;
@@ -96,14 +113,14 @@ var total_workers_configured = 0;
 function set_workers_count() {
     var count = parseInt($("#worker_count_input").val());
     if (isNaN(count) || count < 0) {
-        alert("Please enter a valid number of workers (0 or greater).");
+        AdminModals.showError('Please enter a valid number of workers (0 or greater).');
         return;
     }
     if (count > total_workers_configured) {
-        alert("Please enter a number between 0 and " + total_workers_configured + " (total configured workers).");
+        AdminModals.showError('Please enter a number between 0 and ' + total_workers_configured + ' (total configured workers).');
         return;
     }
-    if (confirm("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?")) {
+    AdminModals.confirmThen("Do you really want to enable workers 0 to " + (count - 1) + " and disable the rest?", function() {
         cmsrpc_request("EvaluationService", 0,
                        "set_workers_count",
                        {"count": count},
@@ -114,10 +131,10 @@ function set_workers_count() {
                                              {},
                                              update_workers_status);
                           } else {
-                              alert("Failed to set worker count. Please check the logs.");
+                              AdminModals.showError('Failed to set worker count. Please check the logs.');
                           }
                        });
-    }
+    }, {icon: 'question'});
 }
 
 function update_workers_status(response)
@@ -133,7 +150,7 @@ function update_workers_status(response)
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="5">No workers found.</td>');
+        table.html('<tr><td colspan="5" class="overview-empty-row">No workers found.</td></tr>');
         return;
     }
 
@@ -151,23 +168,26 @@ function update_workers_status(response)
             job = utils.repr_job(response['data'][i]['operations']);
         }
         var start_time = utils.repr_time_ago(response['data'][i]['start_time']);
-        var connected = "No";
+        var connected_html;
         if (response['data'][i]['connected'] == true) {
-            connected = "Yes";
+            connected_html = '<span class="tag is-opaque-bg has-text-success">Yes</span>';
             connected_count += 1;
+        } else {
+            connected_html = '<span class="tag is-opaque-bg has-text-danger">No</span>';
         }
-        strings.push('<tr><td style="text-align: center;">' + i + '</td>');
-        strings.push('<td style="text-align: center;">' + connected + '</td>');
+        strings.push('<tr>');
+        strings.push('<td class="has-text-centered">' + i + '</td>');
+        strings.push('<td class="has-text-centered">' + connected_html + '</td>');
         strings.push('<td>' + job + '</td>');
-        strings.push('<td>' + start_time + '</td>');
+        strings.push('<td class="has-text-right">' + start_time + '</td>');
         if (response['data'][i]['operations'] == "disabled") {
-            strings.push('<td><button onclick="javascript:enable_worker(' + i + '); return true;"' +
+            strings.push('<td class="has-text-centered"><button class="button is-small is-success is-outlined" onclick="javascript:enable_worker(' + i + '); return true;"' +
 {% if not admin.permission_all %}
                          ' disabled' +
 {% endif %}
                          '>Enable</button></td>');
         } else {
-            strings.push('<td><button onclick="javascript:disable_worker(' + i + '); return true;"' +
+            strings.push('<td class="has-text-centered"><button class="button is-small is-danger is-outlined" onclick="javascript:disable_worker(' + i + '); return true;"' +
 {% if not admin.permission_all %}
                          ' disabled' +
 {% endif %}
@@ -177,7 +197,7 @@ function update_workers_status(response)
     }
 
     total_workers_configured = Object.keys(response.data).length;
-    $("#title_workers_status").text(`Workers status (${connected_count} connected, ${total_workers_configured} configured)`);
+    $("#title_workers_status").html('<svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg> Workers (' + connected_count + ' connected, ' + total_workers_configured + ' configured)');
     table.html(strings.join(""));
 };
 
@@ -194,20 +214,30 @@ function escape_html(s)
     return $("<div>").text(s).html();
 }
 
+function get_severity_tag_class(severity) {
+    switch(severity) {
+        case 'CRITICAL': return 'has-text-danger';
+        case 'ERROR': return 'has-text-danger';
+        case 'WARNING': return 'has-text-warning';
+        case 'INFO': return 'has-text-info';
+        default: return 'has-text-grey';
+    }
+}
+
 function update_logs(response)
 {
     var table = $("#logs_table > tbody");
     var msg = utils.standard_response(response);
     if (msg != "")
     {
-        table.html('<tr><td style="text-align: center;" colspan="5">'+ msg + '</td></tr>');
+        table.html('<tr><td class="has-text-centered" colspan="5">'+ msg + '</td></tr>');
         return;
     }
 
     var l = response['data'].length;
     if (l == 0)
     {
-        table.html('<tr><td colspan="5">No log entries.</td>');
+        table.html('<tr><td colspan="5" class="overview-empty-row">No log entries.</td></tr>');
         return;
     }
 
@@ -221,9 +251,11 @@ function update_logs(response)
         var severity = response['data'][i]['severity'];
         var timestamp = utils.format_time_or_date(response['data'][i]['timestamp']);
 
+        var tag_class = get_severity_tag_class(severity);
+
         var row = $('<tr>');
         row.append($('<td>').text(timestamp));
-        row.append($('<td>').text(severity));
+        row.append($('<td>').html('<span class="tag is-opaque-bg ' + tag_class + '">' + severity + '</span>'));
         row.append($('<td>').text(coord));
         // We inject it as HTML rather than text because we escaped it before
         // and because we need to preserve the links to the submission pages.
@@ -276,87 +308,107 @@ update_statuses();
 
 {% block core %}
 
-<h1>Overview</h1>
-<span id="update_time"></span>
+    <h1 class="title is-spaced">Overview</h1>
 
-{% if contest is not none %}
-<h2 id="title_submissions_status" class="toggling_on">Submissions status</h2>
-<div id="submissions_status">
-  <table id="submissions_status_table" class="sub_table">
-    <thead>
-      <tr>
-        <th>Status</th>
-        <th>Number</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td style="text-align: center;" colspan="2"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-    </tbody>
-  </table>
-  <div class="hr"></div>
-</div>
-{% endif %}
+    {% if contest is not none %}
+    <!-- Submissions Status Cards -->
+    <div class="mb-5">
+        <div class="tp-section-header">
+            <h2>
+                <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-file-code"/></svg>
+                Submissions Status
+            </h2>
+        </div>
+        <div id="submissions_status_cards" class="grid is-auto-fill is-col-min-10 is-gap-2">
+            <div class="overview-status-message">
+                <img src="{{ url("static", "loading.gif") }}" alt="loading..." />
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
-<h2 id="title_queue_status" class="toggling_on">Queue status</h2>
-<div id="queue_status">
-  <table id="queue_status_table" class="sub_table">
-    <thead>
-      <tr>
-        <th>Id</th>
-        <th>Job</th>
-        <th>Priority</th>
-        <th>Since</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td style="text-align: center;" colspan="4"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-    </tbody>
-  </table>
-  <div class="hr"></div>
-</div>
+    <!-- Queue & Workers Row -->
+    <div class="overview-two-col">
+        <!-- Workers Status -->
+        <div class="mb-5">
+            <div class="tp-section-header">
+                <h2 id="title_workers_status">
+                    <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-cpu"/></svg>
+                    Workers
+                </h2>
+            </div>
+            <div class="tp-filter-card" style="margin-bottom: 16px;">
+                <label class="tp-filter-label" for="worker_count_input">Workers to enable:</label>
+                <input type="number" id="worker_count_input" min="0" class="input is-small" style="width: 80px;" />
+                <button class="button is-small is-primary" onclick="set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Count</button>
+                <span class="has-text-grey-light is-size-7">Workers 0 to n-1 enabled, rest disabled</span>
+            </div>
+            <div class="table-container" style="width: 100%; max-height: 400px; overflow-y: auto;">
+                <table class="table is-fullwidth is-hoverable is-header-muted" id="workers_status_table">
+                    <thead>
+                        <tr>
+                            <th class="has-text-centered" style="width: 60px;">Shard</th>
+                            <th class="has-text-centered" style="width: 100px;">Connected</th>
+                            <th>Current Job</th>
+                            <th class="has-text-right" style="width: 140px;">Since</th>
+                            <th class="has-text-centered" style="width: 100px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="text-align: center;" colspan="5"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Queue Status -->
+        <div class="mb-5">
+            <div class="tp-section-header">
+                <h2>
+                    <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-clock"/></svg>
+                    Queue Status
+                </h2>
+            </div>
+            <div class="table-container" style="width: 100%; max-height: 500px; overflow-y: auto;">
+                <table class="table is-fullwidth is-hoverable is-header-muted" id="queue_status_table">
+                    <thead>
+                        <tr>
+                            <th class="has-text-centered" style="width: 60px;">#</th>
+                            <th>Job</th>
+                            <th class="has-text-centered" style="width: 100px;">Priority</th>
+                            <th class="has-text-right" style="width: 140px;">Since</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="text-align: center;" colspan="4"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-<h2 id="title_workers_status" class="toggling_on">Workers status</h2>
-<div id="workers_status">
-  <div style="margin-bottom: 10px;">
-    <label for="worker_count_input">Number of workers to enable: </label>
-    <input type="number" id="worker_count_input" min="0" style="width: 80px;" />
-    <button onclick="javascript:set_workers_count(); return false;"{% if not admin.permission_all %} disabled{% endif %}>Set Worker Count</button>
-    <span style="margin-left: 10px; font-size: 0.9em; color: #666;">(Workers 0 to n-1 will be enabled, rest disabled)</span>
-  </div>
-  <table id="workers_status_table" class="sub_table">
-    <thead>
-      <tr>
-        <th style="width:5%">Shard</th>
-        <th style="width:15%">Connected</th>
-        <th style="width:50%">Current job</th>
-        <th style="width:20%">Since</th>
-        <th style="width:10%">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td style="text-align: center;" colspan="5"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-    </tbody>
-  </table>
-  <div class="hr"></div>
-</div>
-
-<h2 id="title_logs" class="toggling_on">Logs</h2>
-<div id="logs">
-
-  <table id="logs_table" class="sub_table">
-    <thead>
-      <tr>
-        <th>Time</th>
-        <th>Severity</th>
-        <th>Service</th>
-        <th>Operation</th>
-        <th>Message</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td style="text-align: center;" colspan="5"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
-    </tbody>
-  </table>
-  <div class="hr"></div>
-</div>
+    <!-- Logs -->
+    <div class="mb-5">
+        <div class="tp-section-header">
+            <h2>
+                <svg class="icon" style="vertical-align: text-bottom; margin-right: 6px;"><use href="#icon-laptop-code"/></svg>
+                Recent Logs
+            </h2>
+        </div>
+        <div class="table-container" style="width: 100%; overflow-y: auto;">
+            <table class="table is-fullwidth is-hoverable is-header-muted" id="logs_table">
+                <thead>
+                    <tr>
+                        <th style="width: 160px;">Time</th>
+                        <th style="width: 100px;">Severity</th>
+                        <th style="width: 140px;">Service</th>
+                        <th style="width: 200px;">Operation</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td style="text-align: center;" colspan="5"><img src="{{ url("static", "loading.gif") }}" alt="loading..." /></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% endblock core %}

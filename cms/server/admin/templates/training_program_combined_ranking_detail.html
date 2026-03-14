@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block core %}
+{% include "fragments/user_detail_styles.html" %}
+
+<div class="user-detail-back-link">
+  {% set params = [] %}
+  {% if start_date %}{% set _ = params.append('start_date=' ~ start_date.strftime('%Y-%m-%d')) %}{% endif %}
+  {% if end_date %}{% set _ = params.append('end_date=' ~ end_date.strftime('%Y-%m-%d')) %}{% endif %}
+  {% if training_day_types %}{% set _ = params.append('training_day_types=' ~ (training_day_types|join(',')|urlencode)) %}{% endif %}
+  {% if student_tags %}{% set _ = params.append('student_tags=' ~ (student_tags|join(',')|urlencode)) %}{% endif %}
+  {% if student_tags_mode and student_tags_mode != 'current' %}{% set _ = params.append('student_tags_mode=' ~ student_tags_mode) %}{% endif %}
+  <a href="{{ url("training_program", training_program.id, "combined_ranking") }}{% if params %}?{{ params|join('&') }}{% endif %}">&larr; Back to Combined Ranking</a>
+  |
+  <a href="{{ url("training_program", training_program.id, "student", student.participation.user.id, "edit") }}">Edit Student</a>
+</div>
+
+{% if start_date or end_date or training_day_types or student_tags %}
+<div class="user-detail-filter-info">
+  {% if start_date or end_date %}
+  Showing data for training days
+  {% if start_date and end_date %}
+    from {{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }}
+  {% elif start_date %}
+    from {{ start_date.strftime('%Y-%m-%d') }}
+  {% elif end_date %}
+    until {{ end_date.strftime('%Y-%m-%d') }}
+  {% endif %}
+  {% endif %}
+  {% if training_day_types %}
+    {% if start_date or end_date %}<br>{% endif %}
+    Filtered by training day types: <strong>{{ training_day_types|join(', ') }}</strong>
+  {% endif %}
+  {% if student_tags %}
+    {% if start_date or end_date or training_day_types %}<br>{% endif %}
+    Filtered by student tags: <strong>{{ student_tags|join(', ') }}</strong>
+    {% if student_tags_mode == 'historical' %}(during training){% else %}(current){% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{% with first_name=student.participation.user.first_name if student.participation else '',
+        last_name=student.participation.user.last_name if student.participation else '',
+        username=student.participation.user.username if student.participation else '',
+        picture_url=url("file", student.participation.user.picture, "picture") if student.participation and student.participation.user.picture else none,
+        team_name=none %}
+{% include "fragments/user_detail_layout.html" %}
+{% endwith %}
+
+<script>
+var Config = new function() {
+  var self = this;
+  self.get_history_url = function() {
+    return {{ history_url | tojson | safe }};
+  };
+  self.get_submissions_url = function(user_id) {
+    return "";
+  };
+  self.get_face_url = function(user_id) {
+    return "";
+  };
+  self.get_flag_url = function(team_id) {
+    return "";
+  };
+};
+
+var DataStore = new function() {
+  var self = this;
+
+  var usersData = {{ users_data | tojson | safe }};
+  var tasksData = {{ tasks_data | tojson | safe }};
+  var contestsData = {{ contests_data | tojson | safe }};
+  var contestList = {{ contest_list | tojson | safe }};
+
+  self.users = usersData;
+  self.tasks = tasksData;
+  self.teams = {};
+  self.contests = contestsData;
+  self.contest_list = contestList;
+
+  self.user_count = {{ user_count }};
+  self.global_max_score = {{ total_max_score }};
+  self.global_score_precision = 2;
+};
+</script>
+
+{% include "fragments/user_detail_scripts.html" %}
+
+<script>
+(function() {
+  initUserDetail({
+    userId: {{ user_id | tojson | safe }},
+    showContestRows: true,
+    fetchSubmissionsViaAjax: false,
+    submissionsData: {{ submissions_data | tojson | safe }}
+  });
+})();
+</script>
+
+{% endblock core %}

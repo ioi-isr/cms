@@ -26,17 +26,19 @@
 """
 
 from cms.db import Contest, Task
+from cms.server.admin.handlers.utils import get_all_student_tags, deduplicate_preserving_order
+from cms.server.admin.handlers.trainingprogramtask import (
+    reorder_tasks,
+    shift_task_nums,
+)
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, require_permission
 
 
 class ContestTasksHandler(BaseHandler):
-    REMOVE_FROM_CONTEST = "Remove from contest"
-    MOVE_UP = "up by 1"
-    MOVE_DOWN = "down by 1"
-    MOVE_TOP = "to the top"
-    MOVE_BOTTOM = "to the bottom"
+    REORDER = "reorder"
+    REMOVE = "remove"
 
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, contest_id):
@@ -44,10 +46,37 @@ class ContestTasksHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["contest"] = self.contest
-        self.r_params["unassigned_tasks"] = \
-            self.sql_session.query(Task)\
-                .filter(Task.contest_id.is_(None))\
+
+        training_day = self.contest.training_day
+        self.r_params["is_training_day"] = training_day is not None
+
+        if training_day is not None:
+            training_program = training_day.training_program
+
+            program_tasks = self.sql_session.query(Task)\
+                .filter(Task.contest_id == training_program.managing_contest_id)\
+                .filter(Task.training_day_id.is_(None))\
+                .order_by(Task.num)\
                 .all()
+
+            other_tasks = self.sql_session.query(Task)\
+                .filter(Task.contest_id.is_(None))\
+                .filter(Task.training_day_id.is_(None))\
+                .order_by(Task.name)\
+                .all()
+
+            self.r_params["unassigned_tasks"] = program_tasks + other_tasks
+            self.r_params["program_task_ids"] = [t.id for t in program_tasks]
+
+            self.r_params["all_student_tags"] = get_all_student_tags(
+                self.sql_session, training_program
+            )
+        else:
+            self.r_params["unassigned_tasks"] = \
+                self.sql_session.query(Task)\
+                    .filter(Task.contest_id.is_(None))\
+                    .filter(Task.training_day_id.is_(None))\
+                    .all()
         self.render("contest_tasks.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -55,101 +84,94 @@ class ContestTasksHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "tasks")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+        training_day = self.contest.training_day
 
         try:
-            task_id: str = self.get_argument("task_id")
             operation: str = self.get_argument("operation")
-            assert operation in (
-                self.REMOVE_FROM_CONTEST,
-                self.MOVE_UP,
-                self.MOVE_DOWN,
-                self.MOVE_TOP,
-                self.MOVE_BOTTOM
-            ), "Please select a valid operation"
+
+            if operation == self.REORDER:
+                reorder_data = self.get_argument("reorder_data", "")
+                if reorder_data:
+                    if training_day is not None:
+                        reorder_tasks(
+                            self.sql_session,
+                            list(training_day.tasks),
+                            reorder_data,
+                            "training_day_num",
+                        )
+                    else:
+                        reorder_tasks(
+                            self.sql_session,
+                            list(self.contest.tasks),
+                            reorder_data,
+                            "num",
+                        )
+                    if self.try_commit():
+                        self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+
+            if operation == self.REMOVE:
+                task_id: str = self.get_argument("task_id")
+                task = self.safe_get_item(Task, task_id)
+
+                if training_day is not None:
+                    if task.training_day_id != training_day.id:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Invalid task",
+                            "Task does not belong to this training day",
+                        )
+                        self.redirect(fallback_page)
+                        return
+                    task_num = task.training_day_num
+                    task.training_day = None
+                    task.training_day_num = None
+                    self.sql_session.flush()
+                    if task_num is not None:
+                        shift_task_nums(
+                            self.sql_session,
+                            Task.training_day,
+                            training_day,
+                            Task.training_day_num,
+                            task_num,
+                            -1,
+                        )
+                else:
+                    if task.contest_id != self.contest.id:
+                        self.service.add_notification(
+                            make_datetime(),
+                            "Invalid task",
+                            "Task does not belong to this contest",
+                        )
+                        self.redirect(fallback_page)
+                        return
+                    task_num = task.num
+                    task.contest = None
+                    task.num = None
+                    self.sql_session.flush()
+                    if task_num is not None:
+                        shift_task_nums(
+                            self.sql_session,
+                            Task.contest,
+                            self.contest,
+                            Task.num,
+                            task_num,
+                            -1,
+                        )
+
+                if self.try_commit():
+                    self.service.proxy_service.reinitialize()
+                self.redirect(fallback_page)
+                return
+            else:
+                raise ValueError(f"Unknown operation: {operation}")
+
         except Exception as error:
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
             self.redirect(fallback_page)
             return
-
-        task = self.safe_get_item(Task, task_id)
-        task2 = None
-
-        # Save the current task_num (position in the contest).
-        task_num = task.num
-
-        if operation == self.REMOVE_FROM_CONTEST:
-            # Unassign the task to the contest.
-            task.contest = None
-            task.num = None  # not strictly necessary
-
-            self.sql_session.flush()
-
-            # Decrease by 1 the num of every subsequent task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-        elif operation == self.MOVE_UP:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == self.contest)\
-                        .filter(Task.num == task.num - 1)\
-                        .first()
-
-        elif operation == self.MOVE_DOWN:
-            task2 = self.sql_session.query(Task)\
-                        .filter(Task.contest == self.contest)\
-                        .filter(Task.num == task.num + 1)\
-                        .first()
-
-        elif operation == self.MOVE_TOP:
-            task.num = None
-            self.sql_session.flush()
-
-            # Increase by 1 the num of every previous task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num < task_num)\
-                         .order_by(Task.num.desc())\
-                         .all():
-                t.num += 1
-                self.sql_session.flush()
-
-            task.num = 0
-
-        elif operation == self.MOVE_BOTTOM:
-            task.num = None
-            self.sql_session.flush()
-
-            # Decrease by 1 the num of every subsequent task.
-            for t in self.sql_session.query(Task)\
-                         .filter(Task.contest == self.contest)\
-                         .filter(Task.num > task_num)\
-                         .order_by(Task.num)\
-                         .all():
-                t.num -= 1
-                self.sql_session.flush()
-
-            self.sql_session.flush()
-            task.num = len(self.contest.tasks) - 1
-
-        # Swap task.num and task2.num, if needed
-        if task2 is not None:
-            tmp_a, tmp_b = task.num, task2.num
-            task.num, task2.num = None, None
-            self.sql_session.flush()
-            task.num, task2.num = tmp_b, tmp_a
-
-        if self.try_commit():
-            # Create the user on RWS.
-            self.service.proxy_service.reinitialize()
-
-        # Maybe they'll want to do this again (for another task)
-        self.redirect(fallback_page)
 
 
 class AddContestTaskHandler(BaseHandler):
@@ -158,6 +180,7 @@ class AddContestTaskHandler(BaseHandler):
         fallback_page = self.url("contest", contest_id, "tasks")
 
         self.contest = self.safe_get_item(Contest, contest_id)
+        training_day = self.contest.training_day
 
         try:
             task_id: str = self.get_argument("task_id")
@@ -171,9 +194,25 @@ class AddContestTaskHandler(BaseHandler):
 
         task = self.safe_get_item(Task, task_id)
 
-        # Assign the task to the contest.
-        task.num = len(self.contest.tasks)
-        task.contest = self.contest
+        if training_day is not None:
+            training_program = training_day.training_program
+
+            # Check if task is not in the training program
+            if task.contest_id != training_program.managing_contest_id:
+                # Add the task to the training program's managing contest first
+                managing_contest = training_program.managing_contest
+                task.num = len(managing_contest.tasks)
+                task.contest = managing_contest
+
+            # Assign the task to the training day.
+            # Task keeps its contest_id (managing contest) and gets training_day_id set.
+            # Use training_day_num for ordering within the training day.
+            task.training_day_num = len(training_day.tasks)
+            task.training_day = training_day
+        else:
+            # Assign the task to the contest.
+            task.num = len(self.contest.tasks)
+            task.contest = self.contest
 
         if self.try_commit():
             # Create the user on RWS.
@@ -181,3 +220,77 @@ class AddContestTaskHandler(BaseHandler):
 
         # Maybe they'll want to do this again (for another task)
         self.redirect(fallback_page)
+
+
+class TaskVisibilityHandler(BaseHandler):
+    """Handler for updating task visibility tags via AJAX."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, contest_id, task_id):
+        self.contest = self.safe_get_item(Contest, contest_id)
+        task = self.safe_get_item(Task, task_id)
+
+        # Verify this contest is a training day
+        training_day = self.contest.training_day
+        if training_day is None:
+            self.set_status(400)
+            self.write({"error": "This contest is not a training day"})
+            return
+
+        # Verify the task belongs to this training day
+        if task.training_day_id != training_day.id:
+            self.set_status(400)
+            self.write({"error": "Task does not belong to this training day"})
+            return
+
+        # Capture original tags before modifying to return correct state on error
+        original_tags = task.visible_to_tags or []
+
+        try:
+            visible_to_tags_str = self.get_argument("visible_to_tags", "")
+            incoming_tags = [
+                tag.strip() for tag in visible_to_tags_str.split(",") if tag.strip()
+            ]
+
+            # Get allowed tags from training program
+            training_program = training_day.training_program
+            allowed_tags = set(get_all_student_tags(
+                self.sql_session, training_program
+            ))
+
+            # Validate and filter tags against allowed set
+            invalid_tags = [tag for tag in incoming_tags if tag not in allowed_tags]
+            valid_tags = [tag for tag in incoming_tags if tag in allowed_tags]
+
+            # Return error if there are invalid tags
+            if invalid_tags:
+                self.set_status(400)
+                self.write(
+                    {
+                        "error": f"Invalid tags: {', '.join(invalid_tags)}",
+                        "tags": task.visible_to_tags or [],
+                        "invalid_tags": invalid_tags,
+                    }
+                )
+                return
+
+            # Remove duplicates while preserving order
+            unique_tags = deduplicate_preserving_order(valid_tags)
+
+            task.visible_to_tags = unique_tags
+
+            if self.try_commit():
+                response_data = {
+                    "success": True,
+                    "tags": unique_tags,
+                }
+                self.write(response_data)
+            else:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save", "tags": original_tags}
+                )
+
+        except (ValueError, KeyError) as error:
+            self.set_status(400)
+            self.write({"error": str(error), "tags": original_tags})

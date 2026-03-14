@@ -10,26 +10,25 @@ from cms.db import ContestFolder, Contest
 from cms.server.util import exclude_internal_contests
 from cmscommon.datetime import make_datetime
 
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import (
+    BaseHandler,
+    get_folder_breadcrumb,
+    require_permission,
+    visible_contests,
+)
 
 
-class FolderListHandler(SimpleHandler("folders.html")):
+class FolderListHandler(BaseHandler):
+    """Root folders page - shows top-level folders and unassigned contests."""
+
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self):
         self.r_params = self.render_params()
-        self.r_params["folders"] = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
-        )
-        self.r_params["root_contests"] = (
-            exclude_internal_contests(
-                self.sql_session.query(Contest)
-                .filter(Contest.folder_id.is_(None))
-            )
-            .order_by(Contest.name)
-            .all()
-        )
+        # folder_list and root_contests are already in render_params;
+        # derive root_folders from folder_list to avoid an extra query.
+        self.r_params["root_folders"] = [
+            f for f in self.r_params["folder_list"] if f.parent_id is None
+        ]
         self.render("folders.html", **self.r_params)
 
 
@@ -41,10 +40,16 @@ class FolderHandler(BaseHandler):
         folder = self.safe_get_item(ContestFolder, folder_id)
         self.r_params = self.render_params()
         self.r_params["folder"] = folder
-        # Potential parents: all except self and descendants
-        all_folders = self.sql_session.query(ContestFolder).order_by(ContestFolder.name).all()
-        # Exclude self and descendants to prevent cycles
-        self.r_params["possible_parents"] = [f for f in all_folders if f is not folder and not f.is_descendant_of(folder)]
+        # Subfolders ordered by name
+        self.r_params["subfolders"] = sorted(
+            folder.children, key=lambda f: f.name
+        )
+        # Contests in this folder (exclude internal training-day contests)
+        self.r_params["folder_contests"] = visible_contests(
+            self.sql_session, folder
+        )
+        # Breadcrumb: use the same dict format as base.html expects
+        self.r_params["breadcrumbs"] = get_folder_breadcrumb(self, folder)
         self.render("folder.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -64,6 +69,9 @@ class FolderHandler(BaseHandler):
                 parent = None
             else:
                 parent = self.safe_get_item(ContestFolder, int(parent_id_str))
+                # Prevent folder cycles even if an invalid parent option is submitted.
+                if parent.is_descendant_of(folder):
+                    raise ValueError("Invalid parent: cannot set folder parent to itself or one of its descendants.")
 
             hidden = self.get_argument("hidden", "0") == "1"
 
@@ -79,20 +87,10 @@ class FolderHandler(BaseHandler):
         self.redirect(fallback)
 
 
-class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        self.r_params = self.render_params()
-        self.r_params["all_folders"] = (
-            self.sql_session.query(ContestFolder)
-            .order_by(ContestFolder.name)
-            .all()
-        )
-        self.render("add_folder.html", **self.r_params)
+class AddFolderHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback = self.url("folders", "add")
-        operation = self.get_argument("operation", "Create")
+        fallback = self.url("folders")
         try:
             name = self.get_argument("name")
             description = self.get_argument("description", "")
@@ -112,8 +110,10 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
             return
 
         if self.try_commit():
-            if operation == "Create and add another":
-                self.redirect(fallback)
+            # Redirect to parent folder page if created inside one,
+            # otherwise to root folders list.
+            if parent is not None:
+                self.redirect(self.url("folder", parent.id))
             else:
                 self.redirect(self.url("folders"))
         else:
@@ -121,22 +121,11 @@ class AddFolderHandler(SimpleHandler("add_folder.html", permission_all=True)):
 
 
 class RemoveFolderHandler(BaseHandler):
-    """Confirm and remove a folder.
+    """Remove a folder via DELETE request.
 
-    On delete, move subfolders under the parent (or root) and detach contests
-    (SET NULL). This preserves inner structure.
+    Subfolders and contests are reparented to the parent (or root).
+    This preserves inner structure.
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, folder_id: str):
-        folder = self.safe_get_item(ContestFolder, folder_id)
-        self.r_params = self.render_params()
-        self.r_params["folder"] = folder
-        self.r_params["subfolder_count"] = len(folder.children)
-        self.r_params["contest_count"] = exclude_internal_contests(
-            self.sql_session.query(Contest).filter(Contest.folder == folder)
-        ).count()
-        self.render("folder_remove.html", **self.r_params)
-
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, folder_id: str):
         folder = self.safe_get_item(ContestFolder, folder_id)
@@ -145,11 +134,12 @@ class RemoveFolderHandler(BaseHandler):
             child.parent = folder.parent
         # Move contests under this folder to its parent (or root if None)
         parent = folder.parent
-        for c in exclude_internal_contests(
-            self.sql_session.query(Contest).filter(Contest.folder == folder)
-        ).all():
+        for c in list(folder.contests):
             c.folder = parent
-        # Delete the folder itself; contests will be detached via FK SET NULL
+        # Delete the folder itself after explicit reparenting.
         self.sql_session.delete(folder)
-        self.try_commit()
-        self.write("../../folders")
+        if not self.try_commit():
+            self.set_status(500)
+            self.write("Failed to remove folder")
+            return
+        self.write(self.url("folders"))

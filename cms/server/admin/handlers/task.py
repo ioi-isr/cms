@@ -41,7 +41,9 @@ except:
 import tornado.web
 
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
+from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, SimpleHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
@@ -50,16 +52,17 @@ from cms.grading.subtask_validation import get_running_validator_ids
 logger = logging.getLogger(__name__)
 
 
-class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
+class AddTaskHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
-        fallback_page = self.url("tasks", "add")
+        is_ajax = "application/json" in self.request.headers.get("Accept", "")
 
         try:
             attrs = dict()
 
             self.get_string(attrs, "name", empty=None)
-            assert attrs.get("name") is not None, "No task name specified."
+            if not attrs.get("name"):
+                raise ValueError("No task name specified.")
             attrs["title"] = attrs["name"]
 
             # Set default submission format as ["taskname.%l"]
@@ -70,9 +73,13 @@ class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
             self.sql_session.add(task)
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
+            self.redirect(self.url("tasks"))
             return
 
         try:
@@ -93,17 +100,30 @@ class AddTaskHandler(SimpleHandler("add_task.html", permission_all=True)):
             task.active_dataset = dataset
 
         except Exception as error:
+            if is_ajax:
+                self.set_status(400)
+                self.write({"error": str(error)})
+                return
             self.service.add_notification(
                 make_datetime(), "Invalid field(s)", repr(error))
-            self.redirect(fallback_page)
+            self.redirect(self.url("tasks"))
             return
 
         if self.try_commit():
             # Create the task on RWS.
             self.service.proxy_service.reinitialize()
+            if is_ajax:
+                self.write({"ok": True, "id": task.id, "name": task.name})
+                return
             self.redirect(self.url("task", task.id))
         else:
-            self.redirect(fallback_page)
+            if is_ajax:
+                self.set_status(500)
+                self.write(
+                    {"error": "Failed to save task. The name may already exist."}
+                )
+                return
+            self.redirect(self.url("tasks"))
 
 
 class TaskHandler(BaseHandler):
@@ -113,7 +133,12 @@ class TaskHandler(BaseHandler):
     @require_permission(BaseHandler.AUTHENTICATED)
     def get(self, task_id):
         task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
+        # If the task is assigned to an active training day (not archived),
+        # show the training day's contest sidebar instead of the training program sidebar
+        if task.training_day is not None and task.training_day.contest is not None:
+            self.contest = task.training_day.contest
+        else:
+            self.contest = task.contest
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
@@ -155,13 +180,9 @@ class TaskHandler(BaseHandler):
                     # This may fail if there are no testcases, but subtask_info
                     # should still be populated from above
                     try:
-                        targets = score_type_obj.retrieve_target_testcases()
-                        tc_to_subtasks = {}
-                        for subtask_idx, testcase_list in enumerate(targets):
-                            for tc_codename in testcase_list:
-                                if tc_codename not in tc_to_subtasks:
-                                    tc_to_subtasks[tc_codename] = []
-                                tc_to_subtasks[tc_codename].append(subtask_idx)
+                        from cms.server.util import build_tc_to_subtasks_mapping
+
+                        tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
                         testcase_subtasks[dataset.id] = tc_to_subtasks
                     except ValueError as e:
                         # If retrieve_target_testcases fails due to bad parameters/regexes,
@@ -176,6 +197,44 @@ class TaskHandler(BaseHandler):
         self.r_params["subtask_names"] = subtask_names
         self.r_params["subtask_info"] = subtask_info
         self.r_params["running_validator_ids"] = get_running_validator_ids()
+
+        activate_data = {}
+        for dataset in task.datasets:
+            if dataset is task.active_dataset:
+                continue
+            if task.active_dataset is None:
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+                continue
+            try:
+                changes = compute_changes_for_dataset(task.active_dataset, dataset)
+                notify_participations = set()
+                for c in changes:
+                    score_changed = c.old_score is not None or c.new_score is not None
+                    public_score_changed = (
+                        c.old_public_score is not None or c.new_public_score is not None
+                    )
+                    if public_score_changed or (
+                        c.submission.tokened() and score_changed
+                    ):
+                        notify_participations.add(c.submission.participation.id)
+                activate_data[dataset.id] = {
+                    "changes": changes,
+                    "default_notify_participations": notify_participations,
+                }
+            except Exception as error:
+                logger.exception(
+                    "Failed to compute activation changes for dataset %s",
+                    dataset.id,
+                    exc_info=error,
+                )
+                activate_data[dataset.id] = {
+                    "changes": [],
+                    "default_notify_participations": set(),
+                }
+        self.r_params["activate_data"] = activate_data
         self.render("task.html", **self.r_params)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -230,6 +289,13 @@ class TaskHandler(BaseHandler):
 
             self.get_string(attrs, "score_mode")
 
+            # Process visible_to_tags for training day tasks
+            # Only update if the parameter is explicitly present in the request
+            # (to avoid clobbering when editing from the general task page)
+            visible_to_tags_str = self.get_argument("visible_to_tags", None)
+            if visible_to_tags_str is not None:
+                attrs["visible_to_tags"] = parse_tags(visible_to_tags_str)
+
             # Update the task.
             task.set_attrs(attrs)
 
@@ -264,8 +330,12 @@ class TaskHandler(BaseHandler):
                     "testcase_%s_public" % testcase.id, False))
 
             # Test that the score type parameters are valid.
+            # Use no_autoflush to prevent premature flushing of
+            # potentially invalid field values (e.g. invalid task name)
+            # which would cause an IntegrityError before try_commit.
             try:
-                dataset.score_type_object
+                with self.sql_session.no_autoflush:
+                    _ = dataset.score_type_object
             except (AssertionError, ValueError) as error:
                 self.application.service.add_notification(
                     make_datetime(), "Invalid score type parameters",
@@ -310,21 +380,10 @@ class TaskHandler(BaseHandler):
 
 
 class AddStatementHandler(BaseHandler):
-    """Add a statement to a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.render("add_statement.html", **self.r_params)
-
+    """Add a statement to a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "statements", "add")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -353,7 +412,7 @@ class AddStatementHandler(BaseHandler):
                 "The selected file is empty. Please select a non-empty PDF file.")
             self.redirect(fallback_page)
             return
-        if not statement["filename"].endswith(".pdf"):
+        if not statement["filename"].lower().endswith(".pdf"):
             self.service.add_notification(
                 make_datetime(),
                 "Invalid task statement",
@@ -432,28 +491,19 @@ class StatementHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         self.sql_session.delete(statement)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
+            return
 
         # Page to redirect to.
         self.write("%s" % task.id)
 
 
 class AddAttachmentHandler(BaseHandler):
-    """Add an attachment to a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.render("add_attachment.html", **self.r_params)
-
+    """Add an attachment to a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "attachments", "add")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -540,7 +590,9 @@ class AttachmentHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         self.sql_session.delete(attachment)
-        self.try_commit()
+        if not self.try_commit():
+            self.set_status(500)
+            return
 
         # Page to redirect to.
         self.write("%s" % task.id)
@@ -552,29 +604,10 @@ class AddDatasetHandler(BaseHandler):
     It's equivalent to the old behavior when the dataset_id_to_copy
     given was equal to the string "-".
 
-    If referred by GET, this handler will return a HTML form.
-    If referred by POST, this handler will create the dataset.
-
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        self.contest = task.contest
-
-        original_dataset = None
-        description = "Default"
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["clone_id"] = "new"
-        self.r_params["original_dataset"] = original_dataset
-        self.r_params["original_dataset_task_type_parameters"] = None
-        self.r_params["default_description"] = description
-        self.render("add_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
-        fallback_page = self.url("task", task_id, "add_dataset")
+        fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
@@ -595,7 +628,7 @@ class AddDatasetHandler(BaseHandler):
 
             self.get_time_limit(attrs, "time_limit")
             self.get_memory_limit(attrs, "memory_limit")
-            self.get_task_type(attrs, "task_type", "TaskTypeOptions_")
+            self.get_task_type(attrs, "task_type", "TaskTypeOptions_new_")
             self.get_score_type(attrs, "score_type", "score_type_parameters")
 
             # Create the dataset.
@@ -617,50 +650,19 @@ class AddDatasetHandler(BaseHandler):
             task.active_dataset = dataset
 
         if self.try_commit():
-            # self.service.scoring_service.reinitialize()
             self.redirect(self.url("task", task_id))
         else:
             self.redirect(fallback_page)
 
 
 class TaskListHandler(SimpleHandler("tasks.html")):
-    """Get returns the list of all tasks, post perform operations on
-    a specific task (removing them from CMS).
+    """Get returns the list of all tasks."""
 
-    """
-
-    REMOVE = "Remove"
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self):
-        task_id = self.get_argument("task_id")
-        operation = self.get_argument("operation")
-
-        if operation == self.REMOVE:
-            asking_page = self.url("tasks", task_id, "remove")
-            # Open asking for remove page
-            self.redirect(asking_page)
-        else:
-            self.service.add_notification(
-                make_datetime(), "Invalid operation %s" % operation, "")
-            self.redirect(self.url("tasks"))
+    pass
 
 
 class RemoveTaskHandler(BaseHandler):
-    """Get returns a page asking for confirmation, delete actually removes
-    the task from CMS.
-
-    """
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, task_id):
-        task = self.safe_get_item(Task, task_id)
-        submission_query = self.sql_session.query(Submission)\
-            .filter(Submission.task == task)
-
-        self.render_params_for_remove_confirmation(submission_query)
-        self.r_params["task"] = task
-        self.render("task_remove.html", **self.r_params)
+    """Delete removes the task from CMS."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id):
@@ -682,11 +684,11 @@ class RemoveTaskHandler(BaseHandler):
             for task in following_tasks:
                 task.num -= 1
                 self.sql_session.flush()
-        if self.try_commit():
+        if not self.try_commit():
+            self.set_status(500)
+        else:
             self.service.proxy_service.reinitialize()
-
-        # Maybe they'll want to do this again (for another task)
-        self.write("../../tasks")
+            self.write(self.url("tasks"))
 
 
 class DefaultSubmissionFormatHandler(BaseHandler):
@@ -708,8 +710,17 @@ class DefaultSubmissionFormatHandler(BaseHandler):
         try:
             task.set_default_output_only_submission_format()
         except Exception as e:
-            raise RuntimeError(
-                f"Couldn't create default submission format for task {task.id}") from e
+            logger.error(
+                "Couldn't create default submission format for task %s "
+                "(dataset %s, type %s)",
+                task.id,
+                task.active_dataset.id,
+                task.active_dataset.task_type,
+                exc_info=True,
+            )
+            raise tornado.web.HTTPError(
+                500, f"Couldn't create default submission format for task {task.id}"
+            ) from e
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()

@@ -38,6 +38,7 @@ except:
 import tornado.web
 
 from cms.db import Contest, Question, Participation
+from cms.server.admin.handlers.utils import get_training_day_notifications
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 
@@ -48,17 +49,49 @@ logger = logging.getLogger(__name__)
 class QuestionsHandler(BaseHandler):
     """Page to see and send messages to all the contestants.
 
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/questions
+    - /training_program/{id}/questions
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        self.contest = self.safe_get_item(Contest, contest_id)
+    def get(self, entity_type: str, entity_id: str):
+        training_program = self.setup_contest_or_training_program(
+            entity_type, entity_id
+        )
 
-        self.r_params = self.render_params()
         self.r_params["questions"] = self.sql_session.query(Question)\
             .join(Participation)\
-            .filter(Participation.contest_id == contest_id)\
+            .filter(Participation.contest_id == self.contest.id)\
             .order_by(Question.question_timestamp.desc())\
             .order_by(Question.id).all()
+
+        # Build training days with unanswered questions from notification data
+        # (only for training programs)
+        training_days_with_unanswered: list[dict] = []
+        if training_program is not None:
+            td_notifications = self.r_params.get("training_day_notifications", {})
+            # If not already computed, compute notifications for each training day
+            if not td_notifications:
+                for td in training_program.training_days:
+                    if td.contest is None:
+                        continue
+                    td_notifications[td.id] = get_training_day_notifications(
+                        self.sql_session, td
+                    )
+            for td in training_program.training_days:
+                if td.contest is None:
+                    continue
+                td_notif = td_notifications.get(td.id, {})
+                unanswered_count = td_notif.get("unanswered_questions", 0)
+                if unanswered_count > 0:
+                    training_days_with_unanswered.append({
+                        "contest_id": td.contest_id,
+                        "name": td.contest.name,
+                        "unanswered_count": unanswered_count,
+                    })
+        self.r_params["training_days_with_unanswered_questions"] = \
+            training_days_with_unanswered
+
         self.render("questions.html", **self.r_params)
 
 
@@ -75,10 +108,6 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
     @require_permission(BaseHandler.PERMISSION_MESSAGING)
     def post(self, contest_id, question_id):
         user_id = self.get_argument("user_id", None)
-        if user_id is not None:
-            ref = self.url("contest", contest_id, "user", user_id, "edit")
-        else:
-            ref = self.url("contest", contest_id, "questions")
 
         question = self.safe_get_item(Question, question_id)
         self.contest = self.safe_get_item(Contest, contest_id)
@@ -86,6 +115,18 @@ class QuestionActionHandler(BaseHandler, metaclass=ABCMeta):
         # Protect against URLs providing incompatible parameters.
         if self.contest is not question.participation.contest:
             raise tornado.web.HTTPError(404)
+
+        # Determine redirect URL after processing
+        if user_id is not None:
+            ref = self.url("contest", contest_id, "user", user_id, "edit")
+        else:
+            # If this is a managing contest for a training program,
+            # redirect back to the training program questions page
+            tp = getattr(self.contest, "training_program", None)
+            if tp is not None:
+                ref = self.url("training_program", tp.id, "questions")
+            else:
+                ref = self.url("contest", contest_id, "questions")
 
         self.process_question(question)
         self.redirect(ref)

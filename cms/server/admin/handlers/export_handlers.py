@@ -28,7 +28,7 @@ import zipfile
 
 import yaml
 
-from cms.db import Contest, Task
+from cms.db import Contest, Task, TrainingProgram
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
@@ -61,6 +61,26 @@ def _expand_codename_with_language(filename: str, language_name: str | None) -> 
     if not extension:
         return filename
     return filename[:-3] + extension
+
+
+def _zip_directory(src_dir: str, zip_path: str, base_dir: str) -> None:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, _dirs, files in os.walk(src_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, base_dir)
+                zipf.write(file_path, arcname)
+
+
+def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str) -> None:
+    handler.set_header('Content-Type', 'application/zip')
+    handler.set_header('Content-Disposition',
+                      f'attachment; filename="{download_name}"')
+
+    with open(zip_path, 'rb') as f:
+        handler.write(f.read())
+
+    handler.finish()
 
 
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
@@ -448,14 +468,16 @@ def _export_contest_to_yaml_format(contest, file_cacher, export_dir):
     if contest.analysis_stop is not None:
         contest_config['analysis_stop'] = contest.analysis_stop.timestamp()
 
-    if contest.tasks:
-        contest_config['tasks'] = [task.name for task in contest.tasks]
+    # Use get_tasks() to support training days which have tasks separate from contest.tasks
+    tasks = contest.get_tasks()
+    if tasks:
+        contest_config['tasks'] = [task.name for task in tasks]
 
     contest_yaml_path = os.path.join(export_dir, "contest.yaml")
     with open(contest_yaml_path, 'w', encoding='utf-8') as f:
         yaml.dump(contest_config, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
-    for task in contest.tasks:
+    for task in tasks:
         task_dir = os.path.join(export_dir, task.name)
         os.makedirs(task_dir, exist_ok=True)
 
@@ -498,21 +520,8 @@ class ExportTaskHandler(BaseHandler):
             )
 
             zip_path = os.path.join(temp_dir, f"{task.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(task_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{task.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            _zip_directory(task_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{task.name}.zip")
 
         except Exception as error:
             logger.error("Task export failed: %s", error, exc_info=True)
@@ -528,18 +537,34 @@ class ExportTaskHandler(BaseHandler):
 
 
 class ExportContestHandler(BaseHandler):
-    """Handler for exporting a contest to a zip file in YamlLoader format.
+    """Handler for exporting a contest or training program to a zip file.
 
+    Supports both contest and training_program entity types via URL pattern:
+    - /contest/{id}/export
+    - /training_program/{id}/export
+
+    For training programs, exports all tasks from the managing contest.
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, contest_id):
-        contest = self.safe_get_item(Contest, contest_id)
+    def get(self, entity_type: str, entity_id: str):
+        # Determine the contest and export name based on entity type
+        if entity_type == "training_program":
+            training_program = self.safe_get_item(TrainingProgram, entity_id)
+            contest = training_program.managing_contest
+            export_name = training_program.name
+            fallback_url = self.url("training_program", entity_id)
+            error_prefix = "Training program"
+        else:
+            contest = self.safe_get_item(Contest, entity_id)
+            export_name = contest.name
+            fallback_url = self.url("contest", entity_id)
+            error_prefix = "Contest"
 
         temp_dir = None
         try:
-            temp_dir = tempfile.mkdtemp(prefix="cms_export_contest_")
+            temp_dir = tempfile.mkdtemp(prefix="cms_export_")
 
-            contest_dir = os.path.join(temp_dir, contest.name)
+            contest_dir = os.path.join(temp_dir, export_name)
             os.makedirs(contest_dir)
 
             _export_contest_to_yaml_format(
@@ -548,30 +573,17 @@ class ExportContestHandler(BaseHandler):
                 contest_dir
             )
 
-            zip_path = os.path.join(temp_dir, f"{contest.name}.zip")
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(contest_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, temp_dir)
-                        zipf.write(file_path, arcname)
-
-            self.set_header('Content-Type', 'application/zip')
-            self.set_header('Content-Disposition',
-                          f'attachment; filename="{contest.name}.zip"')
-
-            with open(zip_path, 'rb') as f:
-                self.write(f.read())
-
-            self.finish()
+            zip_path = os.path.join(temp_dir, f"{export_name}.zip")
+            _zip_directory(contest_dir, zip_path, temp_dir)
+            _write_zip_response(self, zip_path, f"{export_name}.zip")
 
         except Exception as error:
-            logger.error("Contest export failed: %s", error, exc_info=True)
+            logger.error("%s export failed: %s", error_prefix, error, exc_info=True)
             self.service.add_notification(
                 make_datetime(),
-                "Contest export failed",
+                f"{error_prefix} export failed",
                 str(error))
-            self.redirect(self.url("contest", contest_id))
+            self.redirect(fallback_url)
 
         finally:
             if temp_dir and os.path.exists(temp_dir):

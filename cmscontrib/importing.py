@@ -355,6 +355,10 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         Task.statement_views: False,
         # Score cache is computed, not imported.
         Task.participation_scores: False,
+        # Training day assignment is not handled by task importers.
+        Task.training_day: False,
+        # Student task assignments are managed separately via admin UI.
+        Task.student_tasks: False,
         # Relationships to update.
         Task.statements: get_statements,
         Task.datasets: update_datasets_fn,
@@ -377,6 +381,10 @@ def update_contest(old_contest: Contest, new_contest: Contest, parent=None):
         Contest.participations: False,
         # Folder assignment is not handled by contest importers.
         Contest.folder: False,
+        # Training program assignment is not handled by contest importers.
+        Contest.training_program: False,
+        # Training day assignment is not handled by contest importers.
+        Contest.training_day: False,
     }, parent=parent)
 
 

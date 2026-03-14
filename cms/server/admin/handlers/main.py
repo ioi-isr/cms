@@ -29,7 +29,7 @@ import json
 import logging
 
 from cms import ServiceCoord, get_service_shards, get_service_address
-from cms.db import Admin, Contest, DelayRequest, Question
+from cms.db import Admin, Contest, DelayRequest, Question, SessionGen, enumerate_files
 from cms.server.jinja2_toolbox import markdown_filter
 from cmscommon.crypto import validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
@@ -115,18 +115,32 @@ class ResourcesHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["resource_shards"] = \
             get_service_shards("ResourceService")
+
+        # All addresses for the machine selector
+        all_resource_addresses = {}
+        for i in range(self.r_params["resource_shards"]):
+            try:
+                all_resource_addresses[i] = get_service_address(
+                    ServiceCoord("ResourceService", i)
+                ).ip
+            except KeyError:
+                logger.warning(f"Missing ResourceService shard {i}, skipping")
+        self.r_params["all_resource_addresses"] = all_resource_addresses
+        self.r_params["selected_shard"] = shard
+        self.r_params["contest_address"] = contest_address
+
+        # Active addresses (what to actually display)
         self.r_params["resource_addresses"] = {}
         if shard == "all":
-            for i in range(self.r_params["resource_shards"]):
-                self.r_params["resource_addresses"][i] = get_service_address(
-                    ServiceCoord("ResourceService", i)).ip
+            self.r_params["resource_addresses"] = dict(all_resource_addresses)
         else:
             shard = int(shard)
             try:
                 address = get_service_address(
                     ServiceCoord("ResourceService", shard))
             except KeyError:
-                self.redirect(self.url(*(["resourceslist"] + contest_address)))
+                self.redirect(
+                    self.url(*(["resources", "all"] + contest_address)))
                 return
             self.r_params["resource_addresses"][shard] = address.ip
 
@@ -184,6 +198,80 @@ class NotificationsHandler(BaseHandler):
         self.service.notifications = []
 
         self.write(json.dumps(res))
+
+def _get_orphan_digests(file_cacher):
+    """Return (all_files, orphan_digests) from the file cacher.
+
+    Compares files present in the file store against those referenced
+    in the database. Files not referenced by any task or contest are
+    considered orphans.
+    """
+    files = {digest for digest, _ in file_cacher.list()}
+    with SessionGen() as session:
+        referenced = enumerate_files(session)
+    return files, files - referenced
+
+
+def _get_orphan_size(file_cacher, orphan_digests):
+    """Return the total size in bytes of the given orphan digests."""
+    total = 0
+    for digest in orphan_digests:
+        try:
+            total += file_cacher.get_size(digest)
+        except KeyError:
+            pass
+    return total
+
+
+class FileCacherStatsHandler(BaseHandler):
+    """Returns file cacher statistics as JSON.
+
+    This is an expensive operation that scans the entire file store
+    and database, so it is only triggered on demand.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def get(self):
+        try:
+            files, orphan_digests = _get_orphan_digests(
+                self.service.file_cacher)
+            self.write(json.dumps({
+                "total_files": len(files),
+                "referenced_files": len(files) - len(orphan_digests),
+                "orphan_files": len(orphan_digests),
+                "orphan_size": _get_orphan_size(
+                    self.service.file_cacher, orphan_digests),
+            }))
+        except Exception as error:
+            logger.error("Error computing file cacher stats: %s", error,
+                         exc_info=True)
+            self.set_status(500)
+            self.write(json.dumps({"error": str(error)}))
+
+
+class FileCacherDeleteOrphansHandler(BaseHandler):
+    """Delete orphan files from the file cacher."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        try:
+            fc = self.service.file_cacher
+            _, orphan_digests = _get_orphan_digests(fc)
+            deleted_size = _get_orphan_size(fc, orphan_digests)
+
+            for digest in orphan_digests:
+                fc.delete(digest)
+
+            self.write(json.dumps({
+                "deleted_count": len(orphan_digests),
+                "deleted_size": deleted_size,
+            }))
+        except Exception as error:
+            logger.error("Error deleting orphan files: %s", error,
+                         exc_info=True)
+            self.set_status(500)
+            self.write(json.dumps({"error": str(error)}))
+
 
 class MarkdownRenderHandler(BaseHandler):
     """Renders Markdown for AWS message previews."""

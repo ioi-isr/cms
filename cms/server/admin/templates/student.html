@@ -1,0 +1,244 @@
+{% import "macro/reevaluation_buttons.html" as macro_reevaluation_buttons %}
+
+{% extends "base.html" %}
+{% import 'macro/submission.html' as macro_submission %}
+{% import 'macro/question.html' as macro_question with context %}
+{% import 'macro/message.html' as macro_message with context %}
+
+{% block js_init %}
+CMS.AWSFormUtils.initTagify({
+    inputSelector: 'input[name="student_tags"]',
+    whitelist: {{ all_student_tags | tojson }},
+    getSaveUrl: function() {
+        return '{{ url("training_program", training_program.id, "student", selected_user.id, "tags") }}';
+    },
+    saveParamName: 'student_tags',
+    placeholder: 'Type tags',
+    editable: true,
+    pattern: /^[^,]+$/,
+    invalidMessage: 'Tags cannot contain commas.'
+});
+{% endblock js_init %}
+
+{% block core %}
+<h1 class="title is-spaced">
+  Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+</h1>
+<p class="subtitle has-text-grey mb-5">
+  Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+  &middot;
+  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View Task Archive ({{ student.student_tasks|length }} tasks)</a>
+</p>
+
+<!-- Student Information -->
+<h2 class="title is-5">Student Information</h2>
+<div class="box" style="max-width: 1200px;">
+  <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "edit") }}" method="POST">
+    {{ xsrf_form_html|safe }}
+
+    <div class="columns is-multiline">
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="student_tags">
+            Student Tags
+            <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" id="student_tags" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="team">
+            Team
+            <span class="info" title="Code of the team of the contestant. Only used in the external ranking."></span>
+          </label>
+          <div class="control">
+            <input class="input" list="teams" id="team" name="team" value="{{ participation.team.code if participation.team is not none else "" }}"/>
+            <datalist id="teams">
+              {% for t in teams %}
+              <option value="{{ t.code }}">
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
+      </div>
+      <div class="column is-full">
+        <div class="field">
+          <label class="label">
+            Password
+            <span class="info" title="Student password for this training program. If empty, the student's main password is used. Caution: stored in plain text."></span>
+            <strong style="color:#c00; font-weight: 700;">(only inside the training program {{ training_program.name }})</strong>
+          </label>
+          <div class="control">
+            {% set hashed_password = participation.password %}
+            {% include "fragments/hashed_password_form.html" %}
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Hidden participation
+            <span class="info" title="Whether the student's results will be visible in the external ranking. Note: This setting will automatically apply to all new training days."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="hidden" {% if participation.hidden %}checked{% endif %}/>
+              Hidden (will apply to new training days)
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Apply to existing training days
+            <span class="info" title="If checked, the hidden status change will also be applied to all existing training days for this student."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="apply_hidden_to_existing"/>
+              Update hidden status in all existing training days
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Unrestricted participation
+            <span class="info" title="Whether the student is unrestricted by maximum number of submissions, user tests, and minimum interval between submissions, user tests, and training program time."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="unrestricted" {% if participation.unrestricted %}checked{% endif %}/>
+              Unrestricted (will apply to new training days)
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label">
+            Apply to existing training days
+            <span class="info" title="If checked, the unrestricted status change will also be applied to all existing training days for this student."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="apply_unrestricted_to_existing"/>
+              Update unrestricted status in all existing training days
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="ip">
+            IP address or subnet
+            <span class="info" title="A comma-separated list of IP addresses (or subnets) of the student for this training program. Used for IP-based login restrictions and/or for autologin (in this case, it must be a single address)."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" id="ip" name="ip" value="{{ participation.ip|map("string")|join(", ") if participation.ip is not none else "" }}"/>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="starting_time">
+            Time of first login (in UTC)
+            <span class="info" title="Time of first login during this training program, used for USACO-style contests. Example: '2015-12-31 15:00:00'."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" id="starting_time" name="starting_time" value="{{ participation.starting_time if participation.starting_time is not none else "" }}"/>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="delay_time">
+            Delay (seconds)
+            <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time at the beginning of the training program. If this is non-zero, all the events (token generation, end of contest) for this student will be shifted of the appropriate amount."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" id="delay_time" name="delay_time" value="{{ participation.delay_time.total_seconds()|int }}"/>
+          </div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="field">
+          <label class="label" for="extra_time">
+            Extra time (seconds)
+            <span class="info" title="To be set (in seconds) to acknowledge that the student lost that amount of time during the training program. If this is non-zero, the end of the contest will be shifted of the appropriate amount for this student."></span>
+          </label>
+          <div class="control">
+            <input class="input" type="text" id="extra_time" name="extra_time" value="{{ participation.extra_time.total_seconds()|int }}"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field is-grouped mt-4">
+      <div class="control">
+        <button type="submit" class="button is-primary is-outlined">Update</button>
+      </div>
+      <div class="control">
+        <button type="reset" class="button is-light">Reset</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Submissions -->
+<h2 class="title is-5 mt-5">Submissions</h2>
+<div>
+  {{ macro_submission.header(
+         admin,
+         submission_count,
+         macro_reevaluation_buttons.reevaluation_buttons_bar(
+             admin.permission_all,
+             url("training_program", training_program.id, "student", selected_user.id, "edit"),
+             participation_id=participation.id),
+         download_url=url("training_program", training_program.id, "student", selected_user.id, "submissions", "download")) }}
+
+  {{ macro_submission.rows(
+         admin,
+         url,
+         url["training_program"][training_program.id]["student"][selected_user.id]["edit"],
+         submissions,
+         submission_page,
+         submission_pages,
+         show_training_day=true) }}
+</div>
+
+<!-- Questions -->
+<h2 class="title is-5 mt-5">Questions</h2>
+<div>
+  {% if participation.questions != [] %}
+  <div class="notifications">
+    {% for msg in participation.questions %}
+      {{ macro_question.question(msg, selected_user.id) }}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="has-text-grey">No questions.</p>
+  {% endif %}
+</div>
+
+<!-- Messages -->
+<h2 class="title is-5 mt-5">Messages</h2>
+<div>
+  {% set student_page_url = url("training_program", training_program.id, "student", selected_user.id, "edit") %}
+  {{ macro_message.send_message_form(url("contest", training_program.managing_contest.id, "user", selected_user.id, "message"), redirect_url=student_page_url) }}
+
+  {% if participation.messages != [] %}
+    {% for msg in participation.messages|reverse %}
+      {{ macro_message.message_card(msg, url("contest", training_program.managing_contest.id, "user", selected_user.id, "message", msg.id), url("contest", training_program.managing_contest.id, "user", selected_user.id, "message", msg.id, "edit"), redirect_url=student_page_url) }}
+    {% endfor %}
+  {% else %}
+    <p class="has-text-grey">No messages.</p>
+  {% endif %}
+</div>
+
+{% endblock core %}

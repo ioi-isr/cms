@@ -33,6 +33,7 @@ import logging
 import re
 import shutil
 import tempfile
+import uuid
 import zipfile
 
 import collections
@@ -52,7 +53,6 @@ from cms.grading.tasktypes.util import \
     get_allowed_manager_basenames, compile_manager_bytes, create_sandbox
 from cms.grading.languagemanager import filename_to_language, get_language
 from cms.grading.language import CompiledLanguage
-from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.subtask_validation import set_sandbox_resource_limits
 from cmscommon.datetime import make_datetime
 from cmscommon.importers import import_testcases_from_zipfile, compile_template_regex
@@ -132,38 +132,13 @@ class CloneDatasetHandler(BaseHandler):
     It's equivalent to the old behavior of AddDatasetHandler when the
     dataset_id_to_copy given was the ID of an existing dataset.
 
-    If referred by GET, this handler will return a HTML form.
-    If referred by POST, this handler will create the dataset.
-
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id_to_copy):
-        dataset = self.safe_get_item(Dataset, dataset_id_to_copy)
-        task = self.safe_get_item(Task, dataset.task_id)
-        self.contest = task.contest
-
-        try:
-            original_dataset = \
-                self.safe_get_item(Dataset, dataset_id_to_copy)
-            description = "Copy of %s" % original_dataset.description
-        except ValueError:
-            raise tornado.web.HTTPError(404)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["clone_id"] = dataset_id_to_copy
-        self.r_params["original_dataset"] = original_dataset
-        self.r_params["original_dataset_task_type_parameters"] = \
-            original_dataset.task_type_parameters
-        self.r_params["default_description"] = description
-        self.render("add_dataset.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id_to_copy):
-        fallback_page = self.url("dataset", dataset_id_to_copy, "clone")
-
         dataset = self.safe_get_item(Dataset, dataset_id_to_copy)
         task = self.safe_get_item(Task, dataset.task_id)
+        fallback_page = self.url("task", task.id)
+
         task_id = task.id
 
         try:
@@ -189,7 +164,11 @@ class CloneDatasetHandler(BaseHandler):
 
             self.get_time_limit(attrs, "time_limit")
             self.get_memory_limit(attrs, "memory_limit")
-            self.get_task_type(attrs, "task_type", "TaskTypeOptions_")
+            self.get_task_type(
+                attrs,
+                "task_type",
+                "TaskTypeOptions_clone_%s_" % dataset_id_to_copy,
+            )
             self.get_score_type(attrs, "score_type", "score_type_parameters")
 
             # Create the dataset.
@@ -210,7 +189,8 @@ class CloneDatasetHandler(BaseHandler):
             # testcases across too. If the user insists, clone all
             # evaluation information too.
             clone_results = bool(self.get_argument("clone_results", False))
-            dataset.clone_from(original_dataset, True, True, clone_results)
+            clone_managers = bool(self.get_argument("clone_managers", False))
+            dataset.clone_from(original_dataset, clone_managers, True, clone_results)
 
         # If the task does not yet have an active dataset, make this
         # one active.
@@ -224,62 +204,43 @@ class CloneDatasetHandler(BaseHandler):
 
 
 class RenameDatasetHandler(BaseHandler):
-    """Rename the descripton of a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("rename_dataset.html", **self.r_params)
-
+    """Rename the description of a dataset (AJAX-only)."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "rename")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
 
-        description: str = self.get_argument("description", "")
+        description: str = self.get_argument("description", "").strip()
 
-        # Ensure description is unique.
-        if any(description == d.description
-               for d in task.datasets if d is not dataset):
-            self.service.add_notification(
-                make_datetime(),
-                "Dataset name \"%s\" is already taken." % description,
-                "Please choose a unique name for this dataset.")
-            self.redirect(fallback_page)
+        if not description:
+            self.set_status(400)
+            self.write({"error": "Description is required."})
+            return
+
+        # Ensure description is unique (comparing trimmed values)
+        if any(
+            description == d.description.strip()
+            for d in task.datasets
+            if d is not dataset
+        ):
+            self.set_status(400)
+            self.write({"error": 'Dataset name "%s" is already taken.' % description})
             return
 
         dataset.description = description
 
         if self.try_commit():
-            self.redirect(self.url("task", task.id))
+            self.write({"success": True, "description": description})
         else:
-            self.redirect(fallback_page)
+            self.set_status(500)
+            self.write({"error": "Failed to save changes."})
+            return
 
 
 class DeleteDatasetHandler(BaseHandler):
     """Delete a dataset from a task.
 
     """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("delete_dataset.html", **self.r_params)
-
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
@@ -294,40 +255,12 @@ class DeleteDatasetHandler(BaseHandler):
 
 
 class ActivateDatasetHandler(BaseHandler):
-    """Set a given dataset to be the active one for a task.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        changes = compute_changes_for_dataset(task.active_dataset, dataset)
-        notify_participations = set()
-
-        # By default, we will notify users who's public scores have changed, or
-        # their non-public scores have changed but they have used a token.
-        for c in changes:
-            score_changed = c.old_score is not None or c.new_score is not None
-            public_score_changed = c.old_public_score is not None or \
-                c.new_public_score is not None
-            if public_score_changed or \
-                    (c.submission.tokened() and score_changed):
-                notify_participations.add(c.submission.participation.id)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["changes"] = changes
-        self.r_params["default_notify_participations"] = notify_participations
-        self.render("activate_dataset.html", **self.r_params)
-
+    """Set a given dataset to be the active one for a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-
+        fallback_url = self.url("task", task.id)
         task.active_dataset = dataset
 
         if dataset.task_type == 'OutputOnly':
@@ -348,6 +281,10 @@ class ActivateDatasetHandler(BaseHandler):
                 .evaluation_service.search_operations_not_done()
             self.service\
                 .scoring_service.search_operations_not_done()
+
+        else:
+            self.redirect(fallback_url)
+            return
 
         # Now send notifications to contestants.
         datetime = make_datetime()
@@ -371,7 +308,7 @@ class ActivateDatasetHandler(BaseHandler):
                 make_datetime(),
                 "Messages sent to %d users." % count, "")
 
-        self.redirect(self.url("task", task.id))
+        self.redirect(fallback_url)
 
 
 class ToggleAutojudgeDatasetHandler(BaseHandler):
@@ -405,19 +342,15 @@ class AddManagerHandler(BaseHandler):
     def get(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-        self.contest = task.contest
 
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_manager.html", **self.r_params)
+        # Redirect to task page since we now use modal for adding managers
+        self.redirect(self.url("task", task.id))
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "managers", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         # Check if any files were uploaded
         if "manager" not in self.request.files:
@@ -574,22 +507,10 @@ class AddTestcaseHandler(BaseHandler):
     """Add a testcase to a dataset."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_testcase.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "testcases", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         codename = self.get_argument("codename")
 
@@ -651,22 +572,10 @@ class AddTestcasesHandler(BaseHandler):
     """Add several testcases to a dataset."""
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "testcases", "add_multiple")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         try:
             archive = self.request.files["archive"][0]
@@ -823,22 +732,10 @@ class DownloadTestcasesHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, dataset_id):
+    def post(self, dataset_id):
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("download_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def post(self, dataset_id):
-        fallback_page = \
-            self.url("dataset", dataset_id, "testcases", "download")
-
-        dataset = self.safe_get_item(Dataset, dataset_id)
+        fallback_page = self.url("task", task.id)
 
         # Get zip file name, input/output file names templates,
         # or use default ones.
@@ -883,26 +780,12 @@ class DownloadTestcasesHandler(BaseHandler):
 
 
 class AddGeneratorHandler(BaseHandler):
-    """Add a generator to a dataset.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.render("add_generator.html", **self.r_params)
-
+    """Add a generator to a dataset."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id):
-        fallback_page = self.url("dataset", dataset_id, "generators", "add")
-
         dataset = self.safe_get_item(Dataset, dataset_id)
         task = dataset.task
+        fallback_page = self.url("task", task.id)
         task_name = task.name
 
         generator_file = self.request.files.get("generator")
@@ -1044,31 +927,9 @@ class AddGeneratorHandler(BaseHandler):
 
 
 class EditGeneratorHandler(BaseHandler):
-    """Edit a generator's filename templates.
-
-    """
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id, generator_id):
-        generator = self.safe_get_item(Generator, generator_id)
-        dataset = self.safe_get_item(Dataset, dataset_id)
-
-        if generator.dataset is not dataset:
-            raise tornado.web.HTTPError(404)
-
-        task = dataset.task
-        self.contest = task.contest
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["generator"] = generator
-        self.render("edit_generator.html", **self.r_params)
-
+    """Edit a generator's filename templates."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id, generator_id):
-        fallback_page = self.url("dataset", dataset_id, "generator",
-                                 generator_id, "edit")
-
         generator = self.safe_get_item(Generator, generator_id)
         dataset = self.safe_get_item(Dataset, dataset_id)
 
@@ -1076,6 +937,7 @@ class EditGeneratorHandler(BaseHandler):
             raise tornado.web.HTTPError(404)
 
         task = dataset.task
+        fallback_page = self.url("task", task.id)
 
         input_filename_template = self.get_argument(
             "input_filename_template", "input.*").strip()
@@ -1126,66 +988,29 @@ class GenerateTestcasesHandler(BaseHandler):
 
     """
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self, dataset_id, generator_id):
-        generator = self.safe_get_item(Generator, generator_id)
-        dataset = self.safe_get_item(Dataset, dataset_id)
-
-        if generator.dataset is not dataset:
-            raise tornado.web.HTTPError(404)
-
-        if generator.executable_digest is None:
-            self.service.add_notification(
-                make_datetime(),
-                "Generator not compiled",
-                "The generator has not been compiled successfully.")
-            self.redirect(self.url("task", dataset.task.id))
-            return
-
-        task = dataset.task
-        self.contest = task.contest
-
-        # Get model solutions that have been compiled (have executables)
-        # Only for Batch tasks - model solution output generation is not
-        # supported for other task types
-        compiled_model_solutions = []
-        if dataset.task_type == "Batch":
-            for meta in dataset.model_solution_metas:
-                result = meta.submission.get_result(dataset)
-                if result is not None and result.executables:
-                    compiled_model_solutions.append(meta)
-
-        self.r_params = self.render_params()
-        self.r_params["task"] = task
-        self.r_params["dataset"] = dataset
-        self.r_params["generator"] = generator
-        self.r_params["model_solutions"] = compiled_model_solutions
-        self.r_params["task_type"] = dataset.task_type
-        self.render("generate_testcases.html", **self.r_params)
-
-    @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, dataset_id, generator_id):
-        fallback_page = self.url("dataset", dataset_id, "generator",
-                                 generator_id, "generate")
-
         generator = self.safe_get_item(Generator, generator_id)
         dataset = self.safe_get_item(Dataset, dataset_id)
 
         if generator.dataset is not dataset:
             raise tornado.web.HTTPError(404)
 
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
         if generator.executable_digest is None:
             self.service.add_notification(
                 make_datetime(),
                 "Generator not compiled",
-                "The generator has not been compiled successfully.")
-            self.redirect(self.url("task", dataset.task.id))
+                "The generator has not been compiled successfully.",
+            )
+            self.redirect(fallback_page)
             return
-
-        task = dataset.task
 
         overwrite = self.get_argument("overwrite", "") == "on"
         public = self.get_argument("public", "") == "on"
         output_source = self.get_argument("output_source", "generator")
+        stdin_input = self.get_argument("stdin_input", "")
 
         input_template = generator.input_filename_template
         output_template = generator.output_filename_template
@@ -1279,6 +1104,13 @@ class GenerateTestcasesHandler(BaseHandler):
                 sandbox.timeout = effective_timeout
                 sandbox.wallclock_timeout = effective_timeout * 2
 
+            # If stdin input was provided, write it to a file and
+            # configure the sandbox to pipe it to the generator.
+            if stdin_input:
+                sandbox.create_file_from_string(
+                    "stdin.txt", stdin_input.encode("utf-8"))
+                sandbox.stdin_file = "stdin.txt"
+
             # Set stdout/stderr files so they are created during execution
             sandbox.stdout_file = "stdout.txt"
             sandbox.stderr_file = "stderr.txt"
@@ -1326,7 +1158,8 @@ class GenerateTestcasesHandler(BaseHandler):
             sandbox_home = sandbox.relative_path("")
             for root, _dirs, files in os.walk(sandbox_home):
                 for filename in files:
-                    if filename in [exe_name, "stdout.txt", "stderr.txt"]:
+                    if filename in [exe_name, "stdout.txt", "stderr.txt",
+                                    "stdin.txt"]:
                         continue
                     rel_path = os.path.relpath(
                         os.path.join(root, filename), sandbox_home)
@@ -1714,34 +1547,75 @@ class RenameTestcaseHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
-def _apply_codename_mapping(dataset, testcases, new_codenames):
-    """Apply a codename mapping to testcases using two-phase approach.
+def _apply_codename_mapping(dataset, testcases, new_codenames, sql_session):
+    """Apply a codename mapping to testcases using two-phase DB update.
 
-    This uses a two-phase approach to safely handle cases where a new codename
-    equals another selected testcase's old codename.
+    This uses a two-phase approach with temporary intermediate names to safely
+    handle cases where a new codename equals another selected testcase's old
+    codename, avoiding DB UNIQUE constraint violations during chained updates.
 
     Args:
         dataset: The dataset containing the testcases
         testcases: List of testcases being renamed
         new_codenames: Dict mapping testcase.id to new codename
+        sql_session: SQLAlchemy session for flushing (optional, but recommended
+                     to avoid UNIQUE constraint violations)
 
     Returns:
         Number of testcases actually renamed (where codename changed)
     """
-    # Phase 1: Remove all old codenames for testcases that are changing
+    # Identify testcases that are actually changing
     changing_testcases = []
     for tc in testcases:
         new_codename = new_codenames.get(tc.id)
         if new_codename is not None and tc.codename != new_codename:
-            del dataset.testcases[tc.codename]
             changing_testcases.append((tc, new_codename))
 
-    # Phase 2: Update codenames and re-add to dataset
-    for tc, new_codename in changing_testcases:
-        tc.codename = new_codename
-        dataset.testcases[new_codename] = tc
+    if not changing_testcases:
+        return 0
+
+    # Collect all existing codenames to ensure temp names don't collide
+    existing_codenames = set(dataset.testcases.keys())
+    final_codenames = {new_cn for _, new_cn in changing_testcases}
+
+    # Phase 1: Assign unique temporary codenames and flush to DB
+    temp_mappings = []  # (tc, temp_codename, final_codename)
+    for tc, final_codename in changing_testcases:
+        # Generate a unique temp codename that doesn't collide with existing
+        # or final codenames
+        while True:
+            temp_codename = f"__tmp_{uuid.uuid4().hex[:12]}__"
+            if (
+                temp_codename not in existing_codenames
+                and temp_codename not in final_codenames
+            ):
+                break
+
+        del dataset.testcases[tc.codename]
+        tc.codename = temp_codename
+        dataset.testcases[temp_codename] = tc
+        existing_codenames.add(temp_codename)
+        temp_mappings.append((tc, temp_codename, final_codename))
+
+    # Flush to DB to persist temp names before applying final names
+    sql_session.flush()
+
+    # Phase 2: Update to final codenames and flush again
+    for tc, temp_codename, final_codename in temp_mappings:
+        del dataset.testcases[temp_codename]
+        tc.codename = final_codename
+        dataset.testcases[final_codename] = tc
+
+    sql_session.flush()
 
     return len(changing_testcases)
+
+
+def _add_prefix_if_missing(codename, prefix):
+    """Add prefix to codename only if it's not already a substring."""
+    if prefix in codename:
+        return codename
+    return prefix + codename
 
 
 def _batch_rename_testcases(
@@ -1799,8 +1673,10 @@ def _batch_rename_testcases(
 
         new_codenames[tc.id] = new_codename
 
-    # Apply the rename using two-phase approach
-    renamed_count = _apply_codename_mapping(dataset, testcases, new_codenames)
+    # Apply the rename using two-phase approach with DB flush
+    renamed_count = _apply_codename_mapping(
+        dataset, testcases, new_codenames, handler.sql_session
+    )
 
     # Update submission format for OutputOnly tasks
     if dataset.active and dataset.task_type == "OutputOnly":
@@ -1882,10 +1758,7 @@ class BatchRenameTestcasesHandler(BaseHandler):
                 return
 
             def add_prefix_modifier(tc):
-                # Skip adding prefix if codename already starts with it
-                if tc.codename.startswith(value):
-                    return (tc.codename, None)
-                return (value + tc.codename, None)
+                return (_add_prefix_if_missing(tc.codename, value), None)
 
             success, renamed_count = _batch_rename_testcases(
                 self,
@@ -1987,5 +1860,71 @@ class BatchRenameTestcasesHandler(BaseHandler):
                     make_datetime(),
                     "Testcases renamed",
                     "Removed substring '%s' from %d testcases." % (substring, renamed_count))
+
+        self.redirect(fallback_page)
+
+
+class ApplySubtaskPrefixesHandler(BaseHandler):
+    """Apply STi_ prefixes to all testcases based on subtask membership.
+
+    For each subtask i, sets the regex to .*STi_(?#CMS) and prepends
+    STi_ to all testcases belonging to that subtask (sorted descending).
+    Skips adding a prefix if it's already a substring of the codename.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+        task = dataset.task
+        fallback_page = self.url("task", task.id)
+
+        from cms.grading.scoretypes import ScoreTypeGroup
+
+        score_type_obj = dataset.score_type_object
+        if not isinstance(score_type_obj, ScoreTypeGroup):
+            self.service.add_notification(
+                make_datetime(), "Not supported",
+                "This operation requires a group-based score type.")
+            self.redirect(fallback_page)
+            return
+
+        # Build testcase -> sorted list of subtask indices using existing logic
+        try:
+            from cms.server.util import build_tc_to_subtasks_mapping
+
+            tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
+        except (KeyError, ValueError, TypeError, re.error) as e:
+            self.service.add_notification(
+                make_datetime(), "Error", "Could not retrieve subtask info: %s" % str(e)
+            )
+            self.redirect(fallback_page)
+            return
+
+        def subtask_prefix_modifier(tc):
+            subtask_indices = tc_to_subtasks.get(tc.codename, set())
+            new_codename = tc.codename
+            for i in sorted(subtask_indices, reverse=True):
+                new_codename = _add_prefix_if_missing(
+                    new_codename, "ST%d_" % i)
+            return (new_codename, None)
+
+        all_testcases = list(dataset.testcases.values())
+        success, renamed_count = _batch_rename_testcases(
+            self, dataset, task, all_testcases,
+            subtask_prefix_modifier, fallback_page)
+        if not success:
+            return
+
+        # Override each subtask's regex to .*ST{i}_(?#CMS)
+        params = [list(p) for p in score_type_obj.parameters]
+        for idx in range(len(params)):
+            params[idx][1] = ".*ST%d_(?#CMS)" % idx
+        dataset.score_type_parameters = params
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(), "Subtask prefixes applied",
+                "Applied subtask prefixes to %d testcases and updated "
+                "%d subtask regexes." % (renamed_count, len(params)))
 
         self.redirect(fallback_page)

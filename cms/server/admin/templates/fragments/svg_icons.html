@@ -1,0 +1,616 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <defs>
+    <!-- Home icon -->
+    <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+      <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+    </symbol>
+
+    <!-- Calendar icon -->
+    <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </symbol>
+
+    <!-- Home Analytics icon (Home task stats) -->
+    <symbol id="icon-home-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 10l10-9 10 9"/>
+      <path d="M4 10v10h16v-10"/>
+      <path d="M8 20v-4"/>
+      <path d="M12 20v-7"/>
+      <path d="M16 20v-5"/>
+    </symbol>
+
+    <!-- File Code icon (Submissions) -->
+    <symbol id="icon-file-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <polyline points="10 9 8 12 10 15"/>
+      <polyline points="14 9 16 12 14 15"/>
+    </symbol>
+
+    <!-- File icon (Attachments) -->
+    <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+    </symbol>
+
+    <!-- File plus icon (Add File buttons) -->
+    <symbol id="icon-file-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"/>
+      <path d="M14 3v5h5M18 21v-6M15 18h6"/>
+    </symbol>
+
+    <!-- File text icon -->
+    <symbol id="icon-file-text" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19.5 17.0625c-0.41475 0-0.75 0.33525-0.75 0.75V21.75H5.25V5.25h13.5v6.09c0 0.41475 0.33525 0.75 0.75 0.75s0.75-0.33525 0.75-0.75V4.5V1.5c0-0.41475-0.33525-0.75-0.75-0.75H4.5c-0.41475 0-0.75 0.33525-0.75 0.75v3v18c0 0.41475 0.33525 0.75 0.75 0.75h15c0.41475 0 0.75-0.33525 0.75-0.75v-4.6875c0-0.41475-0.33525-0.75-0.75-0.75zM5.25 2.25h13.5v1.5H5.25v-1.5z"/>
+      <path d="M23.0475 11.487c-0.2835-0.3015-0.7575-0.318-1.0605-0.03525l-7.5045 7.02075l-3.47025-3.2475c-0.3015-0.2835-0.77775-0.2685-1.05975 0.0345c-0.2835 0.3015-0.26775 0.77625 0.0345 1.05975l3.98325 3.72825c0.144 0.135 0.3285 0.2025 0.513 0.2025s0.36825-0.0675 0.513-0.2025l8.01675-7.5c0.30225-0.2835 0.31725-0.75825 0.0345-1.0605z"/>
+      <path d="M7.0785 7.96875h3.375c0.41475 0 0.75-0.33525 0.75-0.75s-0.33525-0.75-0.75-0.75h-3.375c-0.41475 0-0.75 0.33525-0.75 0.75s0.33525 0.75 0.75 0.75z"/>
+      <path d="M16.3125 9.60975c0-0.41475-0.33525-0.75-0.75-0.75H7.0785c-0.41475 0-0.75 0.33525-0.75 0.75s0.33525 0.75 0.75 0.75H15.5625c0.41475 0 0.75-0.33525 0.75-0.75z"/>
+      <path d="M7.0785 11.25c-0.41475 0-0.75 0.33525-0.75 0.75s0.33525 0.75 0.75 0.75H12.891c0.41475 0 0.75-0.33525 0.75-0.75s-0.33525-0.75-0.75-0.75H7.0785z"/>
+    </symbol>
+
+    <!-- Score type icon -->
+    <symbol id="icon-score-type" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 5C2 3.34315 3.34315 2 5 2H19C20.6569 2 22 3.34315 22 5V19C22 20.6569 20.6569 22 19 22H5C3.34315 22 2 20.6569 2 19V5Z"/>
+      <path d="M18 14.5H14M18 17.5H14"/>
+      <path d="M16 6V10M18 8H14"/>
+      <path d="M10 8H6"/>
+      <path d="M10 14L6 18M6 14L10 18"/>
+    </symbol>
+
+    <!-- Subtask validators icon -->
+    <symbol id="icon-subtask-validator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9l6 0"/>
+      <path d="M4 5l4 0"/>
+      <path d="M6 5v11a1 1 0 0 0 1 1h5"/>
+      <path d="M12 8a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1l0 -2"/>
+      <path d="M12 16a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1l0 -2"/>
+    </symbol>
+
+    <!-- Test cases icon -->
+    <symbol id="icon-test-cases" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.5 6H21.5M9.5 12H21.5M9.5 18H21.5M2 6L3.30628 7.30628C3.41599 7.41599 3.59127 7.42394 3.71047 7.32461L6.5 5M2 12L3.30628 13.3063C3.41599 13.416 3.59127 13.4239 3.71047 13.3246L6.5 11M2 18L3.30628 19.3063C3.41599 19.416 3.59127 19.4239 3.71047 19.3246L6.5 17"/>
+    </symbol>
+
+    <!-- Replace icon -->
+    <symbol id="icon-replace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/>
+      <path d="M15 16a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/>
+      <path d="M21 11v-3a2 2 0 0 0 -2 -2h-6l3 3m0 -6l-3 3"/>
+      <path d="M3 13v3a2 2 0 0 0 2 2h6l-3 -3m0 6l3 -3"/>
+    </symbol>
+
+    <!-- PDF Statement icon -->
+    <symbol id="icon-pdf-statement" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4C4 3.44772 4.44772 3 5 3H14H14.5858C14.851 3 15.1054 3.10536 15.2929 3.29289L19.7071 7.70711C19.8946 7.89464 20 8.149 20 8.41421V20C20 20.5523 19.5523 21 19 21H5C4.44772 21 4 20.5523 4 20V4Z"/>
+      <path d="M20 8H15V3"/>
+      <path d="M11.5 13H11V17H11.5C12.6046 17 13.5 16.1046 13.5 15C13.5 13.8954 12.6046 13 11.5 13Z"/>
+      <path d="M15.5 17V13L17.5 13"/>
+      <path d="M16 15H17"/>
+      <path d="M7 17L7 15.5M7 15.5L7 13L7.75 13C8.44036 13 9 13.5596 9 14.25V14.25C9 14.9404 8.44036 15.5 7.75 15.5H7Z"/>
+    </symbol>
+
+    <!-- DOC Statement icon -->
+    <symbol id="icon-doc-statement" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4C4 3.44772 4.44772 3 5 3H14H14.5858C14.851 3 15.1054 3.10536 15.2929 3.29289L19.7071 7.70711C19.8946 7.89464 20 8.149 20 8.41421V20C20 20.5523 19.5523 21 19 21H5C4.44772 21 4 20.5523 4 20V4Z"/>
+      <path d="M20 8H15V3"/>
+      <path d="M7.5 13H7V17H7.5C8.60457 17 9.5 16.1046 9.5 15C9.5 13.8954 8.60457 13 7.5 13Z"/>
+      <path d="M17.5 13L17 13C16.4477 13 16 13.4477 16 14V16C16 16.5523 16.4477 17 17 17H17.5"/>
+      <path d="M11.5 14C11.5 13.4477 11.9477 13 12.5 13H13C13.5523 13 14 13.4477 14 14V16C14 16.5523 13.5523 17 13 17H12.5C11.9477 17 11.5 16.5523 11.5 16V14Z"/>
+    </symbol>
+
+    <!-- Compile icon (Reevaluate) -->
+    <symbol id="icon-compile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06 a2 2 0 0 1 0 2.83 a2 2 0 0 1-2.83 0l-.06-.06 a1.65 1.65 0 0 0-1.82-.33 a1.65 1.65 0 0 0-1 1.51V21 a2 2 0 0 1-2 2 a2 2 0 0 1-2-2v-.09 a1.65 1.65 0 0 0-1-1.51 a1.65 1.65 0 0 0-1.82.33l-.06.06 a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06 a1.65 1.65 0 0 0 .33-1.82 a1.65 1.65 0 0 0-1.51-1H3 a2 2 0 0 1-2-2 a2 2 0 0 1 2-2h.09 a1.65 1.65 0 0 0 1.51-1 a1.65 1.65 0 0 0-.33-1.82l-.06-.06 a2 2 0 0 1 0-2.83 a2 2 0 0 1 2.83 0l.06.06 a1.65 1.65 0 0 0 1.82.33H9 a1.65 1.65 0 0 0 1-1.51V3 a2 2 0 0 1 2-2 a2 2 0 0 1 2 2v.09 a1.65 1.65 0 0 0 1 1.51 a1.65 1.65 0 0 0 1.82-.33l.06-.06 a2 2 0 0 1 2.83 0 a2 2 0 0 1 0 2.83l-.06.06 a1.65 1.65 0 0 0-.33 1.82V9 a1.65 1.65 0 0 0 1.51 1H21 a2 2 0 0 1 2 2 a2 2 0 0 1-2 2h-.09 a1.65 1.65 0 0 0-1.51 1z"/>
+      <polyline points="9 9 6 12 9 15"/>
+      <polyline points="15 9 18 12 15 15"/>
+      <line x1="11" y1="16" x2="13" y2="8"/>
+    </symbol>
+
+    <!-- Evaluate icon -->
+    <symbol id="icon-evaluate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M6.99997 8.50003L10.8639 12.1821L6.99994 15.5"/>
+      <path d="M12 16H17"/>
+    </symbol>
+
+    <!-- Users icon -->
+    <symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+
+    <!-- Clipboard list icon (tasks) -->
+    <symbol id="icon-clipboard-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+      <line x1="8" y1="10" x2="8" y2="10.01"/>
+      <line x1="12" y1="10" x2="16" y2="10"/>
+      <line x1="8" y1="14" x2="8" y2="14.01"/>
+      <line x1="12" y1="14" x2="16" y2="14"/>
+      <line x1="8" y1="18" x2="8" y2="18.01"/>
+      <line x1="12" y1="18" x2="16" y2="18"/>
+    </symbol>
+
+    <!-- Puzzle Piece (tasks alternative) -->
+    <symbol id="icon-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 0 1-.657.643 48.39 48.39 0 0 1-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 0 1-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 0 0-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 0 1-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 0 0 .657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 0 1-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 0 0 5.427-.63 48.05 48.05 0 0 0 .582-4.717.532.532 0 0 0-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 0 0 .658-.663 48.422 48.422 0 0 0-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 0 1-.61-.58v0Z" />
+    </symbol>
+
+    <!-- Check calendar icon (attendance) -->
+    <symbol id="icon-calendar-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+      <polyline points="8.5 15 11 17.5 16 13"/>
+    </symbol>
+
+    <!-- Trophy icon (Ranking) -->
+    <symbol id="icon-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+      <path d="M4 2h16"/>
+      <path d="M6 2v6a6 6 0 0 0 12 0V2"/>
+      <path d="M12 15v6"/>
+      <path d="M8 21h8"/>
+    </symbol>
+
+    <!-- Stopwatch icon -->
+    <symbol id="icon-stopwatch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 13a7 7 0 1 0 14 0a7 7 0 0 0 -14 0" />
+      <path d="M14.5 10.5l-2.5 2.5" />
+      <path d="M17 8l1 -1" />
+      <path d="M14 3h-4" />
+    </symbol>
+
+    <!-- CPU / Resource Usage -->
+    <symbol id="icon-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+      <rect x="9" y="9" width="6" height="6"/>
+      <line x1="9" y1="1" x2="9" y2="4"/>
+      <line x1="15" y1="1" x2="15" y2="4"/>
+      <line x1="9" y1="20" x2="9" y2="23"/>
+      <line x1="15" y1="20" x2="15" y2="23"/>
+      <line x1="20" y1="9" x2="23" y2="9"/>
+      <line x1="20" y1="14" x2="23" y2="14"/>
+      <line x1="1" y1="9" x2="4" y2="9"/>
+      <line x1="1" y1="14" x2="4" y2="14"/>
+    </symbol>
+
+    <!-- Laptop with Terminal (Training/Simulation) -->
+    <symbol id="icon-laptop-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="2" y1="20" x2="22" y2="20" />
+      <polyline points="7 7 10 10 7 13" />
+      <line x1="11" y1="13" x2="15" y2="13" />
+    </symbol>
+
+    <!-- Activity / System Overview -->
+    <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </symbol>
+
+    <!-- Megaphone icon (announcements) -->
+    <symbol id="icon-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 11l18-5v12L3 13v-2z"/>
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+    </symbol>
+
+    <!-- Message circle icon (questions) -->
+    <symbol id="icon-message-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </symbol>
+
+    <!-- Play circle icon (user tests) -->
+    <symbol id="icon-play-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polygon points="10 8 16 12 10 16 10 8"/>
+    </symbol>
+
+    <!-- Trash icon -->
+    <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      <line x1="10" y1="11" x2="10" y2="17"/>
+      <line x1="14" y1="11" x2="14" y2="17"/>
+    </symbol>
+
+    <!-- Edit/pencil icon -->
+    <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </symbol>
+
+    <!-- Plus icon -->
+    <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </symbol>
+
+    <!-- Archive icon -->
+    <symbol id="icon-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="21 8 21 21 3 21 3 8"/>
+      <rect x="1" y="3" width="22" height="5"/>
+      <line x1="10" y1="12" x2="14" y2="12"/>
+    </symbol>
+
+    <!-- Archive with arrow (for archive action) -->
+    <symbol id="icon-archive-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="21 8 21 21 3 21 3 8"/>
+      <rect x="1" y="3" width="22" height="5"/>
+      <line x1="12" y1="12" x2="12" y2="17"/>
+      <polyline points="9 14 12 17 15 14"/>
+    </symbol>
+
+    <!-- Grip/drag handle icon -->
+    <symbol id="icon-grip" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9" cy="5" r="1.5"/>
+      <circle cx="15" cy="5" r="1.5"/>
+      <circle cx="9" cy="12" r="1.5"/>
+      <circle cx="15" cy="12" r="1.5"/>
+      <circle cx="9" cy="19" r="1.5"/>
+      <circle cx="15" cy="19" r="1.5"/>
+    </symbol>
+
+    <!-- Clock icon -->
+    <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </symbol>
+
+    <!-- Chevron left icon -->
+    <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </symbol>
+
+    <!-- Chevron right icon -->
+    <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </symbol>
+
+    <!-- Chevron down icon -->
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </symbol>
+
+    <!-- Double chevrons left icon (collapse sidebar) -->
+    <symbol id="icon-chevrons-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="11 17 6 12 11 7"/>
+      <polyline points="18 17 13 12 18 7"/>
+    </symbol>
+
+    <!-- Double chevrons right icon (expand sidebar) -->
+    <symbol id="icon-chevrons-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="13 17 18 12 13 7"/>
+      <polyline points="6 17 11 12 6 7"/>
+    </symbol>
+
+    <!-- Lock icon -->
+    <symbol id="icon-lock" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17,9V7A5,5,0,0,0,7,7V9a3,3,0,0,0-3,3v7a3,3,0,0,0,3,3H17a3,3,0,0,0,3-3V12A3,3,0,0,0,17,9ZM9,7a3,3,0,0,1,6,0V9H9Zm9,12a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V12a1,1,0,0,1,1-1H17a1,1,0,0,1,1,1Z"/>
+    </symbol>
+
+    <!-- More vertical (three dots) icon -->
+    <symbol id="icon-more-vertical" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="2"/>
+      <circle cx="12" cy="12" r="2"/>
+      <circle cx="12" cy="19" r="2"/>
+    </symbol>
+
+    <!-- Help circle icon -->
+    <symbol id="icon-help-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </symbol>
+
+    <!-- Question mark icon -->
+    <symbol id="icon-question-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 8a3.5 3.5 0 0 1 3.5 -3h1a3.5 3.5 0 0 1 3.5 3a3 3 0 0 1 -2 3a3 4 0 0 0 -2 4" />
+      <path d="M12 19l0 .01" />
+    </symbol>
+
+    <!-- Graduation cap icon (training programs) -->
+    <symbol id="icon-graduation-cap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+    </symbol>
+
+    <!-- External link icon -->
+    <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </symbol>
+
+    <!-- Info icon -->
+    <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </symbol>
+
+    <!-- Copy icon -->
+    <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </symbol>
+
+    <!-- Check icon -->
+    <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+
+    <!-- X icon -->
+    <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </symbol>
+
+    <!-- Partial icon -->
+    <symbol id="icon-partial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+      <line x1="10" y1="6" x2="20" y2="16"/>
+    </symbol>
+
+    <!-- Settings/sliders icon -->
+    <symbol id="icon-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="21" x2="4" y2="14"/>
+      <line x1="4" y1="10" x2="4" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12" y2="3"/>
+      <line x1="20" y1="21" x2="20" y2="16"/>
+      <line x1="20" y1="12" x2="20" y2="3"/>
+      <line x1="1" y1="14" x2="7" y2="14"/>
+      <line x1="9" y1="8" x2="15" y2="8"/>
+      <line x1="17" y1="16" x2="23" y2="16"/>
+    </symbol>
+
+    <!-- Folder icon -->
+    <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </symbol>
+
+    <!-- Archive box icon (for archived items) -->
+    <symbol id="icon-archive-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 8v13H3V8"/>
+      <path d="M1 3h22v5H1z"/>
+      <path d="M10 12h4"/>
+    </symbol>
+
+    <!-- Upload icon (arrow pointing up) -->
+    <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </symbol>
+
+    <!-- Download icon (arrow pointing down) -->
+    <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </symbol>
+
+    <!-- Tag icon -->
+    <symbol id="icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+      <line x1="7" y1="7" x2="7.01" y2="7"/>
+    </symbol>
+
+    <!-- Alert triangle icon (warning) -->
+    <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </symbol>
+
+    <!-- Star icon -->
+    <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </symbol>
+
+    <!-- User icon (single person) -->
+    <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </symbol>
+
+    <!-- Piggy bank icon (Tokens) -->
+    <symbol id="icon-piggy-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 11v.01"/>
+      <path d="M5.173 8.378a3 3 0 1 1 4.656 -1.377"/>
+      <path d="M16 4v3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342c-.336 .95 -.907 1.8 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3"/>
+    </symbol>
+
+    <!-- Eye icon -->
+    <symbol id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </symbol>
+
+    <!-- Eye-off icon -->
+    <symbol id="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m3 5 16 16"/>
+      <path d="M11.148 9.123a3 3 0 0 1 3.722 3.752"/>
+      <path d="M8.41 6.878C12.674 4.762 17.267 6.47 21 12c-1.027 1.521-2.119 2.753-3.251 3.696m-2.509 1.59C11.076 19.142 6.631 17.38 3 12c1.01-1.496 2.083-2.713 3.196-3.65"/>
+    </symbol>
+
+    <!-- Unlock icon -->
+    <symbol id="icon-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+    </symbol>
+
+    <!-- Key icon -->
+    <symbol id="icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16.3963 7.66563L16.3238 7.59474M11.2493 5.46812C13.2512 3.51063 16.4968 3.51063 18.4986 5.46812C20.5005 7.42562 20.5005 10.5993 18.4986 12.5568C17.0123 14.0103 14.8403 14.3845 13.0008 13.6797L11.9742 14.6835L10.1619 15.0379L9.79945 17.5189L7.26219 17.8734V20L4 19.6456V16.8101L10.1011 10.8442C9.38022 9.04544 9.76297 6.92154 11.2493 5.46812Z"/>
+    </symbol>
+
+    <!-- Admin icon -->
+    <symbol id="icon-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M10 15H6a4 4 0 0 0-4 4v2"/>
+
+      <circle cx="19" cy="11" r="3" />
+      <path d="m16.8 13.2-4.3 4.3" />
+      <path d="m12.5 17.5 2 2" />
+      <path d="m14.5 15.5 2 2" />
+    </symbol>
+
+    <!-- Duration icon (brackets) -->
+    <symbol id="icon-duration" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 2v6h.01L6 8l4 4-4 4 .01.01H6V22"/>
+      <path d="M18 2v6h-.01L18 8l-4 4 4 4-.01.01H18V22"/>
+      <line x1="6" y1="2" x2="18" y2="2"/>
+      <line x1="6" y1="22" x2="18" y2="22"/>
+    </symbol>
+
+    <!-- More icon (three dots in circle) -->
+    <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.35288 8.95043C4.00437 6.17301 6.17301 4.00437 8.95043 3.35288C10.9563 2.88237 13.0437 2.88237 15.0496 3.35288C17.827 4.00437 19.9956 6.17301 20.6471 8.95044C21.1176 10.9563 21.1176 13.0437 20.6471 15.0496C19.9956 17.827 17.827 19.9956 15.0496 20.6471C13.0437 21.1176 10.9563 21.1176 8.95044 20.6471C6.17301 19.9956 4.00437 17.827 3.35288 15.0496C2.88237 13.0437 2.88237 10.9563 3.35288 8.95043Z"/>
+      <path d="M9.05485 12C9.05485 12.5523 8.59486 13 8.02742 13C7.45999 13 7 12.5523 7 12C7 11.4477 7.45999 11 8.02742 11C8.59486 11 9.05485 11.4477 9.05485 12Z" fill="currentColor"/>
+      <path d="M13.0274 12C13.0274 12.5523 12.5674 13 12 13C11.4326 13 10.9726 12.5523 10.9726 12C10.9726 11.4477 11.4326 11 12 11C12.5674 11 13.0274 11.4477 13.0274 12Z" fill="currentColor"/>
+      <path d="M17 12C17 12.5523 16.54 13 15.9726 13C15.4051 13 14.9452 12.5523 14.9452 12C14.9452 11.4477 15.4051 11 15.9726 11C16.54 11 17 11.4477 17 12Z" fill="currentColor"/>
+    </symbol>
+
+    <!-- Settings icon (cog/gear) -->
+    <symbol id="icon-settings" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06 a2 2 0 0 1 0 2.83 a2 2 0 0 1-2.83 0l-.06-.06 a1.65 1.65 0 0 0-1.82-.33 a1.65 1.65 0 0 0-1 1.51V21 a2 2 0 0 1-2 2 a2 2 0 0 1-2-2v-.09 a1.65 1.65 0 0 0-1-1.51 a1.65 1.65 0 0 0-1.82.33l-.06.06 a2 2 0 0 1-2.83 0 a2 2 0 0 1 0-2.83l.06-.06 a1.65 1.65 0 0 0 .33-1.82 a1.65 1.65 0 0 0-1.51-1H3 a2 2 0 0 1-2-2 a2 2 0 0 1 2-2h.09 a1.65 1.65 0 0 0 1.51-1 a1.65 1.65 0 0 0-.33-1.82l-.06-.06 a2 2 0 0 1 0-2.83 a2 2 0 0 1 2.83 0l.06.06 a1.65 1.65 0 0 0 1.82.33H9 a1.65 1.65 0 0 0 1-1.51V3 a2 2 0 0 1 2-2 a2 2 0 0 1 2 2v.09 a1.65 1.65 0 0 0 1 1.51 a1.65 1.65 0 0 0 1.82-.33l.06-.06 a2 2 0 0 1 2.83 0 a2 2 0 0 1 0 2.83l-.06.06 a1.65 1.65 0 0 0-.33 1.82V9 a1.65 1.65 0 0 0 1.51 1H21 a2 2 0 0 1 2 2 a2 2 0 0 1-2 2h-.09 a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+
+    <symbol id="icon-apple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15.8415441,6.74869934 C16.8885878,6.67700744 17.9129044,7.07687119 18.634459,7.83897305 C19.3109361,8.55346438 19.6925726,9.49368987 19.7090444,10.4720458 L19.7063314,10.6984117 L19.680556,11.329963 C19.625485,12.6793199 19.4084052,14.0165446 19.034416,15.3129364 L18.8868249,15.7971133 L18.5196685,16.9397515 C18.0675637,18.3467602 16.9447629,19.4364248 15.5248458,19.8461907 C14.9219814,20.0201679 14.1005014,19.9826975 13.0604059,19.7337796 L12.7713255,19.660642 C12.2657464,19.5260996 11.7337722,19.5261116 11.2281991,19.6606768 C10.0504876,19.9741407 9.13280596,20.0359787 8.47515416,19.8461907 C7.05523713,19.4364248 5.93243632,18.3467602 5.48033148,16.9397515 L5.11317509,15.7971133 C4.6483962,14.3506613 4.38139884,12.8479895 4.31944398,11.329963 L4.29366863,10.6984117 C4.25045868,9.63967565 4.63702715,8.60842525 5.36554102,7.83897305 C6.08709562,7.07687119 7.1114122,6.67700744 8.15845592,6.74869934 L8.77655188,6.79102085 C9.66526257,6.85187156 10.7399657,7.50407763 12.0006614,8.74763906 C13.1675406,7.56251015 14.1638735,6.91787825 14.98966,6.81374335 L15.2234481,6.79102085 L15.8415441,6.74869934 Z M12,8 C12,6.20842913 13.1464165,4.61786116 14.8460499,4.0513167 L15,4 M12,8 L12,5.45941171 C12,4.02936865 10.990621,2.7981242 9.58834841,2.51766968 L7,2 L7,2.54058829 C7,3.97063135 8.009379,5.2018758 9.41165159,5.48233032 L12,6"/>
+    </symbol>
+
+    <!-- Reply arrow icon -->
+    <symbol id="icon-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 17 4 12 9 7"/>
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4"/>
+    </symbol>
+
+    <!-- Send / paper-plane icon -->
+    <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </symbol>
+
+    <!-- Search icon -->
+    <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </symbol>
+
+    <!-- Refresh icon -->
+    <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/>
+      <polyline points="1 20 1 14 7 14"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </symbol>
+
+    <!-- Share icon -->
+    <symbol id="icon-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"></circle>
+      <circle cx="6" cy="12" r="3"></circle>
+      <circle cx="18" cy="19" r="3"></circle>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+    </symbol>
+
+    <!-- Histogram/Bar chart icon -->
+    <symbol id="icon-histogram" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" /> <path d="M9 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" /> <path d="M15 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" /> <path d="M4 20h14" />
+    </symbol>
+
+    <!-- Line chart icon -->
+    <symbol id="icon-line-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 16l6 -7l5 5l5 -6" />
+      <path d="M14 14a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M9 9a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M3 16a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <path d="M19 8a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    </symbol>
+
+    <!-- IP address reset icon -->
+    <symbol id="icon-ip-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.929 13.131a9 9 0 1 0 -8.931 7.869" />
+      <path d="M3.6 9h16.8" />
+      <path d="M3.6 15h9.9" />
+      <path d="M11.5 3a17 17 0 0 0 0 18" />
+      <path d="M12.5 3a16.992 16.992 0 0 1 2.505 10.573" />
+      <path d="M22 22l-5 -5" />
+      <path d="M17 22l5 -5" />
+    </symbol>
+
+    <!-- Delay + extra time icon -->
+    <symbol id="icon-delay-extra" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.926 13.15a9 9 0 1 0 -7.835 7.784" />
+      <path d="M12 7v5l2 2" />
+      <path d="M22 22l-5 -5" />
+      <path d="M17 22l5 -5" />
+    </symbol>
+
+    <!-- Logout icon -->
+    <symbol id="icon-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </symbol>
+
+    <!-- Color palette icon -->
+    <symbol id="icon-color-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 15.5H16.99M18 10.5H17.99M14 6.5H13.99M9 6.5H8.99M6 10.5H5.99M22 12C22 19.5 14 23.5 12 22C10 20.5 12.7614 18.7614 10 16C7.23858 13.2386 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z"></path>
+    </symbol>
+
+    <!-- Flag icon (teams) -->
+    <symbol id="icon-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 15.0233C18.8333 15.6877 15.6 16.722 12 15.1273C10.5 14.2968 6.8 13.0301 4 15.0234M4 21.9326V2.99656C6.8 1.00328 10.5 2.26993 12 3.10047C15.6 4.69509 18.8333 3.66084 20 2.99642V14.9561"/>
+    </symbol>
+
+    <!-- School/class icon (attendance location) -->
+    <symbol id="icon-school" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="17.52 20.13 6.22 20.13 6.22 8.53 11.87 4.03 17.52 8.53 17.52 20.13" stroke-linecap="round"/>
+      <polyline points="9.66 20.13 9.66 15.76 14.08 15.76 14.08 20.13" stroke-linecap="round"/>
+      <circle cx="11.87" cy="9.99" r="1.59" stroke-linecap="round"/>
+      <polyline points="6.22 20.13 3.56 20.13 3.56 11.81 6.22 11.81" stroke-linecap="round"/>
+      <polyline points="17.52 11.81 20.44 11.81 20.44 20.13 17.52 20.13" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- Swap/arrows icon (both locations) -->
+    <symbol id="icon-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 7h12l-4-4"/>
+      <path d="M16 17H4l4 4"/>
+    </symbol>
+
+    <!-- Video camera icon (recorded) -->
+    <symbol id="icon-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15.6 11.6L22 7v10l-6.4-4.5v-1z"/>
+      <path d="M4 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7c0-1.1.9-2 2-2z"/>
+    </symbol>
+
+    <!-- File diff icon (Diff Tool) -->
+    <symbol id="icon-file-diff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+      <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
+      <path d="M12 10l0 4" />
+      <path d="M10 12l4 0" />
+      <path d="M10 17l4 0" />
+    </symbol>
+
+    <!-- Database icon (File Cacher) -->
+    <symbol id="icon-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3"/>
+      <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+    </symbol>
+  </defs>
+</svg>

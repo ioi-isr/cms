@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block core %}
+    <!-- Header -->
+    <h1 class="title is-spaced">Training Programs</h1>
+
+    <!-- Stats Cards Row -->
+    <div class="grid is-col-min-16 is-gap-3 is-auto-fill mb-6">
+        <div class="tp-stat-card">
+            <div class="tp-stat-icon has-text-link-65 is-opaque-bg">
+                <svg class="icon"><use href="#icon-graduation-cap"/></svg>
+            </div>
+            <div class="tp-stat-content">
+                <div class="has-text-grey">Active Programs</div>
+                <div class="tp-stat-value">{{ active_programs }}</div>
+            </div>
+        </div>
+        <div class="tp-stat-card">
+            <div class="tp-stat-icon has-text-success is-opaque-bg">
+                <svg class="icon"><use href="#icon-users"/></svg>
+            </div>
+            <div class="tp-stat-content">
+                <div class="has-text-grey">Total Students</div>
+                <div class="tp-stat-value">{{ total_students }}</div>
+            </div>
+        </div>
+        <div class="tp-stat-card">
+            <div class="tp-stat-icon has-text-warning is-opaque-bg">
+                <svg class="icon"><use href="#icon-clock"/></svg>
+            </div>
+            <div class="tp-stat-content">
+                <div class="has-text-grey">Active Training Days</div>
+                <div class="tp-stat-value">{{ active_training_days }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Program Cards Grid -->
+    <div class="grid is-col-min-16 is-gap-3 is-auto-fill">
+        {% for tp in training_programs %}
+        {% set active_tds = tp.training_days | selectattr("contest") | list %}
+        {% set archived_tds = tp.training_days | rejectattr("contest") | list %}
+        {% set total_tds = tp.training_days | length %}
+        <div class="tp-program-card">
+            <!-- Card Header with Menu -->
+            <div class="tp-card-header">
+                <div class="tp-card-title-section">
+                    <a href="{{ url("training_program", tp.id) }}" class="tp-card-title">{{ tp.name }}</a>
+                    <div class="tp-card-description">{{ tp.description }}</div>
+                </div>
+                <div class="tp-card-menu">
+                    <button type="button" class="tp-menu-btn" onclick="toggleMenu(this)"
+                            title="More options" aria-haspopup="menu" aria-expanded="false">
+                        <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-more-vertical"/></svg>
+                    </button>
+                    <div class="tp-menu-dropdown">
+                        <a href="{{ url("training_program", tp.id) }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                            Edit Program
+                        </a>
+                        <a href="{{ url("training_program", tp.id, "students") }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-users"/></svg>
+                            Manage Students
+                        </a>
+                        <a href="{{ url("training_program", tp.id, "tasks") }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
+                            Manage Tasks
+                        </a>
+                        <a href="{{ url("training_program", tp.id, "training_days") }}" class="tp-menu-item">
+                            <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+                            Training Days
+                        </a>
+                        {% if admin.permission_all %}
+                        <div class="tp-menu-divider"></div>
+                        <button type="button" onclick="openRemoveModal(this)" class="tp-menu-item tp-menu-item-danger"
+                           data-tp-id="{{ tp.id }}"
+                           data-tp-name="{{ tp.name }}"
+                           data-remove-url="{{ url("training_programs", tp.id, "remove") }}"
+                           data-participation-count="{{ tp.managing_contest.participations|length }}"
+                           data-submission-count="{{ tp.managing_contest.participations|map(attribute='submissions')|map('length')|sum }}"
+                           data-task-count="{{ tp.managing_contest.tasks|length }}"
+                           data-training-day-count="{{ tp.training_days|length }}">
+                            <svg class="icon is-small"><use href="#icon-trash"/></svg>
+                            Remove
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="tp-card-stats">
+                <div class="tp-card-stat">
+                    <svg class="icon is-small"><use href="#icon-users"/></svg>
+                    <span>{{ tp.managing_contest.participations|length }} Students</span>
+                </div>
+                <div class="tp-card-stat">
+                    <svg class="icon is-small"><use href="#icon-clipboard-list"/></svg>
+                    <span>{{ tp.managing_contest.tasks|length }} Tasks</span>
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="tp-card-dates">
+                <svg class="icon is-small has-text-light"><use href="#icon-calendar"/></svg>
+                {% if tp.managing_contest.start and tp.managing_contest.stop %}
+                <span>{{ tp.managing_contest.start.strftime('%Y-%m-%d') }} &mdash; {{ tp.managing_contest.stop.strftime('%Y-%m-%d') }}</span>
+                {% else %}
+                <span class="has-text-grey-light">No dates set</span>
+                {% endif %}
+            </div>
+
+            <!-- Active Training Days Section -->
+            {% if active_tds %}
+            <div class="tp-card-training-days">
+                <div class="tp-training-days-header">
+                    <a href="{{ url("training_program", tp.id, "training_days") }}" class="tp-training-days-label tp-training-days-link">ACTIVE TRAINING DAYS</a>
+                </div>
+                <div class="tp-training-days-list">
+                    {% for td in active_tds[:3] %}
+                    {% set td_notif = training_day_notifications.get(td.id, {}) %}
+                    <a href="{{ url("contest", td.contest.id) }}" class="tp-training-day-item">
+                        <div class="tp-training-day-icon is-opaque-bg">
+                            <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+                        </div>
+                        <div class="tp-training-day-info">
+                            <div class="tp-training-day-name">{{ td.contest.name }}</div>
+                            {% if td.contest.start and td.contest.start.year <= tp.managing_contest.stop.year %}
+                            <div class="has-text-grey-light is-size-7">{{ td.contest.start.strftime('%b %d') }}</div>
+                            {% else %}
+                            <div class="has-text-grey-light is-size-7">Unscheduled</div>
+                            {% endif %}
+                        </div>
+                        <div class="tags is-align-items-center m-0">
+                            {% if td_notif.get("unanswered_questions", 0) > 0 %}
+                            <span class="tag is-rounded is-bordered has-text-danger" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
+                                <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
+                                <span>{{ td_notif.unanswered_questions }}</span>
+                            </span>
+                            {% endif %}
+                            {% if td_notif.get("pending_delay_requests", 0) > 0 %}
+                            <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
+                                <svg class="icon is-small"><use href="#icon-clock"/></svg>
+                                <span>{{ td_notif.pending_delay_requests }}</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                        <svg class="icon tp-training-day-arrow" width="16" height="16"><use href="#icon-chevron-right"/></svg>
+                    </a>
+                    {% endfor %}
+                    {% if active_tds|length > 3 %}
+                    <a href="{{ url("training_program", tp.id, "training_days") }}" class="tp-training-day-more">
+                        +{{ active_tds|length - 3 }} more
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Archived Training Days Counter -->
+            <div class="tp-card-stats tp-card-stats-bottom">
+                <div class="tp-card-stat">
+                    <svg class="icon is-small"><use href="#icon-archive-box"/></svg>
+                    <span>{{ archived_tds|length }} Archived Days</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Create New Program Card -->
+        {% if admin.permission_all %}
+        <button type="button" class="tp-create-card" onclick="MicroModal.show('modal-add-program')">
+            <div class="tp-create-icon">
+                <svg class="icon"><use href="#icon-plus"/></svg>
+            </div>
+            <div class="has-text-weight-bold has-text-primary mb-1 is-size-5">Create New Program</div>
+            <div class="has-text-grey is-size-s">Start a new training season</div>
+        </button>
+        {% endif %}
+    </div>
+
+{% include "fragments/modal_remove_training_program.html" %}
+
+<script>
+function closeAllMenus() {
+    document.querySelectorAll('.tp-menu-dropdown.show').forEach(function(d) {
+        d.classList.remove('show');
+    });
+    document.querySelectorAll('.tp-menu-btn[aria-expanded="true"]').forEach(function(b) {
+        b.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function toggleMenu(btn) {
+    var dropdown = btn.nextElementSibling;
+    var isOpen = dropdown.classList.contains('show');
+
+    closeAllMenus();
+
+    if (!isOpen) {
+        dropdown.classList.add('show');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.tp-card-menu')) {
+        closeAllMenus();
+    }
+});
+
+function openRemoveModal(buttonElement) {
+    closeAllMenus();
+
+    var name = buttonElement.getAttribute('data-tp-name');
+    var removeUrl = buttonElement.getAttribute('data-remove-url');
+    var participationCount = Number.parseInt(buttonElement.getAttribute('data-participation-count')) || 0;
+    var submissionCount = Number.parseInt(buttonElement.getAttribute('data-submission-count')) || 0;
+    var taskCount = Number.parseInt(buttonElement.getAttribute('data-task-count')) || 0;
+    var trainingDayCount = Number.parseInt(buttonElement.getAttribute('data-training-day-count')) || 0;
+
+    document.getElementById('remove-program-name').textContent = name;
+
+    var statsHtml = '<li>' + participationCount + ' participation(s) will be deleted</li>';
+    statsHtml += '<li>' + submissionCount + ' submission(s) will be deleted</li>';
+    statsHtml += '<li>' + trainingDayCount + ' training day(s) will be deleted</li>';
+    document.getElementById('remove-program-stats').innerHTML = statsHtml;
+
+    var taskOptionsDiv = document.getElementById('remove-program-task-options');
+    if (taskCount > 0) {
+        taskOptionsDiv.style.display = 'block';
+        document.getElementById('remove-program-task-count').textContent = taskCount;
+    } else {
+        taskOptionsDiv.style.display = 'none';
+    }
+
+    document.querySelectorAll('#modal-remove-program input[name="action"]').forEach(function(r) {
+        r.checked = false;
+    });
+
+    document.getElementById('confirm-remove-program-btn').setAttribute('data-remove-url', removeUrl);
+
+    MicroModal.show('modal-remove-program');
+}
+</script>
+
+{% endblock core %}
