@@ -16,30 +16,26 @@
 {%- endmacro %}
 
 {% macro render_student_cell(p, contest, student_tags_by_participation, hide_tag=None) -%}
-<div class="combined-ranking-student-wrapper">
-  <div class="combined-ranking-student-info">
-    <div class="combined-ranking-name-row">
-      <a class="student-name-link combined-ranking-name-link"
-         href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
-         title="{{ p.user.first_name }} {{ p.user.last_name }}">
-        {{ p.user.first_name }} {{ p.user.last_name }}
-      </a>
-      <span class="student-username is-hidden-mobile">({{ p.user.username }})</span>
-      <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history" aria-label="View score and rank history">
-        <svg class="icon"><use href="#icon-line-chart"/></svg>
-      </a>
-    </div>
-    {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
-    <div class="tags mt-1">
-      {% for tag in student_tags_by_participation.get(p.id, []) %}
-        {% if tag != hide_tag %}
-        <span class="tag is-opaque-bg has-text-primary-35 is-tiny">{{ tag }}</span>
-        {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
+  <div class="is-flex is-align-items-center is-gap-1">
+    <a class="is-trimmed has-text-primary-35 has-text-weight-bold"
+       href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
+       title="{{ p.user.first_name }} {{ p.user.last_name }}">
+      {{ p.user.first_name }} {{ p.user.last_name }}
+    </a>
+    <span class="is-trimmed has-text-grey is-hidden-mobile">({{ p.user.username }})</span>
+    <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history" aria-label="View score and rank history">
+      <svg class="icon"><use href="#icon-line-chart"/></svg>
+    </a>
   </div>
-</div>
+  {% if student_tags_by_participation and student_tags_by_participation.get(p.id, []) %}
+  <div class="tags">
+    {% for tag in student_tags_by_participation.get(p.id, []) %}
+      {% if tag != hide_tag %}
+      <span class="tag is-opaque-bg has-text-primary-35 is-tiny mb-1">{{ tag }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
 {%- endmacro %}
 
 {% block core %}
@@ -125,7 +121,7 @@
     </div>
   </div>
   <div class="table-container">
-    <table class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table" id="ranking-table-{{ loop.index }}">
+    <table class="table is-bordered is-striped is-hoverable is-narrow is-compact is-fullwidth td-ranking-table" id="ranking-table-{{ loop.index }}">
     <thead>
       <tr>
         <th class="no-sort">Student</th>
@@ -251,7 +247,7 @@
   </div>
 </div>
 <div class="table-container">
-<table id="ranking-table" class="table is-bordered is-striped is-hoverable is-narrow is-fullwidth td-ranking-table">
+<table id="ranking-table" class="table is-bordered is-striped is-hoverable is-narrow is-compact is-fullwidth td-ranking-table">
   <thead>
     <tr>
       <th class="no-sort">Student</th>

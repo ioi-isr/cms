@@ -2843,7 +2843,7 @@
 
     /* Ranking page toolbar stacks vertically on mobile */
     .td-ranking-table {
-        font-size: 0.8rem;
+        font-size: 75%;
     }
 
     /* --- Histogram modal mobile responsive --- */
