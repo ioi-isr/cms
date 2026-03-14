@@ -19,10 +19,11 @@
   <div class="is-flex is-align-items-center is-gap-1">
     <a class="is-trimmed has-text-primary-35 has-text-weight-bold"
        href="{{ url("contest", contest.id, "user", p.user.id, "edit") }}"
-       title="{{ p.user.first_name }} {{ p.user.last_name }}">
+       title="{{ p.user.first_name }} {{ p.user.last_name }}"
+       style="max-width: 120px;">
       {{ p.user.first_name }} {{ p.user.last_name }}
     </a>
-    <span class="is-trimmed has-text-grey is-hidden-mobile">({{ p.user.username }})</span>
+    <span class="is-trimmed has-text-grey is-hidden-mobile" style="max-width: 120px;">({{ p.user.username }})</span>
     <a class="history-link" href="{{ url("contest", contest.id, "user", p.user.id, "detail") }}" title="View score/rank history" aria-label="View score and rank history">
       <svg class="icon"><use href="#icon-line-chart"/></svg>
     </a>
