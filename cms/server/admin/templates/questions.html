@@ -17,11 +17,13 @@ utils.init_questions_page();
     </div>
   </div>
   <div class="level-right">
-    <div class="questions-tabs">
-      <button class="questions-tab active" data-filter="all">All</button>
-      <button class="questions-tab" data-filter="unanswered">Unanswered</button>
-      <button class="questions-tab" data-filter="ignored">Ignored</button>
-      <button class="questions-tab" data-filter="claimed">Claimed</button>
+    <div class="questions-tabs tabs is-toggle">
+      <ul>
+        <li class="is-active" data-filter="all"><a>All</a></li>
+        <li data-filter="unanswered"><a>Unanswered</a></li>
+        <li data-filter="ignored"><a>Ignored</a></li>
+        <li data-filter="claimed"><a>Claimed</a></li>
+      </ul>
     </div>
   </div>
 </div>

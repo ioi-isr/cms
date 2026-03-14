@@ -429,11 +429,11 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
 
                         <!-- Statements -->
-                        <div class="cell is-col-span-2">
-                            <fieldset class="field" style="border: none; padding: 0; margin: 0;">
+                        <div class="cell is-col-span-2" style="min-width: 0;">
+                            <fieldset class="field" style="border: none; padding: 0; margin: 0; min-width: 0;">
                                 <legend class="label mb-0 is-pulled-left">
-                                        Statements
-                                        <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
+                                    Statements
+                                    <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
                                 </legend>
                                 {% if admin.permission_all %}
                                 <div class="is-pulled-right">
@@ -447,8 +447,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                 {% if task.statements|length == 0 %}
                                 <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No statements uploaded yet</div>
                                 {% else %}
-                                <div class="statements-table" id="statements-table" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                                    <table class="tp-tasks-table" style="margin: 0;">
+                                <div class="table-container" style="width: 100%; overflow-x: auto;">
+                                    <table class="table is-fullwidth m-0">
                                         <thead>
                                             <tr>
                                                 <th style="text-transform: uppercase; font-size: 0.75rem; font-weight: 600; color: var(--tp-text-muted); letter-spacing: 0.05em;">Language / Source</th>
@@ -1021,8 +1021,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </article>
                         {% endif %}
 
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table validator-table">
+                        <div class="table-container is-radiusless" style="width: 100%;">
+                        <table class="table is-hoverable is-padded is-fullwidth validator-table">
                             <thead>
                                 <tr>
                                     <th style="width: 10%; vertical-align: middle;">Subtask</th>
@@ -1223,8 +1223,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
                     </div>
                     <div class="tp-card-body">
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
-                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                        <div class="table-container" style="width: 100%;">
+                        <table class="table is-hoverable is-padded is-fullwidth" style="margin: 0; text-align: center;">
                             <thead>
                                 <tr>
                                     <th style="width: 40px;">#</th>
@@ -1234,8 +1234,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                     <th style="text-align: right;">Actual</th>
                                     <th style="width: 60px;">Valid</th>
                                     <th>Status</th>
-                                    <th>Reevaluate</th>
-                                    <th>Ops</th>
+                                    <th class="is-narrow has-text-centered">Reevaluate</th>
+                                    <th class="is-narrow has-text-centered">Ops</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1329,12 +1329,11 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                             </tbody>
                         </table>
                         </div>
-
                         {% if dataset.id in subtask_info and dataset.model_solution_metas|length > 0 %}
                           <div style="margin-top: 24px; border-top: 1px solid var(--tp-border); padding-top: 20px;">
                               <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--tp-text-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Subtask Score Validation</h4>
-                              <div class="subtask-score-table-container" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
-                              <table class="tp-tasks-table subtask-score-table" style="margin: 0; text-align: center;">
+                              <div class="table-container" style="width: 100%;">
+                              <table class="table is-hoverable is-padded is-fullwidth subtask-score-table" style="margin: 0; text-align: center;">
                                   <thead>
                                       <tr>
                                           <th style="text-align: left; position: sticky; left: 0; background: var(--tp-bg-secondary, #f9fafb); z-index: 1; border-right: 1px solid var(--tp-border); min-width: 160px;">Model Solution</th>
@@ -1460,21 +1459,21 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         {% endif %}
 
                         <div class="table testcases-table is-hoverable" style="border: 1px solid var(--tp-border); border-radius: 8px; overflow-x: auto;">
-                        <table id="testcases_table_{{ dataset.id }}" class="tp-tasks-table" style="margin: 0; text-align: center;">
+                        <table id="testcases_table_{{ dataset.id }}" class="table is-fullwidth is-striped is-hoverable m-0 is-compact">
                             <thead>
                                 <tr>
-                                    <th class="multi_delete_col_{{ dataset.id }}" style="display:none;">
+                                    <th class="has-text-centered multi_delete_col_{{ dataset.id }}" style="display:none;">
                                         <input type="checkbox" id="multi_delete_master_{{ dataset.id }}" class="multi_delete_master multi_delete_master_{{ dataset.id }}" onclick="toggleSelectAllTestcases({{ dataset.id }}, this)">
                                     </th>
-                                    <th>#</th>
-                                    <th>Codename</th>
-                                    <th>Public</th>
+                                    <th class="has-text-centered">#</th>
+                                    <th class="has-text-centered">Codename</th>
+                                    <th class="has-text-centered">Public</th>
                                     {% if dataset.id in testcase_subtasks %}
-                                    <th>Subtasks</th>
+                                    <th class="has-text-centered">Subtasks</th>
                                     {% endif %}
-                                    <th>Input</th>
-                                    <th>Output</th>
-                                    <th>Ops</th>
+                                    <th class="has-text-centered">Input</th>
+                                    <th class="has-text-centered">Output</th>
+                                    <th class="has-text-centered">Ops</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1566,8 +1565,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         {% if dataset.generators|length == 0 %}
                         <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No generators.</div>
                         {% else %}
-                        <div style="border: 1px solid var(--tp-border); border-radius: 8px; overflow: hidden;">
-                        <table class="tp-tasks-table" style="margin: 0; text-align: center;">
+                        <div class="table-container" style="width: 100%;">
+                        <table class="table is-hoverable is-padded is-fullwidth" style="margin: 0; text-align: center;">
                             <thead>
                                 <tr>
                                     <th>Filename</th>

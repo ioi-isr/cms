@@ -41,7 +41,11 @@ if (addTaskForm) {
 {% endblock js_init %}
 
 {% block core %}
+{% if is_training_day %}
+<div class="content-constraint" style="max-width: 1200px;">
+{% else %}
 <div class="content-constraint" style="max-width: 900px;">
+{% endif %}
     <!-- Header -->
     <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
@@ -53,7 +57,7 @@ if (addTaskForm) {
     </p>
 
 {% if is_training_day %}
-    <p style="color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+    <p class="has-text-grey-light mb-4">
         <em>This contest is a training day. Tasks are managed through the training day, not the contest directly.</em>
     </p>
 {% endif %}
@@ -101,46 +105,44 @@ if (addTaskForm) {
     <form action="{{ url("contest", contest.id, "tasks") }}" method="POST" id="tasks-form">
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
-        <div class="table-container">
-            <table class="ranking-table tp-tasks-table" id="tasks-table">
+        <div class="table-container" style="display: block; overflow-x: hidden;">
+            <table class="table is-padded is-bordered is-hoverable is-fullwidth" id="tasks-table">
                 <thead>
                     <tr>
-                        <th class="grip-column no-sort"></th>
-                        <th style="text-align: left;">Task</th>
+                        <th class="is-narrow no-sort"></th>
+                        <th class="has-text-left">Task</th>
 {% if is_training_day %}
-                        <th class="no-sort" style="text-align: left; min-width: 200px;">Visible to</th>
+                        <th class="no-sort has-text-left">Visible to</th>
 {% endif %}
-                        <th class="has-text-centered no-sort" style="width: 80px;">Actions</th>
+                        <th class="is-narrow has-text-centered no-sort">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="tasks-tbody">
+                <tbody id="tasks-tbody" class="is-size-6 is-size-7-mobile">
                     {% for t in contest.get_tasks() %}
                     <tr data-task-id="{{ t.id }}"
                         data-name="{{ t.name }}"
                         {% if admin.permission_all %}draggable="true"{% endif %}>
                         <!-- Drag handle -->
-                        <td class="grip-cell">
-                            <div class="grip-handle" title="Drag to reorder">
+                        <td>
+                            <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder task">
                                 <svg class="icon is-small"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
                         <!-- Task name and title -->
-                        <td data-value="{{ t.name }}">
-                            <div class="student-name-wrapper">
-                                <div class="student-info">
-                                    <a class="student-name-link" href="{{ url("task", t.id) }}" title="{{ t.title }}">
-                                        {{ t.name }}
-                                    </a>
-                                    <span class="student-username">{{ t.title }}</span>
-                                </div>
+                        <td data-value="{{ t.name }}" style="max-width: 1px;">
+                            <div class="is-flex-tablet is-block-mobile is-gap-1">
+                                <a class="is-trimmed has-text-primary-35 has-text-weight-bold" href="{{ url("task", t.id) }}" title="{{ t.title }}">
+                                    {{ t.name }}
+                                </a>
+                                <span class="is-trimmed has-text-grey-light">{{ t.title }}</span>
                             </div>
                         </td>
 
 {% if is_training_day %}
                         <!-- Visible to tags -->
                         <td>
-                            <div class="list-cell-wrapper">
+                            <div class="is-flex is-align-items-center">
                                 <input type="text" class="task-visibility-tags" data-task-id="{{ t.id }}" value="{{ t.visible_to_tags|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %}/>
                             </div>
                         </td>
@@ -148,7 +150,7 @@ if (addTaskForm) {
 
                         <!-- Actions -->
                         <td class="has-text-centered">
-                            <div class="list-cell-wrapper center-content">
+                            <div class="is-flex is-align-items-center is-justify-content-center">
                                 <button type="button" class="btn-icon-only remove-task-btn"
                                     data-task-id="{{ t.id }}"
                                     data-task-name="{{ t.name | e }}"

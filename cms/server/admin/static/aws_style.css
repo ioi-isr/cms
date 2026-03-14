@@ -191,6 +191,14 @@ pre {
     display: inline;
 }
 
+.is-trimmed {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    display: block;
+}
+
 .table-container {
     display: inline-block;
     max-width: 100%;
@@ -214,6 +222,12 @@ pre {
         padding-left: 12px;
         padding-right: 12px;
     }
+}
+
+.table.is-compact td {
+    line-height: 1.1;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 /* ==========================================================================
@@ -1481,39 +1495,14 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
 
 /* QUESTIONS PAGE */
 
-.questions-tabs {
-    display: flex;
-    gap: 0;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    overflow: hidden;
-    flex-shrink: 0;
-}
-
-.questions-tab {
-    padding: 8px 20px;
-    border: none;
-    background: var(--bulma-scheme-main);
-    color: var(--tp-text-secondary);
-    font-size: 0.9em;
+.questions-tabs.tabs.is-toggle {
+    --bulma-tabs-toggle-link-border-color: var(--bulma-border-weak);
+    --bulma-tabs-toggle-link-hover-border-color: var(--bulma-border-weak);
+    --bulma-tabs-toggle-link-radius: 8px;
+    --bulma-tabs-toggle-link-active-background-color: var(--bulma-primary);
+    --bulma-tabs-toggle-link-active-border-color: var(--bulma-primary-90);
+    --bulma-tabs-link-padding: 8px 20px;
     font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
-    border-right: 1px solid var(--tp-border);
-    font-family: inherit;
-}
-
-.questions-tab:last-child {
-    border-right: none;
-}
-
-.questions-tab:hover {
-    background-color: var(--tp-bg-gray);
-}
-
-.questions-tab.active {
-    background-color: var(--tp-primary);
-    color: var(--bulma-white);
 }
 
 .questions-pagination {

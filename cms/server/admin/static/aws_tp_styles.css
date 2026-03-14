@@ -1043,15 +1043,10 @@
     margin: 0;
 }
 
-/* Tasks table specific styles */
-.tp-tasks-table {
-    width: 100%;
-}
-
-.tp-tasks-table thead th {
-    font-size: 0.85rem;
+.table.is-padded thead th {
     text-transform: uppercase;
     letter-spacing: 0.03em;
+    background-color: var(--bulma-scheme-main-bis);
     color: var(--bulma-text-55);
     padding: 14px 16px !important;
 }
@@ -1061,21 +1056,8 @@
     padding: 6px 8px;
 }
 
-.testcases-table .tp-tasks-table thead th {
-    padding: 6px 8px !important;
-}
-
-.testcases-table .tp-tasks-table td {
-    vertical-align: middle;
-}
-
-/* Statements table vertical alignment */
-.statements-table .tp-tasks-table td {
-    vertical-align: middle;
-}
-
 /* Tagify inputs inside tables */
-.tp-tasks-table .tagify {
+.table .tagify {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--tp-border-dark);
@@ -1086,17 +1068,17 @@
     box-shadow: none;
 }
 
-.tp-tasks-table .tagify--focus {
+.table .tagify--focus {
     border-color: var(--tp-primary);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--tp-primary) 8%, transparent);
 }
 
-.tp-tasks-table .tagify__input {
+.table .tagify__input {
     margin: 0;
     min-width: 0;
 }
 
-.tp-tasks-table .tagify__tag {
+.table .tagify__tag {
     margin: 2px 4px 2px 0;
 }
 
@@ -1120,18 +1102,6 @@
     background: var(--tp-bg-secondary);
 }
 
-/* Grip handle for drag and drop */
-.grip-column {
-    width: 40px;
-    text-align: center;
-}
-
-.grip-cell {
-    width: 40px;
-    text-align: center;
-    vertical-align: middle;
-}
-
 .grip-handle {
     display: inline-flex;
     align-items: center;
@@ -1150,16 +1120,6 @@
 
 .grip-handle:active {
     cursor: grabbing;
-}
-
-/* Drag and drop states */
-.tp-tasks-table tbody tr[draggable="true"] {
-    transition: opacity 0.2s, background-color 0.2s;
-}
-
-.tp-tasks-table tbody tr.dragging {
-    opacity: 0.5;
-    background: var(--tp-bg-gray);
 }
 
 .drag-placeholder {
@@ -2883,7 +2843,7 @@
 
     /* Ranking page toolbar stacks vertically on mobile */
     .td-ranking-table {
-        font-size: 0.8rem;
+        font-size: 75%;
     }
 
     /* --- Histogram modal mobile responsive --- */

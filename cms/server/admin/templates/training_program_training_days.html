@@ -164,16 +164,16 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
         {{ xsrf_form_html|safe }}
         <input type="hidden" name="reorder_data" id="reorder-data" value="" />
         <div class="table-container" style="width: 100%;">
-            <table class="ranking-table tp-tasks-table" id="training-days-table">
+            <table class="table is-padded is-bordered is-hoverable is-fullwidth" id="training-days-table">
                 <thead>
                     <tr>
-                        <th class="grip-column no-sort"></th>
-                        <th style="text-align: left;">Name</th>
-                        <th class="no-sort" style="text-align: left;">Description</th>
-                        <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
-                        <th data-sort-settings="numeric" style="text-align: left;">Start</th>
-                        <th class="no-sort" style="text-align: left;">Tasks</th>
-                        <th class="has-text-centered no-sort" style="width: 100px;">Actions</th>
+                        <th class="is-narrow no-sort"></th>
+                        <th class="has-text-left">Name</th>
+                        <th class="no-sort has-text-left">Description</th>
+                        <th class="no-sort has-text-left" style="min-width: 150px;">Types</th>
+                        <th data-sort-settings="numeric" class="has-text-left">Start</th>
+                        <th class="no-sort has-text-left">Tasks</th>
+                        <th class="is-narrow has-text-centered no-sort">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="training-days-tbody">
@@ -184,56 +184,50 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         data-start="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 0 }}"
                         {% if admin.permission_all %}draggable="true"{% endif %}>
                         <!-- Drag handle -->
-                        <td class="grip-cell">
+                        <td>
                             <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder training day">
                                 <svg class="icon is-small" style="fill: currentColor; stroke: none;"><use href="#icon-grip"/></svg>
                             </div>
                         </td>
 
                         <!-- Name -->
-                        <td data-value="{{ td.contest.name }}">
-                            <div class="list-cell-wrapper" style="flex-direction: column; align-items: flex-start;">
-                                <div class="is-flex is-align-items-center">
-                                    <a href="{{ url("contest", td.contest.id) }}" class="student-name-link" style="max-width: none;">{{ td.contest.name }}</a>
-                                    {% set td_notif = training_day_notifications.get(td.id, {}) %}
-                                    <div class="tags is-align-items-center ml-2">
-                                        {% if td_notif.get("unanswered_questions", 0) > 0 %}
-                                        <span class="tag is-rounded is-bordered has-text-danger" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
-                                            <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
-                                            <span>{{ td_notif.unanswered_questions }}</span>
-                                        </span>
-                                        {% endif %}
-                                        {% if td_notif.get("pending_delay_requests", 0) > 0 %}
-                                        <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
-                                            <svg class="icon is-small"><use href="#icon-clock"/></svg>
-                                            <span>{{ td_notif.pending_delay_requests }}</span>
-                                        </span>
-                                        {% endif %}
-                                    </div>
+                        <td data-value="{{ td.contest.name }}" style="max-width: 1px;">
+                            <div class="is-flex is-align-items-center">
+                                <a href="{{ url("contest", td.contest.id) }}" class="is-trimmed has-text-primary-35 has-text-weight-bold">{{ td.contest.name }}</a>
+                                {% set td_notif = training_day_notifications.get(td.id, {}) %}
+                                <div class="tags is-align-items-center ml-2">
+                                    {% if td_notif.get("unanswered_questions", 0) > 0 %}
+                                    <span class="tag is-rounded is-bordered has-text-danger" title="{{ td_notif.unanswered_questions }} unanswered question{{ 's' if td_notif.unanswered_questions != 1 else '' }}">
+                                        <svg class="icon is-small"><use href="#icon-help-circle"/></svg>
+                                        <span>{{ td_notif.unanswered_questions }}</span>
+                                    </span>
+                                    {% endif %}
+                                    {% if td_notif.get("pending_delay_requests", 0) > 0 %}
+                                    <span class="tag is-rounded is-bordered has-text-warning" title="{{ td_notif.pending_delay_requests }} pending delay request{{ 's' if td_notif.pending_delay_requests != 1 else '' }}">
+                                        <svg class="icon is-small"><use href="#icon-clock"/></svg>
+                                        <span>{{ td_notif.pending_delay_requests }}</span>
+                                    </span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
 
                         <!-- Description -->
-                        <td>
-                            <div class="list-cell-wrapper">
-                                <span style="color: var(--tp-text-secondary);">{{ td.contest.description }}</span>
-                            </div>
+                        <td style="max-width: 1px;">
+                            <span class="is-trimmed has-text-grey">{{ td.contest.description }}</span>
                         </td>
 
                         <!-- Types -->
                         <td>
-                            <div class="list-cell-wrapper">
-                                <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
-                            </div>
+                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
                         </td>
 
                         <!-- Start Time -->
-                        <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}">
-                            <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                        <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}" style="white-space: nowrap;">
+                            <div class="is-flex is-flex-direction-column has-text-grey-dark is-family-monospace has-text-weight-medium">
                                 {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
-                                    <div>{{ td.contest.start.strftime('%Y-%m-%d') }}</div>
-                                    <div style="color: #94a3b8; font-size: 0.9em;">{{ td.contest.start.strftime('%H:%M') }}</div>
+                                    <span>{{ td.contest.start.strftime('%Y-%m-%d') }}</span>
+                                    <span class="has-text-grey-light is-tiny">{{ td.contest.start.strftime('%H:%M') }}</span>
                                 {% else %}
                                     <span class="tag is-size-s has-text-weight-semibold">Unscheduled</span>
                                 {% endif %}
@@ -242,21 +236,21 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
                         <!-- Tasks -->
                         <td>
-                            <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                            <div class="is-flex is-flex-wrap-wrap is-gap-1">
                                 {% set tasks = td.contest.get_tasks() %}
                                 {% if tasks %}
                                     {% for task in tasks %}
                                         <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
-                                    <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                                    <span class="has-text-grey-light is-size-s">No tasks</span>
                                 {% endif %}
                             </div>
                         </td>
 
                         <!-- Actions -->
-                        <td class="has-text-centered">
-                            <div class="list-cell-wrapper center-content" style="gap: 4px;">
+                        <td class="is-narrow has-text-centered">
+                            <div class="is-flex is-align-items-center is-justify-content-center">
                                 <!-- Archive button -->
                                 <button type="button"
                                    class="btn-icon-only btn-archive"
@@ -306,15 +300,15 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     ) }}
 
     <div class="table-container" style="width: 100%;">
-        <table class="ranking-table tp-tasks-table" id="archived-training-days-table">
+        <table class="table is-padded is-bordered is-hoverable is-fullwidth" id="archived-training-days-table">
             <thead>
                 <tr>
-                    <th style="text-align: left;">Name</th>
-                    <th class="no-sort" style="text-align: left;">Description</th>
-                    <th class="no-sort" style="text-align: left; min-width: 150px;">Types</th>
-                    <th data-sort-settings="numeric" style="text-align: left;">Start</th>
-                    <th class="no-sort" style="text-align: left;">Tasks</th>
-                    <th class="no-sort" style="text-align: center; width: 100px;">Share</th>
+                    <th class="has-text-left">Name</th>
+                    <th class="no-sort has-text-left">Description</th>
+                    <th class="no-sort has-text-left" style="min-width: 150px;">Types</th>
+                    <th data-sort-settings="numeric" class="has-text-left">Start</th>
+                    <th class="no-sort has-text-left">Tasks</th>
+                    <th class="no-sort is-narrow has-text-centered">Share</th>
                 </tr>
             </thead>
             <tbody>
@@ -322,41 +316,35 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                 {% for td in archived_training_days %}
                 <tr>
                     <!-- Name -->
-                    <td data-value="{{ td.name or '' }}">
-                        <div class="list-cell-wrapper">
-                            <span style="font-weight: 600; color: var(--tp-text-primary);">{{ td.name or "(no name)" }}</span>
-                        </div>
+                    <td data-value="{{ td.name or '' }}" style="max-width: 1px;">
+                        <span class="is-trimmed has-text-weight-bold">{{ td.name or "(no name)" }}</span>
                     </td>
 
                     <!-- Description -->
-                    <td>
-                        <div class="list-cell-wrapper">
-                            <span style="color: var(--tp-text-secondary);">{{ td.description or "(no description)" }}</span>
-                        </div>
+                    <td style="max-width: 1px;">
+                        <span class="is-trimmed">{{ td.description or "(no description)" }}</span>
                     </td>
 
                     <!-- Types -->
                     <td>
-                        <div class="list-cell-wrapper">
-                            <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
-                        </div>
+                        <input type="text" name="training_day_types_{{ td.id }}" value="{{ td.training_day_types|join(', ') }}" {% if not admin.permission_all %}disabled{% endif %} style="width: 100%; min-width: 120px;"/>
                     </td>
 
                     <!-- Start Time -->
-                    <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}">
-                        <div class="list-cell-wrapper" style="color: #475569; font-family: monospace; font-size: 0.85rem; flex-direction: column; align-items: flex-start; justify-content: center;">
+                    <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}" style="white-space: nowrap;">
+                        <div class="is-flex is-flex-direction-column has-text-grey is-family-monospace has-text-weight-medium">
                             {% if td.start_time %}
-                                <div>{{ td.start_time.strftime('%Y-%m-%d') }}</div>
-                                <div style="color: #94a3b8; font-size: 0.9em;">{{ td.start_time.strftime('%H:%M') }}</div>
+                                <span>{{ td.start_time.strftime('%Y-%m-%d') }}</span>
+                                <span class="has-text-grey-light is-tiny">{{ td.start_time.strftime('%H:%M') }}</span>
                             {% else %}
-                                <span style="color: #e2e8f0; font-size: 1.2rem;">&middot;</span>
+                                <span class="has-text-grey-lighter is-size-5">&middot;</span>
                             {% endif %}
                         </div>
                     </td>
 
                     <!-- Tasks -->
                     <td>
-                        <div class="list-cell-wrapper" style="flex-wrap: wrap; gap: 4px;">
+                        <div class="is-flex is-flex-wrap-wrap is-gap-1">
                             {% if td.archived_tasks_data %}
                                 {% for task_id_str, task_info in td.archived_tasks_data.items() %}
                                     <button class="tag is-bordered has-text-warning"
@@ -369,21 +357,21 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                     </button>
                                 {% endfor %}
                             {% else %}
-                                <span class="has-text-grey-light" style="font-size: 0.85rem;">No tasks</span>
+                                <span class="has-text-grey-light is-size-s">No tasks</span>
                             {% endif %}
                         </div>
                     </td>
 
                     <!-- Share Scoreboard -->
-                    <td style="text-align: center;">
-                        <div class="list-cell-wrapper" style="justify-content: center;">
+                    <td class="is-narrow has-text-centered">
+                        <div class="is-flex is-align-items-center is-justify-content-center">
                             <button type="button" class="btn-icon-only" title="Configure scoreboard sharing" aria-label="Configure scoreboard sharing"
                                     onclick='openScoreboardSharingModal({{ td.id }}, {{ td.scoreboard_sharing | default({}, true) | tojson }}, {{ td.name | default("") | tojson }})'
                                     {% if not admin.permission_all %}disabled{% endif %}>
                                 <svg class="icon is-small"><use href="#icon-share"/></svg>
                             </button>
                             {% if td.scoreboard_sharing %}
-                            <span class="tag is-bordered has-text-link" style="margin-left: 4px; font-size: 0.7rem;" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
+                            <span class="tag is-bordered has-text-link ml-1 is-size-7" title="Shared with: {{ td.scoreboard_sharing.keys() | list | join(', ') }}">
                                 {{ td.scoreboard_sharing | length }}
                             </span>
                             {% endif %}
