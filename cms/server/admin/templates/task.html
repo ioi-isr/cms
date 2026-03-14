@@ -429,15 +429,15 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
 
                         <!-- Statements -->
-                        <div class="cell is-col-span-2" style="min-width: 0;">
+                        <div class="cell is-col-span-2" style="min-width: 0; overflow: hidden;">
                             <fieldset class="field" style="border: none; padding: 0; margin: 0;">
-                                <div class="is-flex is-align-items-center is-justify-content-space-between is-flex-wrap-wrap is-gap-2 mb-3">
+                                <div class="is-flex is-align-items-center is-justify-content-space-between is-flex-wrap-wrap is-gap-2 mb-3" style="max-width: 100%;">
                                     <label class="label mb-0">
                                         Statements
                                         <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
                                     </label>
                                     {% if admin.permission_all %}
-                                    <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
+                                    <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button" style="flex-shrink: 0;">
                                         <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
                                         <span>Add Statement</span>
                                     </button>
