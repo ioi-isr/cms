@@ -431,10 +431,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         <!-- Statements -->
                         <div class="cell is-col-span-2" style="min-width: 0;">
                             <fieldset class="field" style="border: none; padding: 0; margin: 0; min-width: 0;">
-                                <label class="label mb-0 is-pulled-left">
+                                <legend class="label mb-0 is-pulled-left">
                                     Statements
                                     <span class="info" title="The statements of this task, by language code. Primary statements are shown prominently to contestants."></span>
-                                </label>
+                                </legend>
                                 {% if admin.permission_all %}
                                 <div class="is-pulled-right">
                                     <button type="button" onclick="MicroModal.show('modal-add-statement');" class="button">
