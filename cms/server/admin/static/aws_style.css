@@ -224,6 +224,12 @@ pre {
     }
 }
 
+.table.is-compact td {
+    line-height: 1.1;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 /* ==========================================================================
    Top Navbar (uses same variables as sidebar)
    ========================================================================== */

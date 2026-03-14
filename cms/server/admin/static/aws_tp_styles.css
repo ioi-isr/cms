@@ -1043,19 +1043,6 @@
     margin: 0;
 }
 
-/* Tasks table specific styles */
-.tp-tasks-table {
-    width: 100%;
-}
-
-.tp-tasks-table thead th {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--bulma-text-55);
-    padding: 14px 16px !important;
-}
-
 .table.is-padded thead th {
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -1067,14 +1054,6 @@
 /* Task page specific compact styling for test cases table */
 .testcases-table .list-cell-wrapper {
     padding: 6px 8px;
-}
-
-.testcases-table .tp-tasks-table thead th {
-    padding: 6px 8px !important;
-}
-
-.testcases-table .tp-tasks-table td {
-    vertical-align: middle;
 }
 
 /* Tagify inputs inside tables */
@@ -1141,16 +1120,6 @@
 
 .grip-handle:active {
     cursor: grabbing;
-}
-
-/* Drag and drop states */
-.tp-tasks-table tbody tr[draggable="true"] {
-    transition: opacity 0.2s, background-color 0.2s;
-}
-
-.tp-tasks-table tbody tr.dragging {
-    opacity: 0.5;
-    background: var(--tp-bg-gray);
 }
 
 .drag-placeholder {
