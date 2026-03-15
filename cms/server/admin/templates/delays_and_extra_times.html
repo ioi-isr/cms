@@ -1,5 +1,19 @@
 {% from "macro/modal.html" import modal_header, modal_footer %}
 {% extends "base.html" %}
+
+{% macro time_offset(seconds, zero_label="-", css_class="has-text-weight-semibold is-size-s") %}
+{% if seconds != 0 %}
+  {% set sign = "+" if seconds > 0 else "-" %}
+  {% set abs_minutes = (seconds if seconds > 0 else -seconds) / 60 %}
+  {% if abs_minutes < 60 %}
+    <span class="{{ css_class }}">{{ "%s%.1f"|format(sign, abs_minutes) }} minutes</span>
+  {% else %}
+    <span class="{{ css_class }}">{{ "%s%.1f"|format(sign, abs_minutes / 60) }} hours</span>
+  {% endif %}
+{% else %}
+  <span class="has-text-grey-light">{{ zero_label }}</span>
+{% endif %}
+{% endmacro %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 
 {% block js_init %}
@@ -24,19 +38,6 @@ CMS.AWSFormUtils.initTagify({
 });
 {% endif %}
 
-(function() {
-    var searchInput = document.getElementById('participations-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            var filter = this.value.toLowerCase();
-            var rows = document.querySelectorAll('#participations-table tbody tr');
-            rows.forEach(function(row) {
-                var text = row.textContent.toLowerCase();
-                row.style.display = text.indexOf(filter) !== -1 ? '' : 'none';
-            });
-        });
-    }
-})();
 
 CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 
@@ -64,7 +65,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 
 <!-- Archive-ready banner -->
 {% if contest.training_day and all_finished_or_missed and participation_statuses|length > 0 %}
-<div class="delays-archive-banner">
+<div class="delays-archive-banner has-background-success-soft has-text-success-bold">
   <div>
     <p><strong>All participants have finished or missed this training day.</strong> This training day is ready to be archived.</p>
   </div>
@@ -82,11 +83,11 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 {% set has_ineligible = ineligible_students is defined and ineligible_students|length > 0 %}
 
 {% if pending_count > 0 %}
-<div class="delays-pending-section">
+<div class="mb-6">
   <div class="delays-pending-title-row">
-    <svg class="icon delays-pending-title-icon" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
+    <svg class="icon has-text-warning" width="20" height="20"><use href="#icon-alert-triangle"/></svg>
     <h2>Pending Delay Requests</h2>
-    <span class="delays-pending-count">{{ pending_count }}</span>
+    <span class="tag is-rounded is-warning">{{ pending_count }}</span>
   </div>
   <div id="pending_delay_requests" class="notifications">
     <div id="page_selector_pending_delay_requests"></div>
@@ -104,14 +105,14 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 
 <!-- Ineligible Students Section -->
 {% if has_ineligible %}
-<div class="delays-ineligible-section">
-  <div class="delays-alert-card delays-alert-card-danger">
-    <div class="is-flex is-align-items-center is-gap-2 mb-3 has-text-danger">
+<div class="mb-6">
+  <div class="delays-alert-card has-background-danger-soft has-text-danger-bold">
+    <div class="is-flex is-align-items-center is-gap-2 mb-3">
       <svg class="icon"><use href="#icon-info"/></svg>
       <h2 class="has-text-weight-bold is-size-5">Ineligible Students</h2>
       <span class="delays-alert-count">{{ ineligible_students|length }}</span>
     </div>
-    <div class="is-size-6 mb-4 has-text-danger">Students missing a main group tag cannot participate. Edit their tags below to fix this.</div>
+    <div class="is-size-6 mb-4">Students missing a main group tag cannot participate. Edit their tags below to fix this.</div>
     <div class="delays-alert-content">
       <table class="table is-fullwidth is-hoverable is-header-muted">
         <thead>
@@ -142,7 +143,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
               {% if item.matching_tags %}
                 <input type="text" class="main-group-tags-display" value="{{ item.matching_tags|join(', ') }}" readonly/>
               {% else %}
-                <em class="delays-text-light">(none)</em>
+                <em class="has-text-grey-light">(none)</em>
               {% endif %}
             </td>
             <td>
@@ -174,9 +175,10 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
   </div>
   <div class="level-right">
     <div class="level-item">
-      <div class="delays-search-wrapper">
-        <svg class="icon is-small delays-search-icon"><use href="#icon-search"/></svg>
-        <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user, status, group..." aria-label="Search user">
+      <div class="control has-icons-left">
+        <input type="text" class="input" placeholder="Search user, status, group..." aria-label="Search user"
+               oninput="CMS.AWSTableUtils.filterTable('participations-table', this.value)" style="max-width: 280px;">
+        <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
       </div>
     </div>
     <div class="level-item">
@@ -291,35 +293,29 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
           {% endif %}
         </div>
       </td>
-      <td data-value="{{ participation.delay_time.total_seconds() }}">
-        {% if participation.delay_time.total_seconds() > 0 %}
-          {% set delay_minutes = participation.delay_time.total_seconds() / 60 %}
-          {% if delay_minutes < 60 %}
-            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes) }} minutes</span>
-          {% else %}
-            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes / 60) }} hours</span>
-          {% endif %}
+      <td data-value="{% if item.main_group and item.main_group.start_time and participation.delay_time.total_seconds() > 0 %}{{ ((contest.start + participation.delay_time) - item.main_group.start_time).total_seconds() }}{% else %}{{ participation.delay_time.total_seconds() }}{% endif %}">
+        {% if participation.delay_time.total_seconds() > 0 and item.main_group and item.main_group.start_time %}
+          {% set user_start = contest.start + participation.delay_time %}
+          {% set relative_delay_seconds = (user_start - item.main_group.start_time).total_seconds() %}
+          {{ time_offset(relative_delay_seconds) }}
+        {% elif participation.delay_time.total_seconds() > 0 %}
+          {{ time_offset(participation.delay_time.total_seconds()) }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td data-value="{{ participation.extra_time.total_seconds() }}">
         {% if participation.extra_time.total_seconds() > 0 %}
-          {% set extra_minutes = participation.extra_time.total_seconds() / 60 %}
-          {% if extra_minutes < 60 %}
-            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes) }} minutes</span>
-          {% else %}
-            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes / 60) }} hours</span>
-          {% endif %}
+          {{ time_offset(participation.extra_time.total_seconds()) }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td>
         {% if participation.starting_ip_addresses %}
           {{ participation.starting_ip_addresses }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td>

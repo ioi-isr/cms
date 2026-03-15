@@ -87,8 +87,9 @@
     </div>
     {% else %}
     <!-- Search -->
-    <div class="table-search" style="margin-bottom: 16px;">
+    <div class="control has-icons-left mb-4">
         <input type="text" class="input" placeholder="Search users..." aria-label="Search users" oninput="CMS.AWSUtils.filter_elements('users-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+        <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
     </div>
 
     <!-- Users Cards Grid -->

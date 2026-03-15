@@ -124,6 +124,18 @@ class DelayRequestHandler(ContestHandler):
             self.redirect(redirect_url)
             return
 
+        # Reject requests for a start time before the contest start time.
+        # The delay is computed relative to the contest start, so a requested
+        # time before the contest start would result in a zero or negative delay
+        # which has no effect.
+        if requested_start_time < self.contest.start:
+            self.notify_error(
+                N_("Invalid start time"),
+                N_("The requested start time cannot be earlier than the "
+                   "contest start time. Please choose a later time."))
+            self.redirect(redirect_url)
+            return
+
         delay_request = DelayRequest(
             request_timestamp=self.timestamp,
             requested_start_time=requested_start_time,
