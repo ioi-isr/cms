@@ -226,8 +226,9 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                         <td data-value="{{ td.contest.start.timestamp() if td.contest.start.year <= training_program.managing_contest.stop.year else 9999999999 }}" style="white-space: nowrap;">
                             <div class="is-flex is-flex-direction-column has-text-grey-dark is-family-monospace has-text-weight-medium">
                                 {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
-                                    <span>{{ td.contest.start.strftime('%Y-%m-%d') }}</span>
-                                    <span class="has-text-grey-light is-tiny">{{ td.contest.start.strftime('%H:%M') }}</span>
+                                    {% set local_start = td.contest.start|format_datetime_input(timezone) %}
+                                    <span>{{ local_start[:10] }}</span>
+                                    <span class="has-text-grey-light is-tiny">{{ local_start[11:16] }}</span>
                                 {% else %}
                                     <span class="tag is-size-s has-text-weight-semibold">Unscheduled</span>
                                 {% endif %}
@@ -334,8 +335,9 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                     <td data-value="{{ td.start_time.timestamp() if td.start_time else 9999999999 }}" style="white-space: nowrap;">
                         <div class="is-flex is-flex-direction-column has-text-grey is-family-monospace has-text-weight-medium">
                             {% if td.start_time %}
-                                <span>{{ td.start_time.strftime('%Y-%m-%d') }}</span>
-                                <span class="has-text-grey-light is-tiny">{{ td.start_time.strftime('%H:%M') }}</span>
+                                {% set local_start = td.start_time|format_datetime_input(timezone) %}
+                                <span>{{ local_start[:10] }}</span>
+                                <span class="has-text-grey-light is-tiny">{{ local_start[11:16] }}</span>
                             {% else %}
                                 <span class="has-text-grey-lighter is-size-5">&middot;</span>
                             {% endif %}
