@@ -34,7 +34,7 @@
     {% else %}
     <!-- Search -->
     <div class="control has-icons-left mb-4">
-        <input type="text" class="input" placeholder="Search contests..." oninput="CMS.AWSUtils.filter_elements('contests-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
+        <input type="text" class="input" placeholder="Search contests..." aria-label="Search contests" oninput="CMS.AWSUtils.filter_elements('contests-grid', '.tp-program-card', this.value)" style="max-width: 350px;">
         <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
     </div>
 

@@ -58,6 +58,7 @@ contest_start_utc (datetime|None): contest start time (naive UTC datetime),
     </fieldset>
 </form>
 {% if contest_start_local %}
+{% set contest_start_error_msg %}{% trans %}The requested start time cannot be earlier than the contest start time. Please choose a later time.{% endtrans %}{% endset %}
 <script>
 (function() {
     var form = document.{% if form_id %}getElementById({{ form_id | tojson }}){% else %}querySelector('form[action="{{ action_url }}"]'){% endif %};
@@ -65,11 +66,12 @@ contest_start_utc (datetime|None): contest start time (naive UTC datetime),
     var input = document.getElementById({{ input_id | tojson }});
     var errorDiv = document.getElementById({{ error_id | tojson }});
     var contestStart = {{ contest_start_local | tojson }};
+    var contestStartErrorMsg = {{ contest_start_error_msg | tojson }};
     form.addEventListener('submit', function(e) {
         if (input && input.value && input.value < contestStart) {
             e.preventDefault();
             if (errorDiv) {
-                errorDiv.textContent = "{% trans %}The requested start time cannot be earlier than the contest start time. Please choose a later time.{% endtrans %}";
+                errorDiv.textContent = contestStartErrorMsg;
                 errorDiv.style.display = 'block';
             }
         } else if (errorDiv) {
