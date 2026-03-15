@@ -104,7 +104,19 @@
 {% endif %}
 
 <!-- Students Table -->
-<h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+<div class="level" style="max-width: 900px;">
+  <div class="level-left">
+    <h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <div class="delays-search-wrapper">
+        <svg class="icon is-small delays-search-icon"><use href="#icon-search"/></svg>
+        <input type="text" id="students-search" class="delays-search-input" placeholder="Search name, username, tag..." aria-label="Search students">
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="table-container" style="width: 100%; max-width: 900px;">
     <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
@@ -196,6 +208,21 @@
 $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#students-table"), false, 1, true);
 });
+
+// Students search filter
+(function() {
+    var searchInput = document.getElementById('students-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            var filter = this.value.toLowerCase();
+            var rows = document.querySelectorAll('#students-table tbody tr');
+            rows.forEach(function(row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.indexOf(filter) !== -1 ? '' : 'none';
+            });
+        });
+    }
+})();
 
 // Bulk Assign Task Modal using MicroModal
 var bulkAssignTagify = null;

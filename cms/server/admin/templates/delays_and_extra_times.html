@@ -291,8 +291,28 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
           {% endif %}
         </div>
       </td>
-      <td data-value="{{ participation.delay_time.total_seconds() }}">
-        {% if participation.delay_time.total_seconds() > 0 %}
+      <td data-value="{% if item.main_group and item.main_group.start_time and participation.delay_time.total_seconds() > 0 %}{{ ((contest.start + participation.delay_time) - item.main_group.start_time).total_seconds() }}{% else %}{{ participation.delay_time.total_seconds() }}{% endif %}">
+        {% if participation.delay_time.total_seconds() > 0 and item.main_group and item.main_group.start_time %}
+          {% set user_start = contest.start + participation.delay_time %}
+          {% set relative_delay_seconds = (user_start - item.main_group.start_time).total_seconds() %}
+          {% if relative_delay_seconds > 0 %}
+            {% set rel_minutes = relative_delay_seconds / 60 %}
+            {% if rel_minutes < 60 %}
+              <span class="delays-time-value">{{ "+%.1f"|format(rel_minutes) }} minutes</span>
+            {% else %}
+              <span class="delays-time-value">{{ "+%.1f"|format(rel_minutes / 60) }} hours</span>
+            {% endif %}
+          {% elif relative_delay_seconds < 0 %}
+            {% set rel_minutes = (-relative_delay_seconds) / 60 %}
+            {% if rel_minutes < 60 %}
+              <span class="delays-time-value">{{ "-%.1f"|format(rel_minutes) }} minutes</span>
+            {% else %}
+              <span class="delays-time-value">{{ "-%.1f"|format(rel_minutes / 60) }} hours</span>
+            {% endif %}
+          {% else %}
+            <span class="delays-text-light">-</span>
+          {% endif %}
+        {% elif participation.delay_time.total_seconds() > 0 %}
           {% set delay_minutes = participation.delay_time.total_seconds() / 60 %}
           {% if delay_minutes < 60 %}
             <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes) }} minutes</span>
