@@ -1,6 +1,6 @@
 {# This macro should be imported "with context". #}
 
-{% macro delay_request_form(action_url, xsrf_form_html, timezone, now, form_id=None, inline=False, next_url=None) %}
+{% macro delay_request_form(action_url, xsrf_form_html, timezone, now, form_id=None, inline=False, next_url=None, contest_start_utc=None) %}
 {#
 Render a delay request form.
 
@@ -11,7 +11,16 @@ now: the current datetime.
 form_id (str|None): optional ID for the form element.
 inline (bool): if True, renders a more compact inline version for modals.
 next_url (str|None): optional URL to redirect to after form submission.
+contest_start_utc (datetime|None): contest start time (naive UTC datetime),
+    used for client-side validation to prevent requests before the contest start.
 #}
+{% set input_id = "input_requested_start_time" ~ ("_" ~ form_id if form_id else "") %}
+{% set error_id = "delay_request_error" ~ ("_" ~ form_id if form_id else "") %}
+{% if contest_start_utc %}
+  {% set contest_start_local = (contest_start_utc|format_datetime_input(timezone)).replace(" ", "T")[:16] %}
+{% else %}
+  {% set contest_start_local = None %}
+{% endif %}
 <form class="form-horizontal" action="{{ action_url }}" method="POST"{% if form_id %} id="{{ form_id }}"{% endif %}>
     {{ xsrf_form_html|safe }}
     {% if next_url %}
@@ -19,9 +28,10 @@ next_url (str|None): optional URL to redirect to after form submission.
     {% endif %}
     <fieldset>
         <div class="control-group">
-            <label class="control-label" for="input_requested_start_time{% if form_id %}_{{ form_id }}{% endif %}">{% trans %}Requested Start Time{% endtrans %}</label>
+            <label class="control-label" for="{{ input_id }}">{% trans %}Requested Start Time{% endtrans %}</label>
             <div class="controls">
-                <input type="datetime-local" name="requested_start_time" id="input_requested_start_time{% if form_id %}_{{ form_id }}{% endif %}" class="input-xlarge" required>
+                <input type="datetime-local" name="requested_start_time" id="{{ input_id }}" class="input-xlarge" required{% if contest_start_local %} min="{{ contest_start_local }}"{% endif %}>
+                <div id="{{ error_id }}" class="alert alert-error" style="display: none; margin-top: 8px;"></div>
                 {% if not inline %}
                 <span class="help-block">
                     {% trans %}Select the date and time when you want to start the contest{% endtrans %}
@@ -47,6 +57,35 @@ next_url (str|None): optional URL to redirect to after form submission.
         </div>
     </fieldset>
 </form>
+{% if contest_start_local %}
+{% set contest_start_error_msg %}{% trans %}The requested start time cannot be earlier than the contest start time. Please choose a later time.{% endtrans %}{% endset %}
+<script>
+(function() {
+    var form = document.{% if form_id %}getElementById({{ form_id | tojson }}){% else %}querySelector('form[action="{{ action_url }}"]'){% endif %};
+    if (!form) return;
+    var input = document.getElementById({{ input_id | tojson }});
+    var errorDiv = document.getElementById({{ error_id | tojson }});
+    var contestStart = {{ contest_start_local | tojson }};
+    var contestStartErrorMsg = {{ contest_start_error_msg | tojson }};
+    form.addEventListener('submit', function(e) {
+        if (input && input.value && input.value <= contestStart) {
+            e.preventDefault();
+            if (errorDiv) {
+                errorDiv.textContent = contestStartErrorMsg;
+                errorDiv.style.display = 'block';
+            }
+        } else if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+    });
+    if (input) {
+        input.addEventListener('change', function() {
+            if (errorDiv) errorDiv.style.display = 'none';
+        });
+    }
+})();
+</script>
+{% endif %}
 {% endmacro %}
 
 {% macro delay_request_list(delay_requests) %}

@@ -49,10 +49,12 @@ variant (str): "pending", "history", or "auto" to pick layout.
       <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
     </div>
     {% if warning and warning.group_name is defined and warning.group_start is defined %}
-    <div class="delays-request-warning">
-      <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-      <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
-    </div>
+    <article class="message is-warning">
+      <div class="message-body is-flex is-align-items-center is-gap-1 icon-text">
+        <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+        <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
+      </div>
+    </article>
     {% endif %}
     <div class="delays-history-card-reason">
       <div class="delays-history-card-reason-label">
@@ -121,10 +123,12 @@ variant (str): "pending", "history", or "auto" to pick layout.
       <div class="delays-history-card-field-value">{{ req.requested_start_time|format_datetime }}</div>
     </div>
     {% if warning and warning.group_name is defined and warning.group_start is defined %}
-    <div class="delays-request-warning">
-      <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-      <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
-    </div>
+    <article class="message is-warning">
+      <div class="message-body is-flex is-align-items-start is-gap-2">
+        <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+        <span><strong>Warning:</strong> Requested start time is earlier than the student's group start time. Group "{{ warning.group_name }}" starts at {{ warning.group_start|format_datetime }}.</span>
+      </div>
+    </article>
     {% endif %}
     <div class="delays-history-card-reason">
       <div class="delays-history-card-reason-label">

@@ -141,16 +141,10 @@
     --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --tp-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
 
-    --tp-question-unanswered-header-bg: rgba(255, 193, 7, 0.15);
-    --tp-question-unanswered-header-text: hsl(221, 14%, 85%);
     --tp-question-unanswered-border: rgba(255, 193, 7, 0.25);
     --tp-question-unanswered-divider: rgba(255, 193, 7, 0.2);
-    --tp-question-claimed-header-bg: rgba(52, 152, 219, 0.15);
-    --tp-question-claimed-header-text: hsl(221, 14%, 85%);
     --tp-question-claimed-border: rgba(52, 152, 219, 0.25);
     --tp-question-claimed-divider: rgba(52, 152, 219, 0.2);
-    --tp-question-answered-header-bg: rgba(46, 125, 50, 0.15);
-    --tp-question-answered-header-text: hsl(221, 14%, 85%);
     --tp-question-answered-border: rgba(46, 125, 50, 0.25);
     --tp-question-answered-divider: rgba(46, 125, 50, 0.2);
 

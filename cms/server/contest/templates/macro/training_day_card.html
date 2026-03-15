@@ -88,7 +88,7 @@ show_ended_status: if True, shows ENDED status for ended trainings (default: Fal
             <p class="text-info" style="margin-bottom: 15px;">
                 {% trans %}Current start time:{% endtrans %} <strong>{{ td_info.user_start_time|format_datetime_smart }}</strong>
             </p>
-            {{ delay_request_form_macro(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop_index, inline=True, next_url="/" ~ training_program.name ~ "/" ~ next_url_suffix) }}
+            {{ delay_request_form_macro(url[td_info.contest.name]("delay_request"), xsrf_form_html, timezone, now, form_id="delay-form-" ~ loop_index, inline=True, next_url="/" ~ training_program.name ~ "/" ~ next_url_suffix, contest_start_utc=td_info.contest.start) }}
         </div>
     </div>
     {% endif %}

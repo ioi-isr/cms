@@ -104,7 +104,20 @@
 {% endif %}
 
 <!-- Students Table -->
-<h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+<div class="level" style="max-width: 900px;">
+  <div class="level-left">
+    <h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+  </div>
+  <div class="level-right">
+    <div class="level-item">
+      <div class="control has-icons-left">
+        <input type="text" class="input" placeholder="Search name, username, tag..." aria-label="Search students"
+               oninput="CMS.AWSTableUtils.filterTable('students-table', this.value)" style="max-width: 280px;">
+        <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="table-container" style="width: 100%; max-width: 900px;">
     <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
