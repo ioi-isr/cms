@@ -68,7 +68,7 @@ contest_start_utc (datetime|None): contest start time (naive UTC datetime),
     var contestStart = {{ contest_start_local | tojson }};
     var contestStartErrorMsg = {{ contest_start_error_msg | tojson }};
     form.addEventListener('submit', function(e) {
-        if (input && input.value && input.value < contestStart) {
+        if (input && input.value && input.value <= contestStart) {
             e.preventDefault();
             if (errorDiv) {
                 errorDiv.textContent = contestStartErrorMsg;
