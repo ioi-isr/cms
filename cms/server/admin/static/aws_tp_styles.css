@@ -1947,35 +1947,6 @@
     gap: 10px;
 }
 
-.delays-search-input {
-    padding: 7px 12px 7px 34px;
-    border: 1px solid var(--tp-border);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    background: var(--tp-bg-white);
-    color: var(--tp-text-primary);
-    width: 200px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.delays-search-input:focus {
-    outline: none;
-    border-color: var(--tp-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-primary) 10%, transparent);
-}
-
-.delays-search-wrapper {
-    position: relative;
-}
-
-.delays-search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--tp-text-muted);
-    pointer-events: none;
-}
 
 .delays-timing-label {
     font-size: 0.7rem;
@@ -1997,11 +1968,6 @@
     color: var(--tp-text-light);
 }
 
-.delays-time-value {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--tp-text-primary);
-}
 
 .delays-request-warning {
     display: flex;
@@ -2147,9 +2113,6 @@
     letter-spacing: normal;
 }
 
-.delays-text-light {
-    color: var(--tp-text-light);
-}
 
 
 .delays-history-section {

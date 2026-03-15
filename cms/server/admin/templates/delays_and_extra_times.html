@@ -1,4 +1,5 @@
 {% from "macro/modal.html" import modal_header, modal_footer %}
+{% from "macro/time_offset.html" import time_offset %}
 {% extends "base.html" %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 
@@ -24,19 +25,6 @@ CMS.AWSFormUtils.initTagify({
 });
 {% endif %}
 
-(function() {
-    var searchInput = document.getElementById('participations-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            var filter = this.value.toLowerCase();
-            var rows = document.querySelectorAll('#participations-table tbody tr');
-            rows.forEach(function(row) {
-                var text = row.textContent.toLowerCase();
-                row.style.display = text.indexOf(filter) !== -1 ? '' : 'none';
-            });
-        });
-    }
-})();
 
 CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
 
@@ -142,7 +130,7 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
               {% if item.matching_tags %}
                 <input type="text" class="main-group-tags-display" value="{{ item.matching_tags|join(', ') }}" readonly/>
               {% else %}
-                <em class="delays-text-light">(none)</em>
+                <em class="has-text-grey-light">(none)</em>
               {% endif %}
             </td>
             <td>
@@ -174,9 +162,9 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
   </div>
   <div class="level-right">
     <div class="level-item">
-      <div class="delays-search-wrapper">
-        <svg class="icon is-small delays-search-icon"><use href="#icon-search"/></svg>
-        <input type="text" id="participations-search" class="delays-search-input" placeholder="Search user, status, group..." aria-label="Search user">
+      <div class="table-search">
+        <input type="text" class="input" placeholder="Search user, status, group..." aria-label="Search user"
+               oninput="CMS.AWSTableUtils.filterTable('participations-table', this.value)" style="max-width: 280px;">
       </div>
     </div>
     <div class="level-item">
@@ -295,51 +283,25 @@ CMS.AWSUtils.init_table_sort($("#participations-table"), false, -1);
         {% if participation.delay_time.total_seconds() > 0 and item.main_group and item.main_group.start_time %}
           {% set user_start = contest.start + participation.delay_time %}
           {% set relative_delay_seconds = (user_start - item.main_group.start_time).total_seconds() %}
-          {% if relative_delay_seconds > 0 %}
-            {% set rel_minutes = relative_delay_seconds / 60 %}
-            {% if rel_minutes < 60 %}
-              <span class="delays-time-value">{{ "+%.1f"|format(rel_minutes) }} minutes</span>
-            {% else %}
-              <span class="delays-time-value">{{ "+%.1f"|format(rel_minutes / 60) }} hours</span>
-            {% endif %}
-          {% elif relative_delay_seconds < 0 %}
-            {% set rel_minutes = (-relative_delay_seconds) / 60 %}
-            {% if rel_minutes < 60 %}
-              <span class="delays-time-value">{{ "-%.1f"|format(rel_minutes) }} minutes</span>
-            {% else %}
-              <span class="delays-time-value">{{ "-%.1f"|format(rel_minutes / 60) }} hours</span>
-            {% endif %}
-          {% else %}
-            <span class="delays-text-light">-</span>
-          {% endif %}
+          {{ time_offset(relative_delay_seconds) }}
         {% elif participation.delay_time.total_seconds() > 0 %}
-          {% set delay_minutes = participation.delay_time.total_seconds() / 60 %}
-          {% if delay_minutes < 60 %}
-            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes) }} minutes</span>
-          {% else %}
-            <span class="delays-time-value">{{ "+%.1f"|format(delay_minutes / 60) }} hours</span>
-          {% endif %}
+          {{ time_offset(participation.delay_time.total_seconds()) }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td data-value="{{ participation.extra_time.total_seconds() }}">
         {% if participation.extra_time.total_seconds() > 0 %}
-          {% set extra_minutes = participation.extra_time.total_seconds() / 60 %}
-          {% if extra_minutes < 60 %}
-            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes) }} minutes</span>
-          {% else %}
-            <span class="delays-time-value">{{ "+%.1f"|format(extra_minutes / 60) }} hours</span>
-          {% endif %}
+          {{ time_offset(participation.extra_time.total_seconds()) }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td>
         {% if participation.starting_ip_addresses %}
           {{ participation.starting_ip_addresses }}
         {% else %}
-          <span class="delays-text-light">-</span>
+          <span class="has-text-grey-light">-</span>
         {% endif %}
       </td>
       <td>
