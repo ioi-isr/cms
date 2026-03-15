@@ -400,8 +400,9 @@ class BaseHandler(CommonRequestHandler):
 
             # Don't redirect certain actions - they should use the contest handlers
             # directly since questions/announcements belong to the managing contest,
-            # messages use the contest user, and overview/resources are contest-
-            # specific pages that training programs redirect to
+            # messages use the contest user, overview/resources are contest-
+            # specific pages that training programs redirect to, and
+            # delays_and_extra_times has no training-program-level route
             if (
                 remaining_path.startswith("/question/")
                 or remaining_path.startswith("/announcement/")
@@ -409,6 +410,7 @@ class BaseHandler(CommonRequestHandler):
                 or remaining_path.endswith("/detail")
                 or remaining_path.endswith("/submissions")
                 or remaining_path.endswith("/ranking/history")
+                or remaining_path.startswith("/delays_and_extra_times")
             ):
                 return
 
