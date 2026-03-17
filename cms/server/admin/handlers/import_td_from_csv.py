@@ -91,8 +91,6 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
     # header. "P" columns (partial indicators) follow task columns and
     # the Global column; we skip them.
     task_names: list[str] = []
-    task_col_indices: list[int] = []
-    has_tags = "tags" in headers_lower
 
     i = 0
     while i < len(headers_lower):
@@ -103,7 +101,6 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
             continue
         # This is a task column
         task_names.append(headers[i])
-        task_col_indices.append(i)
         # Check if next column is a "P" (partial) column
         if i + 1 < len(headers_lower) and headers_lower[i + 1] == "p":
             i += 2  # skip task + P
@@ -409,11 +406,13 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         self.sql_session.flush()
 
         # 2. Build archived_tasks_data
-        # Use synthetic task IDs: "csv_0", "csv_1", etc.
-        # Compute max score per task from the CSV data
+        # Use large numeric synthetic task IDs to avoid collisions with
+        # real Task PKs.  The combined-ranking handler does
+        # ``int(task_id_str)`` so keys must be numeric strings.
+        _SYNTHETIC_ID_BASE = 10_000_000
         task_max_scores: dict[str, float] = {}
         for task_idx, task_name in enumerate(task_names):
-            task_key = f"csv_{task_idx}"
+            task_key = str(_SYNTHETIC_ID_BASE + task_idx)
             max_score = 0.0
             for row in rows:
                 score = _get_task_score(row, task_name)
@@ -426,7 +425,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
         archived_tasks_data: dict[str, dict] = {}
         for task_idx, task_name in enumerate(task_names):
-            task_key = f"csv_{task_idx}"
+            task_key = str(_SYNTHETIC_ID_BASE + task_idx)
             archived_tasks_data[task_key] = {
                 "name": task_name,
                 "short_name": task_name,
@@ -457,7 +456,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             # Build task_scores
             task_scores: dict[str, float] = {}
             for task_idx, task_name in enumerate(task_names):
-                task_key = f"csv_{task_idx}"
+                task_key = str(_SYNTHETIC_ID_BASE + task_idx)
                 task_scores[task_key] = _get_task_score(row, task_name)
 
             # Determine student tags for this training day
