@@ -530,7 +530,18 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             archived_attendance.student_id = student.id
             self.sql_session.add(archived_attendance)
 
-        # 4. Log warnings for skipped users
+        # 4. Validate that at least one student matched (check before
+        #    adding notifications so that a rollback doesn't leave
+        #    misleading "Some students not found" messages).
+        if matched_count == 0:
+            raise ValueError(
+                "No students from the CSV matched any student in the "
+                "training program. Please check that the usernames in "
+                "the CSV match the usernames in the training program."
+            )
+
+        # 5. Log warnings for skipped users (only after confirming
+        #    the import will proceed).
         if skipped_usernames:
             logger.warning(
                 "CSV import for training program %s: skipped %d usernames "
@@ -551,11 +562,4 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 "Some students not found",
                 f"Skipped {len(skipped_usernames)} username(s) not found "
                 f"in the training program: {skip_msg}",
-            )
-
-        if matched_count == 0:
-            raise ValueError(
-                "No students from the CSV matched any student in the "
-                "training program. Please check that the usernames in "
-                "the CSV match the usernames in the training program."
             )
