@@ -508,13 +508,14 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             delay_info = delays_data.get(username)
             if delay_info:
                 delay_seconds = delay_info.get("delay_seconds", 0)
-                delay_time = timedelta(seconds=delay_seconds) \
-                    if delay_seconds > 0 else None
                 status_str = delay_info.get("status", "").lower()
                 if status_str == "missed":
                     status = "missed"
+                    delay_time = None
                 else:
                     status = "participated"
+                    delay_time = timedelta(seconds=delay_seconds) \
+                        if delay_seconds > 0 else None
             else:
                 # No delays CSV or user not in delays CSV: assume on time
                 delay_time = None
