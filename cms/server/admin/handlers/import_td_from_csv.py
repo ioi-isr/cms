@@ -415,7 +415,6 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         training_day = TrainingDay(
             training_program=training_program,
             position=position,
-            contest_id=None,  # archived
             name=_to_codename(td_name),
             description=td_description,
             start_time=training_day_date,
