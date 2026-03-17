@@ -69,18 +69,18 @@ def _to_codename(text: str) -> str:
 
 
 def _parse_ranking_csv(csv_content: str) -> tuple[
+    list[tuple[str, int]],
     list[str],
-    list[str],
-    list[dict],
+    list[list[str]],
 ]:
     """Parse a ranking CSV and extract task names and per-user data.
 
     csv_content: the full text of the ranking CSV file.
 
-    return: (task_names, all_headers, rows) where:
-        - task_names: ordered list of task column names
+    return: (tasks, all_headers, rows) where:
+        - tasks: ordered list of (task_name, column_index) tuples
         - all_headers: all header names (lowercased)
-        - rows: list of dicts with keys from the header row
+        - rows: list of raw row values (list of strings per row)
     """
     reader = csv.reader(io.StringIO(csv_content))
     raw_headers = next(reader)
@@ -89,35 +89,32 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
 
     # Identify task columns: any column whose header is not a known non-task
     # header. "P" columns (partial indicators) follow task columns and
-    # the Global column; we skip them.
-    task_names: list[str] = []
+    # the Global column; we skip them.  We track the column index so that
+    # score extraction is positional (no overwrites when two tasks share
+    # the same lowercased name).
+    tasks: list[tuple[str, int]] = []
 
     i = 0
     while i < len(headers_lower):
         h = headers_lower[i]
         if h in _NON_TASK_HEADERS:
-            # If this is a task-like column followed by "P", skip "P" too
             i += 1
             continue
         # This is a task column
-        task_names.append(headers[i])
+        tasks.append((headers[i], i))
         # Check if next column is a "P" (partial) column
         if i + 1 < len(headers_lower) and headers_lower[i + 1] == "p":
             i += 2  # skip task + P
         else:
             i += 1
 
-    rows: list[dict] = []
+    rows: list[list[str]] = []
     for row_values in reader:
         if not row_values or all(v.strip() == "" for v in row_values):
             continue
-        row_dict: dict = {}
-        for idx, val in enumerate(row_values):
-            if idx < len(headers):
-                row_dict[headers_lower[idx]] = val.strip()
-        rows.append(row_dict)
+        rows.append([v.strip() for v in row_values])
 
-    return task_names, headers_lower, rows
+    return tasks, headers_lower, rows
 
 
 def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
@@ -175,21 +172,42 @@ def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
     return result
 
 
-def _get_task_score(row: dict, task_name: str) -> float:
-    """Extract a task score from a CSV row.
+def _get_task_score(row: list[str], col_idx: int) -> float:
+    """Extract a task score from a CSV row by column index.
 
-    row: dict with lowercased header keys.
-    task_name: the original task name (case-sensitive in header).
+    row: list of cell values for this CSV row.
+    col_idx: the column index of the task.
 
     return: the score as a float, or 0.0 if missing/invalid.
     """
-    val = row.get(task_name.lower(), "")
+    if col_idx >= len(row):
+        return 0.0
+    val = row[col_idx]
     if not val:
         return 0.0
     try:
         return float(val)
     except (ValueError, TypeError):
         return 0.0
+
+
+def _get_row_value(row: list[str], headers_lower: list[str],
+                   column_name: str) -> str:
+    """Get a value from a CSV row by lowercased column name.
+
+    row: list of cell values for this CSV row.
+    headers_lower: list of lowercased header names.
+    column_name: the lowercased column name to look up.
+
+    return: the cell value, or '' if not found.
+    """
+    try:
+        idx = headers_lower.index(column_name)
+    except ValueError:
+        return ""
+    if idx >= len(row):
+        return ""
+    return row[idx]
 
 
 class ImportTrainingDayFromCsvHandler(BaseHandler):
@@ -300,7 +318,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
         # --- Parse ranking CSV ---
         try:
-            task_names, headers_lower, rows = _parse_ranking_csv(
+            tasks, headers_lower, rows = _parse_ranking_csv(
                 ranking_csv_content
             )
         except Exception as e:
@@ -311,7 +329,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        if not task_names:
+        if not tasks:
             self.service.add_notification(
                 make_datetime(), "Import failed",
                 "No task columns found in the ranking CSV."
@@ -346,8 +364,9 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 td_description=td_description,
                 duration_minutes=duration_minutes,
                 td_types=td_types,
-                task_names=task_names,
+                tasks=tasks,
                 has_tags_column=has_tags_column,
+                headers_lower=headers_lower,
                 rows=rows,
                 delays_data=delays_data,
                 username_to_student=username_to_student,
@@ -379,9 +398,10 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         td_description: str,
         duration_minutes: int,
         td_types: list[str],
-        task_names: list[str],
+        tasks: list[tuple[str, int]],
         has_tags_column: bool,
-        rows: list[dict],
+        headers_lower: list[str],
+        rows: list[list[str]],
         delays_data: dict[str, dict],
         username_to_student: dict[str, Student],
     ) -> None:
@@ -411,11 +431,11 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         # ``int(task_id_str)`` so keys must be numeric strings.
         _SYNTHETIC_ID_BASE = 10_000_000
         task_max_scores: dict[str, float] = {}
-        for task_idx, task_name in enumerate(task_names):
+        for task_idx, (task_name, col_idx) in enumerate(tasks):
             task_key = str(_SYNTHETIC_ID_BASE + task_idx)
             max_score = 0.0
             for row in rows:
-                score = _get_task_score(row, task_name)
+                score = _get_task_score(row, col_idx)
                 if score > max_score:
                     max_score = score
             # Default to 100 if no scores found
@@ -424,7 +444,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             task_max_scores[task_key] = max_score
 
         archived_tasks_data: dict[str, dict] = {}
-        for task_idx, task_name in enumerate(task_names):
+        for task_idx, (task_name, col_idx) in enumerate(tasks):
             task_key = str(_SYNTHETIC_ID_BASE + task_idx)
             archived_tasks_data[task_key] = {
                 "name": task_name,
@@ -442,7 +462,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         skipped_usernames: list[str] = []
 
         for row in rows:
-            username = row.get("username", "").strip()
+            username = _get_row_value(row, headers_lower, "username")
             if not username:
                 continue
 
@@ -455,13 +475,13 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
             # Build task_scores
             task_scores: dict[str, float] = {}
-            for task_idx, task_name in enumerate(task_names):
+            for task_idx, (task_name, col_idx) in enumerate(tasks):
                 task_key = str(_SYNTHETIC_ID_BASE + task_idx)
-                task_scores[task_key] = _get_task_score(row, task_name)
+                task_scores[task_key] = _get_task_score(row, col_idx)
 
             # Determine student tags for this training day
             if has_tags_column:
-                tags_str = row.get("tags", "")
+                tags_str = _get_row_value(row, headers_lower, "tags")
                 if tags_str:
                     student_tags = [
                         t.strip() for t in tags_str.split(",") if t.strip()
