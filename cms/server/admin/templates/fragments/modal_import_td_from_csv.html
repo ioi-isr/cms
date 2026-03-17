@@ -1,0 +1,135 @@
+<!-- Import Training Day from CSV Modal Fragment -->
+<!-- Required context: admin, url, xsrf_form_html, training_program -->
+
+{% from "macro/modal.html" import modal_header %}
+{% if admin is defined and admin.permission_all and training_program is defined %}
+<div class="modal" id="modal-import-csv" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1">
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-csv-title">
+            {{ modal_header("Import Training Day from CSV", "modal-import-csv-title") }}
+            <form action="{{ url("training_program", training_program.id, "import_training_day_from_csv") }}"
+                  method="POST" enctype="multipart/form-data" id="import-csv-form">
+                {{ xsrf_form_html|safe }}
+                <main class="modal__content">
+                    <p style="margin-bottom: 16px; color: var(--tp-text-secondary);">
+                        Import results from an external contest as an archived training day.
+                        The ranking CSV should have the same format as the CSV export from a
+                        contest or training day ranking page.
+                    </p>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-name">
+                            Training Day Name
+                            <span style="color: var(--tp-danger);">*</span>
+                        </label>
+                        <input type="text" id="import-csv-name" name="training_day_name"
+                               class="input" required placeholder="e.g. IOI Practice Contest" />
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-description">
+                            Description
+                        </label>
+                        <input type="text" id="import-csv-description" name="training_day_description"
+                               class="input" placeholder="Optional description" />
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-date">
+                            Training Day Date
+                            <span style="color: var(--tp-danger);">*</span>
+                        </label>
+                        <input type="date" id="import-csv-date" name="training_day_date"
+                               class="input" required />
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-duration">
+                            Duration (minutes)
+                        </label>
+                        <input type="number" id="import-csv-duration" name="training_day_duration"
+                               class="input" value="300" min="1" style="width: 120px;" />
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-types">
+                            Training Day Types
+                        </label>
+                        <input type="text" id="import-csv-types" name="training_day_types"
+                               class="input" placeholder="e.g. contest, practice (comma-separated)" />
+                        <small class="modal__hint">Comma-separated list of types for this training day.</small>
+                    </div>
+
+                    <hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;" />
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-ranking">
+                            Ranking CSV
+                            <span style="color: var(--tp-danger);">*</span>
+                        </label>
+                        <div class="file has-name is-fullwidth">
+                            <label class="file-label">
+                                <input class="file-input" type="file" name="ranking_csv"
+                                       id="import-csv-ranking" accept=".csv" required />
+                                <span class="file-cta">
+                                    <span class="file-label">Choose file&hellip;</span>
+                                </span>
+                                <span class="file-name" id="ranking-csv-filename">No file selected</span>
+                            </label>
+                        </div>
+                        <small class="modal__hint">
+                            Same format as the CSV export from the ranking page
+                            (Username, User, [Tags], [Team], task columns, Global).
+                        </small>
+                    </div>
+
+                    <div class="modal__form-group">
+                        <label for="import-csv-delays">
+                            Delays &amp; Extra Times CSV (optional)
+                        </label>
+                        <div class="file has-name is-fullwidth">
+                            <label class="file-label">
+                                <input class="file-input" type="file" name="delays_csv"
+                                       id="import-csv-delays" accept=".csv" />
+                                <span class="file-cta">
+                                    <span class="file-label">Choose file&hellip;</span>
+                                </span>
+                                <span class="file-name" id="delays-csv-filename">No file selected</span>
+                            </label>
+                        </div>
+                        <small class="modal__hint">
+                            Optional. Same format as the delays and extra times export.
+                            If not provided, all matched students will be marked as on-time participants.
+                        </small>
+                    </div>
+                </main>
+                <footer class="modal__footer">
+                    <button type="button" class="button" data-micromodal-close><span>Cancel</span></button>
+                    <button type="submit" class="button is-primary" id="import-csv-btn">
+                        <span>Import Training Day</span>
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    // Update file name display when files are selected
+    var rankingInput = document.getElementById('import-csv-ranking');
+    var delaysInput = document.getElementById('import-csv-delays');
+    if (rankingInput) {
+        rankingInput.addEventListener('change', function() {
+            var name = this.files.length > 0 ? this.files[0].name : 'No file selected';
+            document.getElementById('ranking-csv-filename').textContent = name;
+        });
+    }
+    if (delaysInput) {
+        delaysInput.addEventListener('change', function() {
+            var name = this.files.length > 0 ? this.files[0].name : 'No file selected';
+            document.getElementById('delays-csv-filename').textContent = name;
+        });
+    }
+})();
+</script>
+{% endif %}

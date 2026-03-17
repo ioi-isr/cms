@@ -1,0 +1,542 @@
+#!/usr/bin/env python3
+
+# Contest Management System - http://cms-dev.github.io/
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Admin handler for importing a training day from CSV files.
+
+This allows importing results from external contests or regular contests
+that weren't originally conducted inside the training program. The import
+creates an archived training day with all the data normally produced by
+the archive flow (scores, attendance, archived_tasks_data).
+
+The ranking CSV must have the same format as the CSV export from the
+ranking page of a contest or training day. An optional delays CSV
+(same format as delays and extra times export) provides attendance data.
+"""
+
+import csv
+import io
+import logging
+import re
+from datetime import datetime as dt, timedelta
+
+from cms.db import (
+    TrainingProgram,
+    Student,
+    TrainingDay,
+    ArchivedAttendance,
+    ArchivedStudentRanking,
+)
+from cms.server.admin.handlers.utils import (
+    parse_tags,
+)
+from cmscommon.datetime import make_datetime
+
+from .base import BaseHandler, require_permission
+
+logger = logging.getLogger(__name__)
+
+
+# Columns in the ranking CSV that are not task scores.
+# These are identified by header name and skipped when collecting task columns.
+_NON_TASK_HEADERS = {"username", "user", "tags", "team", "task archive progress",
+                     "global", "p"}
+
+
+def _to_codename(text: str) -> str:
+    """Convert a free-form string to a valid Codename.
+
+    Codename only allows [A-Za-z0-9_-]+.  Spaces become underscores,
+    other disallowed characters are stripped.  Falls back to
+    'imported' if the result is empty.
+    """
+    result = text.replace(" ", "_")
+    result = re.sub(r"[^A-Za-z0-9_-]", "", result)
+    return result or "imported"
+
+
+def _parse_ranking_csv(csv_content: str) -> tuple[
+    list[str],
+    list[str],
+    list[dict],
+]:
+    """Parse a ranking CSV and extract task names and per-user data.
+
+    csv_content: the full text of the ranking CSV file.
+
+    return: (task_names, all_headers, rows) where:
+        - task_names: ordered list of task column names
+        - all_headers: all header names (lowercased)
+        - rows: list of dicts with keys from the header row
+    """
+    reader = csv.reader(io.StringIO(csv_content))
+    raw_headers = next(reader)
+    headers = [h.strip() for h in raw_headers]
+    headers_lower = [h.lower() for h in headers]
+
+    # Identify task columns: any column whose header is not a known non-task
+    # header. "P" columns (partial indicators) follow task columns and
+    # the Global column; we skip them.
+    task_names: list[str] = []
+    task_col_indices: list[int] = []
+    has_tags = "tags" in headers_lower
+
+    i = 0
+    while i < len(headers_lower):
+        h = headers_lower[i]
+        if h in _NON_TASK_HEADERS:
+            # If this is a task-like column followed by "P", skip "P" too
+            i += 1
+            continue
+        # This is a task column
+        task_names.append(headers[i])
+        task_col_indices.append(i)
+        # Check if next column is a "P" (partial) column
+        if i + 1 < len(headers_lower) and headers_lower[i + 1] == "p":
+            i += 2  # skip task + P
+        else:
+            i += 1
+
+    rows: list[dict] = []
+    for row_values in reader:
+        if not row_values or all(v.strip() == "" for v in row_values):
+            continue
+        row_dict: dict = {}
+        for idx, val in enumerate(row_values):
+            if idx < len(headers):
+                row_dict[headers_lower[idx]] = val.strip()
+        rows.append(row_dict)
+
+    return task_names, headers_lower, rows
+
+
+def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
+    """Parse a delays and extra times CSV.
+
+    csv_content: the full text of the delays CSV file.
+
+    return: dict mapping username -> {delay_seconds: int, status: str}
+    """
+    reader = csv.reader(io.StringIO(csv_content))
+    raw_headers = next(reader)
+    headers_lower = [h.strip().lower() for h in raw_headers]
+
+    username_idx = None
+    delay_idx = None
+    status_idx = None
+
+    for i, h in enumerate(headers_lower):
+        if h == "username":
+            username_idx = i
+        elif h == "delay time (seconds)":
+            delay_idx = i
+        elif h == "status":
+            status_idx = i
+
+    if username_idx is None:
+        raise ValueError(
+            "Delays CSV is missing the 'Username' column"
+        )
+
+    result: dict[str, dict] = {}
+    for row_values in reader:
+        if not row_values or all(v.strip() == "" for v in row_values):
+            continue
+        username = row_values[username_idx].strip() if username_idx < len(row_values) else ""
+        if not username:
+            continue
+
+        delay_seconds = 0
+        if delay_idx is not None and delay_idx < len(row_values):
+            try:
+                delay_seconds = int(row_values[delay_idx].strip())
+            except (ValueError, TypeError):
+                delay_seconds = 0
+
+        status = ""
+        if status_idx is not None and status_idx < len(row_values):
+            status = row_values[status_idx].strip()
+
+        result[username] = {
+            "delay_seconds": delay_seconds,
+            "status": status,
+        }
+
+    return result
+
+
+def _get_task_score(row: dict, task_name: str) -> float:
+    """Extract a task score from a CSV row.
+
+    row: dict with lowercased header keys.
+    task_name: the original task name (case-sensitive in header).
+
+    return: the score as a float, or 0.0 if missing/invalid.
+    """
+    val = row.get(task_name.lower(), "")
+    if not val:
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+class ImportTrainingDayFromCsvHandler(BaseHandler):
+    """Import a training day from ranking CSV (and optional delays CSV).
+
+    Creates an archived training day directly, with ArchivedStudentRanking
+    and ArchivedAttendance records for each matched student.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str):
+        fallback_page = self.url(
+            "training_program", training_program_id, "combined_ranking"
+        )
+
+        training_program = self.safe_get_item(
+            TrainingProgram, training_program_id
+        )
+
+        # --- Parse form fields ---
+        training_day_date_str = self.get_argument("training_day_date", "")
+        if not training_day_date_str:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "Training day date is required."
+            )
+            self.redirect(fallback_page)
+            return
+
+        try:
+            training_day_date = dt.strptime(
+                training_day_date_str, "%Y-%m-%d"
+            )
+        except ValueError:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "Invalid date format. Please use YYYY-MM-DD."
+            )
+            self.redirect(fallback_page)
+            return
+
+        td_name = self.get_argument("training_day_name", "").strip()
+        if not td_name:
+            td_name = "Imported Training Day"
+
+        td_description = self.get_argument(
+            "training_day_description", ""
+        ).strip()
+        if not td_description:
+            td_description = td_name
+
+        duration_minutes_str = self.get_argument(
+            "training_day_duration", "300"
+        )
+        try:
+            duration_minutes = int(duration_minutes_str)
+            if duration_minutes <= 0:
+                raise ValueError("Duration must be positive")
+        except (ValueError, TypeError):
+            duration_minutes = 300
+
+        td_types_str = self.get_argument("training_day_types", "")
+        td_types = parse_tags(td_types_str) if td_types_str else []
+
+        # --- Parse CSV files ---
+        ranking_files = self.request.files.get("ranking_csv")
+        if not ranking_files:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "Ranking CSV file is required."
+            )
+            self.redirect(fallback_page)
+            return
+
+        try:
+            ranking_csv_content = ranking_files[0]["body"].decode("utf-8-sig")
+        except (UnicodeDecodeError, IndexError):
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "Could not read ranking CSV file. "
+                "Please ensure it is a valid UTF-8 CSV."
+            )
+            self.redirect(fallback_page)
+            return
+
+        delays_data: dict[str, dict] = {}
+        delays_files = self.request.files.get("delays_csv")
+        if delays_files:
+            try:
+                delays_csv_content = delays_files[0]["body"].decode(
+                    "utf-8-sig"
+                )
+                delays_data = _parse_delays_csv(delays_csv_content)
+            except (UnicodeDecodeError, IndexError):
+                self.service.add_notification(
+                    make_datetime(), "Import failed",
+                    "Could not read delays CSV file. "
+                    "Please ensure it is a valid UTF-8 CSV."
+                )
+                self.redirect(fallback_page)
+                return
+            except ValueError as e:
+                self.service.add_notification(
+                    make_datetime(), "Import failed", str(e)
+                )
+                self.redirect(fallback_page)
+                return
+
+        # --- Parse ranking CSV ---
+        try:
+            task_names, headers_lower, rows = _parse_ranking_csv(
+                ranking_csv_content
+            )
+        except Exception as e:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                f"Could not parse ranking CSV: {e}"
+            )
+            self.redirect(fallback_page)
+            return
+
+        if not task_names:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "No task columns found in the ranking CSV."
+            )
+            self.redirect(fallback_page)
+            return
+
+        if not rows:
+            self.service.add_notification(
+                make_datetime(), "Import failed",
+                "No data rows found in the ranking CSV."
+            )
+            self.redirect(fallback_page)
+            return
+
+        has_tags_column = "tags" in headers_lower
+
+        # --- Match students ---
+        # Build username -> student lookup
+        username_to_student: dict[str, Student] = {}
+        for student in training_program.students:
+            if student.participation and not student.participation.hidden:
+                username_to_student[
+                    student.participation.user.username
+                ] = student
+
+        try:
+            self._do_import(
+                training_program=training_program,
+                training_day_date=training_day_date,
+                td_name=td_name,
+                td_description=td_description,
+                duration_minutes=duration_minutes,
+                td_types=td_types,
+                task_names=task_names,
+                has_tags_column=has_tags_column,
+                rows=rows,
+                delays_data=delays_data,
+                username_to_student=username_to_student,
+            )
+        except Exception as e:
+            self.sql_session.rollback()
+            logger.exception("CSV import failed")
+            self.service.add_notification(
+                make_datetime(), "Import failed", repr(e)
+            )
+            self.redirect(fallback_page)
+            return
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "Training day imported",
+                f"Training day '{td_name}' has been imported from CSV "
+                f"successfully.",
+            )
+
+        self.redirect(fallback_page)
+
+    def _do_import(
+        self,
+        training_program: TrainingProgram,
+        training_day_date: dt,
+        td_name: str,
+        td_description: str,
+        duration_minutes: int,
+        td_types: list[str],
+        task_names: list[str],
+        has_tags_column: bool,
+        rows: list[dict],
+        delays_data: dict[str, dict],
+        username_to_student: dict[str, Student],
+    ) -> None:
+        """Perform the actual import, creating all DB records.
+
+        This is separated from the POST handler so we can wrap it in
+        a try/except for clean rollback.
+        """
+        # 1. Create the archived training day
+        position = len(training_program.training_days)
+        training_day = TrainingDay(
+            training_program=training_program,
+            position=position,
+            contest_id=None,  # archived
+            name=_to_codename(td_name),
+            description=td_description,
+            start_time=training_day_date,
+            duration=timedelta(minutes=duration_minutes),
+            training_day_types=td_types,
+        )
+        self.sql_session.add(training_day)
+        self.sql_session.flush()
+
+        # 2. Build archived_tasks_data
+        # Use synthetic task IDs: "csv_0", "csv_1", etc.
+        # Compute max score per task from the CSV data
+        task_max_scores: dict[str, float] = {}
+        for task_idx, task_name in enumerate(task_names):
+            task_key = f"csv_{task_idx}"
+            max_score = 0.0
+            for row in rows:
+                score = _get_task_score(row, task_name)
+                if score > max_score:
+                    max_score = score
+            # Default to 100 if no scores found
+            if max_score <= 0:
+                max_score = 100.0
+            task_max_scores[task_key] = max_score
+
+        archived_tasks_data: dict[str, dict] = {}
+        for task_idx, task_name in enumerate(task_names):
+            task_key = f"csv_{task_idx}"
+            archived_tasks_data[task_key] = {
+                "name": task_name,
+                "short_name": task_name,
+                "max_score": task_max_scores[task_key],
+                "score_precision": 2,
+                "extra_headers": [],
+                "training_day_num": task_idx,
+            }
+
+        training_day.archived_tasks_data = archived_tasks_data
+
+        # 3. Process each row from the CSV
+        matched_count = 0
+        skipped_usernames: list[str] = []
+
+        for row in rows:
+            username = row.get("username", "").strip()
+            if not username:
+                continue
+
+            student = username_to_student.get(username)
+            if student is None:
+                skipped_usernames.append(username)
+                continue
+
+            matched_count += 1
+
+            # Build task_scores
+            task_scores: dict[str, float] = {}
+            for task_idx, task_name in enumerate(task_names):
+                task_key = f"csv_{task_idx}"
+                task_scores[task_key] = _get_task_score(row, task_name)
+
+            # Determine student tags for this training day
+            if has_tags_column:
+                tags_str = row.get("tags", "")
+                if tags_str:
+                    student_tags = [
+                        t.strip() for t in tags_str.split(",") if t.strip()
+                    ]
+                else:
+                    student_tags = list(student.student_tags) \
+                        if student.student_tags else []
+            else:
+                student_tags = list(student.student_tags) \
+                    if student.student_tags else []
+
+            # Create ArchivedStudentRanking
+            archived_ranking = ArchivedStudentRanking(
+                student_tags=student_tags,
+                task_scores=task_scores if task_scores else None,
+                submissions=None,
+                history=None,
+            )
+            archived_ranking.training_day_id = training_day.id
+            archived_ranking.student_id = student.id
+            self.sql_session.add(archived_ranking)
+
+            # Create ArchivedAttendance
+            delay_info = delays_data.get(username)
+            if delay_info:
+                delay_seconds = delay_info.get("delay_seconds", 0)
+                delay_time = timedelta(seconds=delay_seconds) \
+                    if delay_seconds > 0 else None
+                status_str = delay_info.get("status", "").lower()
+                if status_str == "missed":
+                    status = "missed"
+                else:
+                    status = "participated"
+            else:
+                # No delays CSV or user not in delays CSV: assume on time
+                delay_time = None
+                status = "participated"
+
+            archived_attendance = ArchivedAttendance(
+                status=status,
+                location=None,
+                delay_time=delay_time,
+                delay_reasons=None,
+            )
+            archived_attendance.training_day_id = training_day.id
+            archived_attendance.student_id = student.id
+            self.sql_session.add(archived_attendance)
+
+        # 4. Log warnings for skipped users
+        if skipped_usernames:
+            logger.warning(
+                "CSV import for training program %s: skipped %d usernames "
+                "not found in program: %s",
+                training_program.name,
+                len(skipped_usernames),
+                ", ".join(skipped_usernames[:10]),
+            )
+            if len(skipped_usernames) <= 5:
+                skip_msg = ", ".join(skipped_usernames)
+            else:
+                skip_msg = (
+                    ", ".join(skipped_usernames[:5])
+                    + f" and {len(skipped_usernames) - 5} more"
+                )
+            self.service.add_notification(
+                make_datetime(),
+                "Some students not found",
+                f"Skipped {len(skipped_usernames)} username(s) not found "
+                f"in the training program: {skip_msg}",
+            )
+
+        if matched_count == 0:
+            raise ValueError(
+                "No students from the CSV matched any student in the "
+                "training program. Please check that the usernames in "
+                "the CSV match the usernames in the training program."
+            )

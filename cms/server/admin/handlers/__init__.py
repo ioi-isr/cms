@@ -218,6 +218,8 @@ from .archive import \
     ExportAnalysedRankingHandler
 from .import_contest_as_td import \
     ImportContestAsTrainingDayHandler
+from .import_td_from_csv import \
+    ImportTrainingDayFromCsvHandler
 
 
 HANDLERS = [
@@ -446,6 +448,10 @@ HANDLERS = [
     (r"/training_program/([0-9]+)/attendance", TrainingProgramAttendanceHandler),
     (r"/training_program/([0-9]+)/attendance/export", ExportAttendanceHandler),
     (r"/training_program/([0-9]+)/attendance/([0-9]+)", UpdateAttendanceHandler),
+    (
+        r"/training_program/([0-9]+)/import_training_day_from_csv",
+        ImportTrainingDayFromCsvHandler,
+    ),
     (
         r"/training_program/([0-9]+)/combined_ranking",
         TrainingProgramCombinedRankingHandler,
