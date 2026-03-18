@@ -122,7 +122,6 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 {% endblock js_init %}
 
 {% block core %}
-<div class="content-constraint">
     <!-- Header -->
     <div class="level">
         <div class="level-left">
@@ -228,9 +227,9 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                 {% if td.contest.start.year <= training_program.managing_contest.stop.year %}
                                     {% set local_start = td.contest.start|format_datetime_input(timezone) %}
                                     <span>{{ local_start[:10] }}</span>
-                                    <span class="has-text-grey-light is-tiny">{{ local_start[11:16] }}</span>
+                                    <span class="has-text-grey-light is-size-7">{{ local_start[11:16] }}</span>
                                 {% else %}
-                                    <span class="tag is-size-s has-text-weight-semibold">Unscheduled</span>
+                                    <span class="tag has-text-weight-semibold">Unscheduled</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -244,7 +243,7 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
                                         <a href="{{ url("task", task.id) }}" class="tag is-bordered has-text-primary" title="{{ task.title }}">{{ task.name }}</a>
                                     {% endfor %}
                                 {% else %}
-                                    <span class="has-text-grey-light is-size-s">No tasks</span>
+                                    <span class="has-text-grey-light">No tasks</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -460,7 +459,6 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
             </footer>
         </div>
     </div>
-</div>
 
 <script>
 // Drag and drop reordering using shared utility

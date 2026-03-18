@@ -195,7 +195,6 @@ pre {
 
 .table-container {
     display: inline-block;
-    max-width: 100%;
     border: 1px solid var(--tp-border-light);
     border-radius: 8px;
     scrollbar-width: thin;
@@ -988,27 +987,6 @@ body.admin .sidebar-contest a, body.admin .sidebar-item a {
 
 
 /* TABLE */
-
-table {
-    font-size: 0.875em;
-    margin-top: -0.072em;
-}
-
-table th {
-    font-weight: bold;
-    vertical-align: bottom;
-    text-align: center;
-    padding: 0.858em 0.5em;
-    border-bottom: 0.072em solid var(--bulma-border);
-}
-
-table td {
-    font-size: 0.875em;
-    padding: 0 0.5em;
-    vertical-align: top;
-    width: 1px;
-    white-space: nowrap;
-}
 
 table.nested th, table.nested td {
     font-size: 0.858em;

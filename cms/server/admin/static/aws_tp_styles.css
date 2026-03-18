@@ -2691,7 +2691,8 @@
 
     /* --- Smaller fonts on mobile --- */
     .attendance-table,
-    .ranking-table {
+    .ranking-table,
+    .table {
         font-size: 0.75rem;
     }
 

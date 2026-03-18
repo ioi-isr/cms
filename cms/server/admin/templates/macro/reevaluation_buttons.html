@@ -28,6 +28,7 @@ dataset_id (int|None): id of the dataset to invalidate.
 participation_id (int|None): id of the participation to invalidate.
 contest_id (int|None): the id of the contest to invalidate.
 #}
+<div class="is-flex is-flex-wrap-nowrap">
 <button type="button" onclick="AdminModals.confirmThen('Do you really want to reevaluate?', function() { cmsrpc_request(
                  'EvaluationService', 0,
                  'invalidate_submission', {
@@ -67,6 +68,7 @@ contest_id (int|None): the id of the contest to invalidate.
         title="Score" class="btn-icon-only btn-icon-success" aria-label="Rerun scoring">
     <svg class="icon is-small"><use href="#icon-score-type"/></svg>
 </button>
+</div>
 {% endmacro %}
 
 
