@@ -88,7 +88,7 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
     try:
         raw_headers = next(reader)
     except StopIteration:
-        raise ValueError("Empty ranking CSV: no headers found")
+        raise ValueError("Empty ranking CSV: no headers found") from None
     headers = [h.strip() for h in raw_headers]
     headers_lower = [h.lower() for h in headers]
 
@@ -132,8 +132,8 @@ def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
     reader = csv.reader(io.StringIO(csv_content))
     try:
         raw_headers = next(reader)
-    except StopIteration:
-        raise ValueError("Empty delays CSV: no headers found")
+    except StopIteration as e:
+        raise ValueError("Empty delays CSV: no headers found") from e
     headers_lower = [h.strip().lower() for h in raw_headers]
 
     username_idx = None
@@ -328,9 +328,11 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             tasks, headers_lower, rows = _parse_ranking_csv(
                 ranking_csv_content
             )
-        except Exception as e:
+        except (csv.Error, ValueError) as e:
             self.service.add_notification(
-                make_datetime(), _IMPORT_FAILED, f"Could not parse ranking CSV: {e}"
+                make_datetime(),
+                _IMPORT_FAILED,
+                f"Could not parse ranking CSV: {e}",
             )
             self.redirect(fallback_page)
             return
@@ -428,7 +430,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             task_max_scores[task_key] = max_score
 
         archived_tasks_data: dict[str, dict] = {}
-        for task_idx, (task_name, col_idx) in enumerate(tasks):
+        for task_idx, (task_name, _) in enumerate(tasks):
             task_key = str(base + task_idx)
             archived_tasks_data[task_key] = {
                 "name": task_name,
@@ -440,6 +442,74 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             }
 
         return archived_tasks_data
+
+    @staticmethod
+    def _parse_student_tags(
+        row: list[str],
+        headers_lower: list[str],
+        student: Student,
+        has_tags_column: bool,
+    ) -> list[str]:
+        """Determine student tags for a CSV row.
+
+        Uses the CSV "tags" column if present and non-empty, otherwise
+        falls back to the student's current tags.
+        """
+        if has_tags_column:
+            tags_str = _get_row_value(row, headers_lower, "tags")
+            if tags_str:
+                return [t.strip() for t in tags_str.split(",") if t.strip()]
+        return list(student.student_tags) if student.student_tags else []
+
+    def _create_archived_ranking(
+        self,
+        student: Student,
+        training_day: TrainingDay,
+        student_tags: list[str],
+        task_scores: dict[str, float],
+    ) -> None:
+        """Create and persist an ArchivedStudentRanking record."""
+        archived_ranking = ArchivedStudentRanking(
+            student_tags=student_tags,
+            task_scores=task_scores if task_scores else None,
+            submissions=None,
+            history=None,
+        )
+        archived_ranking.training_day_id = training_day.id
+        archived_ranking.student_id = student.id
+        self.sql_session.add(archived_ranking)
+
+    def _create_archived_attendance(
+        self,
+        student: Student,
+        training_day: TrainingDay,
+        delay_info: dict | None,
+    ) -> None:
+        """Create and persist an ArchivedAttendance record."""
+        if delay_info:
+            delay_seconds = delay_info.get("delay_seconds", 0)
+            status_str = delay_info.get("status", "").lower()
+            if status_str == "missed":
+                status = "missed"
+                delay_time = None
+            else:
+                status = "participated"
+                delay_time = (
+                    timedelta(seconds=delay_seconds) if delay_seconds > 0 else None
+                )
+        else:
+            delay_time = None
+            status = "participated"
+
+        archived_attendance = ArchivedAttendance(
+            status=status,
+            location=None,
+            delay_time=delay_time,
+            delay_reasons=None,
+        )
+        archived_attendance.training_day_id = training_day.id
+        archived_attendance.student_id = student.id
+        self.sql_session.add(archived_attendance)
 
     def _process_csv_rows(
         self,
@@ -458,9 +528,12 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         base = self._SYNTHETIC_ID_BASE
         matched_count = 0
         skipped_usernames: list[str] = []
+        seen_student_ids: set[int] = set()
 
         for row in rows:
             username = _get_row_value(row, headers_lower, "username")
+            if not username:
+                username = _get_row_value(row, headers_lower, "user")
             if not username:
                 continue
 
@@ -468,6 +541,11 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             if student is None:
                 skipped_usernames.append(username)
                 continue
+
+            if student.id in seen_student_ids:
+                logger.warning("Duplicate username '%s' in CSV, skipping", username)
+                continue
+            seen_student_ids.add(student.id)
 
             matched_count += 1
 
@@ -477,57 +555,15 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 task_key = str(base + task_idx)
                 task_scores[task_key] = _get_task_score(row, col_idx)
 
-            # Determine student tags for this training day
-            if has_tags_column:
-                tags_str = _get_row_value(row, headers_lower, "tags")
-                if tags_str:
-                    student_tags = [
-                        t.strip() for t in tags_str.split(",") if t.strip()
-                    ]
-                else:
-                    student_tags = list(student.student_tags) \
-                        if student.student_tags else []
-            else:
-                student_tags = list(student.student_tags) \
-                    if student.student_tags else []
-
-            # Create ArchivedStudentRanking
-            archived_ranking = ArchivedStudentRanking(
-                student_tags=student_tags,
-                task_scores=task_scores if task_scores else None,
-                submissions=None,
-                history=None,
+            student_tags = self._parse_student_tags(
+                row, headers_lower, student, has_tags_column
             )
-            archived_ranking.training_day_id = training_day.id
-            archived_ranking.student_id = student.id
-            self.sql_session.add(archived_ranking)
-
-            # Create ArchivedAttendance
-            delay_info = delays_data.get(username)
-            if delay_info:
-                delay_seconds = delay_info.get("delay_seconds", 0)
-                status_str = delay_info.get("status", "").lower()
-                if status_str == "missed":
-                    status = "missed"
-                    delay_time = None
-                else:
-                    status = "participated"
-                    delay_time = timedelta(seconds=delay_seconds) \
-                        if delay_seconds > 0 else None
-            else:
-                # No delays CSV or user not in delays CSV: assume on time
-                delay_time = None
-                status = "participated"
-
-            archived_attendance = ArchivedAttendance(
-                status=status,
-                location=None,
-                delay_time=delay_time,
-                delay_reasons=None,
+            self._create_archived_ranking(
+                student, training_day, student_tags, task_scores
             )
-            archived_attendance.training_day_id = training_day.id
-            archived_attendance.student_id = student.id
-            self.sql_session.add(archived_attendance)
+            self._create_archived_attendance(
+                student, training_day, delays_data.get(username)
+            )
 
         return matched_count, skipped_usernames
 
