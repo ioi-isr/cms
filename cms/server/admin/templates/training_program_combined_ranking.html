@@ -215,7 +215,14 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 {% set export_query %}{% if start_date or end_date or training_day_types or student_tags %}?{% if start_date %}start_date={{ start_date.strftime('%Y-%m-%d') }}&{% endif %}{% if end_date %}end_date={{ end_date.strftime('%Y-%m-%d') }}&{% endif %}{% if training_day_types %}training_day_types={{ training_day_types | join(',') | urlencode }}&{% endif %}{% if student_tags %}student_tags={{ student_tags | join(',') | urlencode }}&{% endif %}{% if student_tags_mode %}student_tags_mode={{ student_tags_mode }}{% endif %}{% endif %}{% endset %}
 <div class="level">
   <div class="level-left">
-    <!-- Left side empty or could add title here -->
+    {% if admin.permission_all %}
+    <div class="level-item">
+      <button class="button" id="btn-import-csv" type="button">
+        <svg class="icon is-small"><use href="#icon-upload"/></svg>
+        <span>Import from CSV</span>
+      </button>
+    </div>
+    {% endif %}
   </div>
   <div class="level-right">
     <div class="dropdown is-right" id="export-dropdown">
@@ -456,6 +463,20 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     }
   })();
 
+  // Import CSV modal trigger
+  (function() {
+    var btnImport = document.getElementById('btn-import-csv');
+    if (btnImport) {
+      btnImport.addEventListener('click', function() {
+        if (typeof MicroModal === 'undefined') {
+          alert('Import unavailable. Please reload the page.');
+          return;
+        }
+        MicroModal.show('modal-import-csv');
+      });
+    }
+  })();
+
   $(document).ready(function() {
       updateStickyHeaderOffset();
 
@@ -473,8 +494,31 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 <div class="empty-state-box">
   <h3>No Data Available</h3>
   <p>No archived training days found matching your current filter.</p>
+  {% if admin.permission_all %}
+  <p class="mt-3">
+    <button class="button" id="btn-import-csv-empty" type="button">
+      <svg class="icon is-small"><use href="#icon-upload"/></svg>
+      <span>Import from CSV</span>
+    </button>
+  </p>
+  <script>
+  (function() {
+    var btn = document.getElementById('btn-import-csv-empty');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        if (typeof MicroModal === 'undefined') {
+          alert('Import unavailable. Please reload the page.');
+          return;
+        }
+        MicroModal.show('modal-import-csv');
+      });
+    }
+  })();
+  </script>
+  {% endif %}
 </div>
 {% endif %}
+{% include 'fragments/modal_import_td_from_csv.html' %}
 
 {% include 'fragments/histogram_modal.html' %}
 
