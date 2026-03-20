@@ -468,11 +468,11 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     var btnImport = document.getElementById('btn-import-csv');
     if (btnImport) {
       btnImport.addEventListener('click', function() {
-        if (typeof MicroModal !== 'undefined') {
-          MicroModal.show('modal-import-csv');
-        } else {
+        if (typeof MicroModal === 'undefined') {
           alert('Import unavailable. Please reload the page.');
+          return;
         }
+        MicroModal.show('modal-import-csv');
       });
     }
   })();
@@ -490,13 +490,12 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
 </script>
 
 {% include 'fragments/modal_analysis_export.html' %}
-{% include 'fragments/modal_import_td_from_csv.html' %}
 {% else %}
 <div class="empty-state-box">
   <h3>No Data Available</h3>
   <p>No archived training days found matching your current filter.</p>
   {% if admin.permission_all %}
-  <p style="margin-top: 12px;">
+  <p class="mt-3">
     <button class="button" id="btn-import-csv-empty" type="button">
       <svg class="icon is-small"><use href="#icon-upload"/></svg>
       <span>Import from CSV</span>
@@ -507,19 +506,19 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
     var btn = document.getElementById('btn-import-csv-empty');
     if (btn) {
       btn.addEventListener('click', function() {
-        if (typeof MicroModal !== 'undefined') {
-          MicroModal.show('modal-import-csv');
-        } else {
+        if (typeof MicroModal === 'undefined') {
           alert('Import unavailable. Please reload the page.');
+          return;
         }
+        MicroModal.show('modal-import-csv');
       });
     }
   })();
   </script>
   {% endif %}
 </div>
-{% include 'fragments/modal_import_td_from_csv.html' %}
 {% endif %}
+{% include 'fragments/modal_import_td_from_csv.html' %}
 
 {% include 'fragments/histogram_modal.html' %}
 

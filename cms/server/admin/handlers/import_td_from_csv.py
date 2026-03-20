@@ -50,6 +50,8 @@ from .base import BaseHandler, require_permission
 logger = logging.getLogger(__name__)
 
 
+_IMPORT_FAILED = "Import failed"
+
 # Columns in the ranking CSV that are not task scores.
 # These are identified by header name and skipped when collecting task columns.
 _NON_TASK_HEADERS = {"username", "user", "tags", "team", "task archive progress",
@@ -83,7 +85,10 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
         - rows: list of raw row values (list of strings per row)
     """
     reader = csv.reader(io.StringIO(csv_content))
-    raw_headers = next(reader)
+    try:
+        raw_headers = next(reader)
+    except StopIteration:
+        raise ValueError("Empty ranking CSV: no headers found")
     headers = [h.strip() for h in raw_headers]
     headers_lower = [h.lower() for h in headers]
 
@@ -125,7 +130,10 @@ def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
     return: dict mapping username -> {delay_seconds: int, status: str}
     """
     reader = csv.reader(io.StringIO(csv_content))
-    raw_headers = next(reader)
+    try:
+        raw_headers = next(reader)
+    except StopIteration:
+        raise ValueError("Empty delays CSV: no headers found")
     headers_lower = [h.strip().lower() for h in raw_headers]
 
     username_idx = None
@@ -231,8 +239,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         training_day_date_str = self.get_argument("training_day_date", "")
         if not training_day_date_str:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                "Training day date is required."
+                make_datetime(), _IMPORT_FAILED, "Training day date is required."
             )
             self.redirect(fallback_page)
             return
@@ -243,8 +250,9 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             )
         except ValueError:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                "Invalid date format. Please use YYYY-MM-DD."
+                make_datetime(),
+                _IMPORT_FAILED,
+                "Invalid date format. Please use YYYY-MM-DD.",
             )
             self.redirect(fallback_page)
             return
@@ -276,8 +284,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         ranking_files = self.request.files.get("ranking_csv")
         if not ranking_files:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                "Ranking CSV file is required."
+                make_datetime(), _IMPORT_FAILED, "Ranking CSV file is required."
             )
             self.redirect(fallback_page)
             return
@@ -286,9 +293,10 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             ranking_csv_content = ranking_files[0]["body"].decode("utf-8-sig")
         except (UnicodeDecodeError, IndexError):
             self.service.add_notification(
-                make_datetime(), "Import failed",
+                make_datetime(),
+                _IMPORT_FAILED,
                 "Could not read ranking CSV file. "
-                "Please ensure it is a valid UTF-8 CSV."
+                "Please ensure it is a valid UTF-8 CSV.",
             )
             self.redirect(fallback_page)
             return
@@ -303,16 +311,15 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 delays_data = _parse_delays_csv(delays_csv_content)
             except (UnicodeDecodeError, IndexError):
                 self.service.add_notification(
-                    make_datetime(), "Import failed",
+                    make_datetime(),
+                    _IMPORT_FAILED,
                     "Could not read delays CSV file. "
-                    "Please ensure it is a valid UTF-8 CSV."
+                    "Please ensure it is a valid UTF-8 CSV.",
                 )
                 self.redirect(fallback_page)
                 return
             except ValueError as e:
-                self.service.add_notification(
-                    make_datetime(), "Import failed", str(e)
-                )
+                self.service.add_notification(make_datetime(), _IMPORT_FAILED, str(e))
                 self.redirect(fallback_page)
                 return
 
@@ -323,24 +330,25 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             )
         except Exception as e:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                f"Could not parse ranking CSV: {e}"
+                make_datetime(), _IMPORT_FAILED, f"Could not parse ranking CSV: {e}"
             )
             self.redirect(fallback_page)
             return
 
         if not tasks:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                "No task columns found in the ranking CSV."
+                make_datetime(),
+                _IMPORT_FAILED,
+                "No task columns found in the ranking CSV.",
             )
             self.redirect(fallback_page)
             return
 
         if not rows:
             self.service.add_notification(
-                make_datetime(), "Import failed",
-                "No data rows found in the ranking CSV."
+                make_datetime(),
+                _IMPORT_FAILED,
+                "No data rows found in the ranking CSV.",
             )
             self.redirect(fallback_page)
             return
@@ -374,9 +382,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         except Exception as e:
             self.sql_session.rollback()
             logger.exception("CSV import failed")
-            self.service.add_notification(
-                make_datetime(), "Import failed", repr(e)
-            )
+            self.service.add_notification(make_datetime(), _IMPORT_FAILED, repr(e))
             self.redirect(fallback_page)
             return
 
@@ -390,48 +396,27 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
         self.redirect(fallback_page)
 
-    def _do_import(
-        self,
-        training_program: TrainingProgram,
-        training_day_date: dt,
-        td_name: str,
-        td_description: str,
-        duration_minutes: int,
-        td_types: list[str],
+    # Large numeric base for synthetic task IDs to avoid collisions
+    # with real Task PKs.  The combined-ranking handler does
+    # ``int(task_id_str)`` so keys must be numeric strings.
+    _SYNTHETIC_ID_BASE = 10_000_000
+
+    @staticmethod
+    def _build_archived_tasks_data(
         tasks: list[tuple[str, int]],
-        has_tags_column: bool,
-        headers_lower: list[str],
         rows: list[list[str]],
-        delays_data: dict[str, dict],
-        username_to_student: dict[str, Student],
-    ) -> None:
-        """Perform the actual import, creating all DB records.
+    ) -> dict[str, dict]:
+        """Build the archived_tasks_data dict for a training day.
 
-        This is separated from the POST handler so we can wrap it in
-        a try/except for clean rollback.
+        tasks: ordered list of (task_name, column_index) tuples.
+        rows: parsed CSV data rows.
+
+        return: dict mapping synthetic task-id strings to task metadata.
         """
-        # 1. Create the archived training day
-        position = len(training_program.training_days)
-        training_day = TrainingDay(
-            training_program=training_program,
-            position=position,
-            name=_to_codename(td_name),
-            description=td_description,
-            start_time=training_day_date,
-            duration=timedelta(minutes=duration_minutes),
-            training_day_types=td_types,
-        )
-        self.sql_session.add(training_day)
-        self.sql_session.flush()
-
-        # 2. Build archived_tasks_data
-        # Use large numeric synthetic task IDs to avoid collisions with
-        # real Task PKs.  The combined-ranking handler does
-        # ``int(task_id_str)`` so keys must be numeric strings.
-        _SYNTHETIC_ID_BASE = 10_000_000
+        base = ImportTrainingDayFromCsvHandler._SYNTHETIC_ID_BASE
         task_max_scores: dict[str, float] = {}
-        for task_idx, (task_name, col_idx) in enumerate(tasks):
-            task_key = str(_SYNTHETIC_ID_BASE + task_idx)
+        for task_idx, (_task_name, col_idx) in enumerate(tasks):
+            task_key = str(base + task_idx)
             max_score = 0.0
             for row in rows:
                 score = _get_task_score(row, col_idx)
@@ -444,7 +429,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
         archived_tasks_data: dict[str, dict] = {}
         for task_idx, (task_name, col_idx) in enumerate(tasks):
-            task_key = str(_SYNTHETIC_ID_BASE + task_idx)
+            task_key = str(base + task_idx)
             archived_tasks_data[task_key] = {
                 "name": task_name,
                 "short_name": task_name,
@@ -454,9 +439,23 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 "training_day_num": task_idx,
             }
 
-        training_day.archived_tasks_data = archived_tasks_data
+        return archived_tasks_data
 
-        # 3. Process each row from the CSV
+    def _process_csv_rows(
+        self,
+        rows: list[list[str]],
+        headers_lower: list[str],
+        tasks: list[tuple[str, int]],
+        has_tags_column: bool,
+        delays_data: dict[str, dict],
+        username_to_student: dict[str, Student],
+        training_day: TrainingDay,
+    ) -> tuple[int, list[str]]:
+        """Process CSV rows, creating ranking and attendance records.
+
+        return: (matched_count, skipped_usernames)
+        """
+        base = self._SYNTHETIC_ID_BASE
         matched_count = 0
         skipped_usernames: list[str] = []
 
@@ -474,8 +473,8 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
 
             # Build task_scores
             task_scores: dict[str, float] = {}
-            for task_idx, (task_name, col_idx) in enumerate(tasks):
-                task_key = str(_SYNTHETIC_ID_BASE + task_idx)
+            for task_idx, (_task_name, col_idx) in enumerate(tasks):
+                task_key = str(base + task_idx)
                 task_scores[task_key] = _get_task_score(row, col_idx)
 
             # Determine student tags for this training day
@@ -529,6 +528,56 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             archived_attendance.training_day_id = training_day.id
             archived_attendance.student_id = student.id
             self.sql_session.add(archived_attendance)
+
+        return matched_count, skipped_usernames
+
+    def _do_import(
+        self,
+        training_program: TrainingProgram,
+        training_day_date: dt,
+        td_name: str,
+        td_description: str,
+        duration_minutes: int,
+        td_types: list[str],
+        tasks: list[tuple[str, int]],
+        has_tags_column: bool,
+        headers_lower: list[str],
+        rows: list[list[str]],
+        delays_data: dict[str, dict],
+        username_to_student: dict[str, Student],
+    ) -> None:
+        """Perform the actual import, creating all DB records.
+
+        This is separated from the POST handler so we can wrap it in
+        a try/except for clean rollback.
+        """
+        # 1. Create the archived training day
+        position = len(training_program.training_days)
+        training_day = TrainingDay(
+            training_program=training_program,
+            position=position,
+            name=_to_codename(td_name),
+            description=td_description,
+            start_time=training_day_date,
+            duration=timedelta(minutes=duration_minutes),
+            training_day_types=td_types,
+        )
+        self.sql_session.add(training_day)
+        self.sql_session.flush()
+
+        # 2. Build archived_tasks_data
+        training_day.archived_tasks_data = self._build_archived_tasks_data(tasks, rows)
+
+        # 3. Process each row from the CSV
+        matched_count, skipped_usernames = self._process_csv_rows(
+            rows=rows,
+            headers_lower=headers_lower,
+            tasks=tasks,
+            has_tags_column=has_tags_column,
+            delays_data=delays_data,
+            username_to_student=username_to_student,
+            training_day=training_day,
+        )
 
         # 4. Validate that at least one student matched (check before
         #    adding notifications so that a rollback doesn't leave
