@@ -57,6 +57,10 @@ _IMPORT_FAILED = "Import failed"
 _NON_TASK_HEADERS = {"username", "user", "tags", "team", "task archive progress",
                      "global", "p"}
 
+# At least one of these headers must be present for a CSV to be considered
+# a valid ranking export (prevents misinterpreting e.g. a delays CSV).
+_EXPECTED_RANKING_HEADERS = {"username", "global"}
+
 
 def _to_codename(text: str) -> str:
     """Convert a free-form string to a valid Codename.
@@ -91,6 +95,12 @@ def _parse_ranking_csv(csv_content: str) -> tuple[
         raise ValueError("Empty ranking CSV: no headers found") from None
     headers = [h.strip() for h in raw_headers]
     headers_lower = [h.lower() for h in headers]
+
+    if not _EXPECTED_RANKING_HEADERS.intersection(headers_lower):
+        raise ValueError(
+            "CSV does not appear to be a ranking export: missing expected "
+            "headers (e.g. 'Username', 'Global')"
+        )
 
     # Identify task columns: any column whose header is not a known non-task
     # header. "P" columns (partial indicators) follow task columns and
@@ -151,6 +161,12 @@ def _parse_delays_csv(csv_content: str) -> dict[str, dict]:
     if username_idx is None:
         raise ValueError(
             "Delays CSV is missing the 'Username' column"
+        )
+
+    if delay_idx is None and status_idx is None:
+        raise ValueError(
+            "Delays CSV does not appear to be an attendance export: "
+            "missing 'Status' and 'Delay Time (Seconds)' columns"
         )
 
     result: dict[str, dict] = {}
@@ -381,10 +397,20 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
                 delays_data=delays_data,
                 username_to_student=username_to_student,
             )
+        except ValueError as e:
+            self.sql_session.rollback()
+            logger.warning("CSV import failed: %s", e)
+            self.service.add_notification(make_datetime(), _IMPORT_FAILED, str(e))
+            self.redirect(fallback_page)
+            return
         except Exception as e:
             self.sql_session.rollback()
             logger.exception("CSV import failed")
-            self.service.add_notification(make_datetime(), _IMPORT_FAILED, repr(e))
+            self.service.add_notification(
+                make_datetime(),
+                _IMPORT_FAILED,
+                f"An unexpected error occurred while importing the CSV: {repr(e)}",
+            )
             self.redirect(fallback_page)
             return
 
@@ -459,6 +485,7 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
             tags_str = _get_row_value(row, headers_lower, "tags")
             if tags_str:
                 return [t.strip() for t in tags_str.split(",") if t.strip()]
+            return []
         return list(student.student_tags) if student.student_tags else []
 
     def _create_archived_ranking(
