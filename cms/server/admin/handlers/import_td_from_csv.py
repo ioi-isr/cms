@@ -615,7 +615,12 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         a try/except for clean rollback.
         """
         # 1. Create the archived training day
-        position = len(training_program.training_days)
+        existing_positions = [
+            td.position
+            for td in training_program.training_days
+            if td.position is not None
+        ]
+        position = max(existing_positions) + 1 if existing_positions else 0
         training_day = TrainingDay(
             training_program=training_program,
             position=position,
