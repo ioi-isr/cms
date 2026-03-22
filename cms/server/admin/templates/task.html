@@ -1155,8 +1155,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                         <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
                                         {% endif %}
                                         {% if validator %}
-                                          <svg class="icon is-small" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
-                                          <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
+                                          <button type="button" class="button is-ghost is-small" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">
+                                            <span class="icon is-small"><svg><use href="#icon-file-code"/></svg></span>
+                                            <span>{{ validator.filename }}</span>
+                                          </button>
                                           {% if validator.executable_digest is none %}
                                             <span class="tag is-rounded is-opaque-bg has-text-warning-25 has-text-weight-semibold">compilation failed</span>
                                           {% endif %}
