@@ -385,19 +385,19 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
     });
   }
 
-  // Initialize drag-drop for each dataset's subtask table
-  document.addEventListener('DOMContentLoaded', function() {
-    var tbodies = document.querySelectorAll('tbody.subtask-tbody');
-    tbodies.forEach(function(tbody) {
-      AdminTableUtils.initDragDropReorder({
-        tbodyId: tbody.id,
-        rowSelector: 'tr',
-        rowIdAttr: 'subtask-idx',
-        colSpan: 5,
-        onSave: function(orderedIds) {
-          sendReorder(tbody, orderedIds);
-        }
-      });
+  // Initialize drag-drop for each dataset's subtask table.
+  // No DOMContentLoaded wrapper needed: this code runs inside init()
+  // which is already called via $(document).ready().
+  var tbodies = document.querySelectorAll('tbody.subtask-tbody');
+  tbodies.forEach(function(tbody) {
+    AdminTableUtils.initDragDropReorder({
+      tbodyId: tbody.id,
+      rowSelector: 'tr',
+      rowIdAttr: 'subtask-idx',
+      colSpan: 5,
+      onSave: function(orderedIds) {
+        sendReorder(tbody, orderedIds);
+      }
     });
   });
 })();
