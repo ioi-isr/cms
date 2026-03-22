@@ -352,9 +352,60 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
   form.submit();
 };
 
+/* ── Subtask drag-and-drop reordering ── */
+(function() {
+  function sendReorder(tbodyEl, orderedIds) {
+    var datasetId = tbodyEl.closest('table').dataset.datasetId;
+    var order = orderedIds.map(function(item) {
+      return parseInt(item.id, 10);
+    });
+    var xsrf = document.querySelector('input[name="_xsrf"]');
+    var url = '/dataset/' + datasetId + '/subtasks/reorder';
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-XSRFToken': xsrf ? xsrf.value : ''
+      },
+      body: JSON.stringify({order: order}),
+      credentials: 'same-origin'
+    }).then(function(resp) {
+      if (resp.ok) {
+        window.location.reload();
+      } else {
+        resp.json().then(function(data) {
+          alert('Reorder failed: ' + (data.error || 'Unknown error'));
+          window.location.reload();
+        });
+      }
+    }).catch(function() {
+      alert('Network error during reorder.');
+      window.location.reload();
+    });
+  }
+
+  // Initialize drag-drop for each dataset's subtask table.
+  // No DOMContentLoaded wrapper needed: this code runs inside init()
+  // which is already called via $(document).ready().
+  var tbodies = document.querySelectorAll('tbody.subtask-tbody');
+  tbodies.forEach(function(tbody) {
+    AdminTableUtils.initDragDropReorder({
+      tbodyId: tbody.id,
+      rowSelector: 'tr',
+      rowIdAttr: 'subtask-idx',
+      colSpan: 5,
+      onSave: function(orderedIds) {
+        sendReorder(tbody, orderedIds);
+      }
+    });
+  });
+})();
+
 {% endblock js_init %}
 
 {% block core %}
+
 
 {% set allowed_langs = task.get_allowed_languages() or [] %}
 {% set language_required = task.submission_format|any("endswith", ".%l") %}
@@ -1022,16 +1073,17 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         {% endif %}
 
                         <div class="table-container is-radiusless" style="width: 100%;">
-                        <table class="table is-hoverable is-padded is-fullwidth validator-table">
+                        <table class="table is-hoverable is-padded is-fullwidth validator-table" data-dataset-id="{{ dataset.id }}">
                             <thead>
                                 <tr>
+                                    <th style="width: 5%; vertical-align: middle;"></th>
                                     <th style="width: 10%; vertical-align: middle;">Subtask</th>
                                     <th style="width: 10%; vertical-align: middle;">Validator</th>
                                     <th class="has-text-centered" style="vertical-align: middle;">Tests and Validation Results</th>
                                     <th style="width: 20%; vertical-align: middle;">Additional Tests Passed</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="subtask-tbody-{{ dataset.id }}" class="subtask-tbody">
                                 {% for subtask in subtask_info[dataset.id] %}
                                 {% set validator = dataset.subtask_validators.get(subtask.idx) %}
                                 {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
@@ -1064,7 +1116,12 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                     {% endif %}
                                   {% endif %}
                                 {% endfor %}
-                                <tr>
+                                <tr {% if admin.permission_all %}draggable="true"{% endif %} data-subtask-idx="{{ subtask.idx }}" style="cursor: grab;">
+                                    <td style="vertical-align: middle; text-align: center; cursor: grab;">
+                                        <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder subtask">
+                                            <svg class="icon is-small" style="color: var(--tp-text-muted);"><use href="#icon-grip"/></svg>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper has-text-weight-semibold">
                                             {{ subtask.display_name }}
@@ -1098,8 +1155,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                         <input id="validator_file_{{ dataset.id }}_{{ subtask.idx }}" type="file" name="validator" style="display: none;" form="validator_form_{{ dataset.id }}_{{ subtask.idx }}" onchange="document.getElementById('validator_form_{{ dataset.id }}_{{ subtask.idx }}').submit();" />
                                         {% endif %}
                                         {% if validator %}
-                                          <svg class="icon is-small" style="color: var(--tp-primary); flex-shrink: 0;"><use href="#icon-file-code"/></svg>
-                                          <a href="javascript:void(0);" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')" style="color: var(--tp-primary); font-weight: 500;">{{ validator.filename }}</a>
+                                          <button type="button" class="button is-ghost is-small" onclick="utils.show_file('{{ validator.filename }}','{{ url("file", validator.digest, validator.filename) }}')">
+                                            <span class="icon is-small"><svg><use href="#icon-file-code"/></svg></span>
+                                            <span>{{ validator.filename }}</span>
+                                          </button>
                                           {% if validator.executable_digest is none %}
                                             <span class="tag is-rounded is-opaque-bg has-text-warning-25 has-text-weight-semibold">compilation failed</span>
                                           {% endif %}

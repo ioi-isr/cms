@@ -24,6 +24,8 @@ from collections.abc import Callable
 import functools
 import typing
 
+import sqlalchemy.orm
+
 from cms.db import Contest, Dataset, Task
 from cms.db.base import Base
 from cms.db.session import Session
@@ -279,37 +281,71 @@ def _update_subtask_validators(old_dict, new_dict, parent=None):
     This leverages the DB cascade (ON DELETE CASCADE) to efficiently delete
     all associated validation results, which is faster than loading them
     into memory and clearing them via ORM.
+
+    A session flush is performed between deletions and insertions to avoid
+    unique constraint violations on (dataset_id, subtask_index), since
+    SQLAlchemy may otherwise attempt the INSERT before the DELETE.
     """
+    # Collect actions first, then execute in phases to avoid constraint
+    # violations from concurrent delete+insert on the same key.
+    to_add = []  # (key, new_val) - brand new subtask indices
+    to_replace = []  # (key, new_val) - same index, content changed
+    to_update = []  # (old_val, new_val) - same index, content unchanged
+    to_delete = []  # key - removed subtask indices
+
     for key in set(old_dict.keys()) | set(new_dict.keys()):
         if key in new_dict:
             if key not in old_dict:
-                # Move new validator to old_dict
-                temp = new_dict[key]
-                del new_dict[key]
-                old_dict[key] = temp
+                to_add.append((key, new_dict[key]))
             else:
-                # Check if validator content changed
                 old_val = old_dict[key]
                 new_val = new_dict[key]
                 content_changed = (
                     old_val.digest != new_val.digest
                     or old_val.executable_digest != new_val.executable_digest
                 )
-
                 if content_changed:
-                    # Replace the validator entirely to trigger cascade delete
-                    # of validation results via DB foreign key constraint
-                    del old_dict[key]
-                    temp = new_dict[key]
-                    del new_dict[key]
-                    old_dict[key] = temp
+                    to_replace.append((key, new_val))
                 else:
-                    # Content unchanged, just update scalar columns
-                    # (filename might have changed)
-                    _update_columns(old_val, new_val)
+                    to_update.append((old_val, new_val))
         else:
-            # Delete validator not in new_dict (cascade will delete results)
-            del old_dict[key]
+            to_delete.append(key)
+
+    # Phase 1: In-place updates (no constraint risk)
+    for old_val, new_val in to_update:
+        _update_columns(old_val, new_val)
+
+    # Phase 2: Delete validators that are being replaced or removed.
+    # We must flush after this phase so the DELETE statements reach the DB
+    # before we INSERT replacements with the same (dataset_id, subtask_index).
+
+    # Save a reference to any old object *before* deleting from old_dict,
+    # so we can obtain the session even if old_dict ends up empty (e.g.
+    # when all validators are being replaced).
+    _any_old_obj = next(iter(old_dict.values()), None) if old_dict else None
+
+    for key in to_delete:
+        del old_dict[key]
+    for key, _new_val in to_replace:
+        del old_dict[key]
+
+    if to_replace or to_delete:
+        # Flush deletes so the unique constraint slots are freed.
+        session = None
+        if _any_old_obj is not None:
+            session = sqlalchemy.orm.Session.object_session(_any_old_obj)
+        if session is not None:
+            session.flush()
+
+    # Phase 3: Insert new / replacement validators
+    for key, _ in to_replace:
+        temp = new_dict[key]
+        del new_dict[key]
+        old_dict[key] = temp
+    for key, _ in to_add:
+        temp = new_dict[key]
+        del new_dict[key]
+        old_dict[key] = temp
 
 
 def update_dataset(old_dataset: Dataset, new_dataset: Dataset, parent=None):
