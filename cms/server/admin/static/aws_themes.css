@@ -218,6 +218,89 @@
     border-color: hsl(221, 14%, 22%);
 }
 
+/* PrismJS dark mode overrides for file display modal */
+[data-theme="arkansas-black"] code[class*=language-],
+[data-theme="arkansas-black"] pre[class*=language-] {
+    color: #c9d1d9;
+    text-shadow: none;
+}
+
+[data-theme="arkansas-black"] :not(pre) > code[class*=language-],
+[data-theme="arkansas-black"] pre[class*=language-] {
+    background: hsl(221, 14%, 11%);
+}
+
+[data-theme="arkansas-black"] .token.cdata,
+[data-theme="arkansas-black"] .token.comment,
+[data-theme="arkansas-black"] .token.doctype,
+[data-theme="arkansas-black"] .token.prolog {
+    color: #8b949e;
+}
+
+[data-theme="arkansas-black"] .token.punctuation {
+    color: #c9d1d9;
+}
+
+[data-theme="arkansas-black"] .token.boolean,
+[data-theme="arkansas-black"] .token.constant,
+[data-theme="arkansas-black"] .token.deleted,
+[data-theme="arkansas-black"] .token.number,
+[data-theme="arkansas-black"] .token.property,
+[data-theme="arkansas-black"] .token.symbol,
+[data-theme="arkansas-black"] .token.tag {
+    color: #79c0ff;
+}
+
+[data-theme="arkansas-black"] .token.attr-name,
+[data-theme="arkansas-black"] .token.builtin,
+[data-theme="arkansas-black"] .token.char,
+[data-theme="arkansas-black"] .token.inserted,
+[data-theme="arkansas-black"] .token.selector,
+[data-theme="arkansas-black"] .token.string {
+    color: #a5d6ff;
+}
+
+[data-theme="arkansas-black"] .language-css .token.string,
+[data-theme="arkansas-black"] .style .token.string,
+[data-theme="arkansas-black"] .token.entity,
+[data-theme="arkansas-black"] .token.operator,
+[data-theme="arkansas-black"] .token.url {
+    color: #d2a8ff;
+    background: transparent;
+}
+
+[data-theme="arkansas-black"] .token.atrule,
+[data-theme="arkansas-black"] .token.attr-value,
+[data-theme="arkansas-black"] .token.keyword {
+    color: #ff7b72;
+}
+
+[data-theme="arkansas-black"] .token.class-name,
+[data-theme="arkansas-black"] .token.function {
+    color: #d2a8ff;
+}
+
+[data-theme="arkansas-black"] .token.important,
+[data-theme="arkansas-black"] .token.regex,
+[data-theme="arkansas-black"] .token.variable {
+    color: #ffa657;
+}
+
+[data-theme="arkansas-black"] .line-numbers .line-numbers-rows {
+    border-right-color: hsl(221, 14%, 24%);
+}
+
+[data-theme="arkansas-black"] .line-numbers-rows > span:before {
+    color: hsl(221, 14%, 40%);
+}
+
+[data-theme="arkansas-black"] code[class*=language-] ::selection,
+[data-theme="arkansas-black"] code[class*=language-]::selection,
+[data-theme="arkansas-black"] pre[class*=language-] ::selection,
+[data-theme="arkansas-black"] pre[class*=language-]::selection {
+    background: rgba(56, 139, 253, 0.3);
+}
+
 /* Tagify dark mode support */
 [data-theme="arkansas-black"] .tagify {
     --tags-bg: hsl(221, 14%, 17%);
