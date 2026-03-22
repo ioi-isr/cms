@@ -219,26 +219,40 @@
 }
 
 /* PrismJS dark mode overrides for file display modal */
+[data-theme="arkansas-black"] {
+    --prism-fg: #c9d1d9;
+    --prism-bg: hsl(221, 14%, 11%);
+    --prism-comment: #8b949e;
+    --prism-number: #79c0ff;
+    --prism-string: #a5d6ff;
+    --prism-operator: #d2a8ff;
+    --prism-keyword: #ff7b72;
+    --prism-variable: #ffa657;
+    --prism-line-border: hsl(221, 14%, 24%);
+    --prism-line-num: hsl(221, 14%, 40%);
+    --prism-selection: rgba(56, 139, 253, 0.3);
+}
+
 [data-theme="arkansas-black"] code[class*=language-],
 [data-theme="arkansas-black"] pre[class*=language-] {
-    color: #c9d1d9;
+    color: var(--prism-fg);
     text-shadow: none;
 }
 
 [data-theme="arkansas-black"] :not(pre) > code[class*=language-],
 [data-theme="arkansas-black"] pre[class*=language-] {
-    background: hsl(221, 14%, 11%);
+    background: var(--prism-bg);
 }
 
 [data-theme="arkansas-black"] .token.cdata,
 [data-theme="arkansas-black"] .token.comment,
 [data-theme="arkansas-black"] .token.doctype,
 [data-theme="arkansas-black"] .token.prolog {
-    color: #8b949e;
+    color: var(--prism-comment);
 }
 
 [data-theme="arkansas-black"] .token.punctuation {
-    color: #c9d1d9;
+    color: var(--prism-fg);
 }
 
 [data-theme="arkansas-black"] .token.boolean,
@@ -248,7 +262,7 @@
 [data-theme="arkansas-black"] .token.property,
 [data-theme="arkansas-black"] .token.symbol,
 [data-theme="arkansas-black"] .token.tag {
-    color: #79c0ff;
+    color: var(--prism-number);
 }
 
 [data-theme="arkansas-black"] .token.attr-name,
@@ -257,7 +271,7 @@
 [data-theme="arkansas-black"] .token.inserted,
 [data-theme="arkansas-black"] .token.selector,
 [data-theme="arkansas-black"] .token.string {
-    color: #a5d6ff;
+    color: var(--prism-string);
 }
 
 [data-theme="arkansas-black"] .language-css .token.string,
@@ -265,40 +279,40 @@
 [data-theme="arkansas-black"] .token.entity,
 [data-theme="arkansas-black"] .token.operator,
 [data-theme="arkansas-black"] .token.url {
-    color: #d2a8ff;
+    color: var(--prism-operator);
     background: transparent;
 }
 
 [data-theme="arkansas-black"] .token.atrule,
 [data-theme="arkansas-black"] .token.attr-value,
 [data-theme="arkansas-black"] .token.keyword {
-    color: #ff7b72;
+    color: var(--prism-keyword);
 }
 
 [data-theme="arkansas-black"] .token.class-name,
 [data-theme="arkansas-black"] .token.function {
-    color: #d2a8ff;
+    color: var(--prism-operator);
 }
 
 [data-theme="arkansas-black"] .token.important,
 [data-theme="arkansas-black"] .token.regex,
 [data-theme="arkansas-black"] .token.variable {
-    color: #ffa657;
+    color: var(--prism-variable);
 }
 
 [data-theme="arkansas-black"] .line-numbers .line-numbers-rows {
-    border-right-color: hsl(221, 14%, 24%);
+    border-right-color: var(--prism-line-border);
 }
 
 [data-theme="arkansas-black"] .line-numbers-rows > span:before {
-    color: hsl(221, 14%, 40%);
+    color: var(--prism-line-num);
 }
 
 [data-theme="arkansas-black"] code[class*=language-] ::selection,
 [data-theme="arkansas-black"] code[class*=language-]::selection,
 [data-theme="arkansas-black"] pre[class*=language-] ::selection,
 [data-theme="arkansas-black"] pre[class*=language-]::selection {
-    background: rgba(56, 139, 253, 0.3);
+    background: var(--prism-selection);
 }
 
 /* Tagify dark mode support */

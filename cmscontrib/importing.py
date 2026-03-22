@@ -338,11 +338,11 @@ def _update_subtask_validators(old_dict, new_dict, parent=None):
             session.flush()
 
     # Phase 3: Insert new / replacement validators
-    for key, new_val in to_replace:
+    for key, _ in to_replace:
         temp = new_dict[key]
         del new_dict[key]
         old_dict[key] = temp
-    for key, new_val in to_add:
+    for key, _ in to_add:
         temp = new_dict[key]
         del new_dict[key]
         old_dict[key] = temp

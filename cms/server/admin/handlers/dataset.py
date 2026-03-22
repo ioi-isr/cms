@@ -1930,9 +1930,9 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
                 return (tc.codename, None)
             return (new_codename, None)
 
-        success, stripped_count = _batch_rename_testcases(
-            self, dataset, task, all_testcases,
-            strip_st_modifier, fallback_page)
+        success, _ = _batch_rename_testcases(
+            self, dataset, task, all_testcases, strip_st_modifier, fallback_page
+        )
         if not success:
             return
 

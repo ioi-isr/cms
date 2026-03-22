@@ -517,7 +517,7 @@ class ReorderSubtasksHandler(BaseHandler):
         old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(order)}
 
         # Cancel any running validators before reassigning indices
-        for v in list(dataset.subtask_validators.values()):
+        for v in dataset.subtask_validators.values():
             cancel_validator(v.id)
 
         # We need to update subtask_index on each validator.
@@ -542,7 +542,7 @@ class ReorderSubtasksHandler(BaseHandler):
             self.sql_session.flush()
 
             # Phase 2: Move to final indices
-            for validator, old_idx, new_idx in validators_to_move:
+            for validator, _old_idx, new_idx in validators_to_move:
                 temp_idx = n + new_idx + 1000
                 del dataset.subtask_validators[temp_idx]
                 validator.subtask_index = new_idx
