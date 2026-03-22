@@ -354,58 +354,11 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
 
 /* ── Subtask drag-and-drop reordering ── */
 (function() {
-  var dragSrcRow = null;
-
-  function handleDragStart(e) {
-    dragSrcRow = this;
-    this.classList.add('is-dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', this.dataset.subtaskIdx);
-  }
-
-  function handleDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    var row = this;
-    if (row === dragSrcRow) return;
-    row.classList.add('drag-over');
-  }
-
-  function handleDragEnter(e) {
-    this.classList.add('drag-over');
-  }
-
-  function handleDragLeave(e) {
-    this.classList.remove('drag-over');
-  }
-
-  function handleDrop(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    this.classList.remove('drag-over');
-    if (dragSrcRow === this) return;
-
-    var tbody = this.parentNode;
-    var rows = Array.from(tbody.querySelectorAll('tr[data-subtask-idx]'));
-    var fromIndex = rows.indexOf(dragSrcRow);
-    var toIndex = rows.indexOf(this);
-
-    if (fromIndex < 0 || toIndex < 0) return;
-
-    // Move the DOM row
-    if (fromIndex < toIndex) {
-      tbody.insertBefore(dragSrcRow, this.nextSibling);
-    } else {
-      tbody.insertBefore(dragSrcRow, this);
-    }
-
-    // Build the new order: list of original subtask indices in their new
-    // visual position
-    var newRows = Array.from(tbody.querySelectorAll('tr[data-subtask-idx]'));
-    var order = newRows.map(function(r) { return parseInt(r.dataset.subtaskIdx, 10); });
-
-    // Send reorder request
-    var datasetId = tbody.closest('table').dataset.datasetId;
+  function sendReorder(tbodyEl, orderedIds) {
+    var datasetId = tbodyEl.closest('table').dataset.datasetId;
+    var order = orderedIds.map(function(item) {
+      return parseInt(item.id, 10);
+    });
     var xsrf = document.querySelector('input[name="_xsrf"]');
     var url = '/dataset/' + datasetId + '/subtasks/reorder';
 
@@ -432,22 +385,19 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
     });
   }
 
-  function handleDragEnd(e) {
-    this.classList.remove('is-dragging');
-    var rows = document.querySelectorAll('tr[data-subtask-idx]');
-    rows.forEach(function(r) { r.classList.remove('drag-over'); });
-  }
-
-  // Attach drag handlers to all subtask rows once DOM is ready
+  // Initialize drag-drop for each dataset's subtask table
   document.addEventListener('DOMContentLoaded', function() {
-    var rows = document.querySelectorAll('tr[data-subtask-idx]');
-    rows.forEach(function(row) {
-      row.addEventListener('dragstart', handleDragStart, false);
-      row.addEventListener('dragenter', handleDragEnter, false);
-      row.addEventListener('dragover', handleDragOver, false);
-      row.addEventListener('dragleave', handleDragLeave, false);
-      row.addEventListener('drop', handleDrop, false);
-      row.addEventListener('dragend', handleDragEnd, false);
+    var tbodies = document.querySelectorAll('tbody.subtask-tbody');
+    tbodies.forEach(function(tbody) {
+      AdminTableUtils.initDragDropReorder({
+        tbodyId: tbody.id,
+        rowSelector: 'tr',
+        rowIdAttr: 'subtask-idx',
+        colSpan: 5,
+        onSave: function(orderedIds) {
+          sendReorder(tbody, orderedIds);
+        }
+      });
     });
   });
 })();
@@ -456,10 +406,6 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
 
 {% block core %}
 
-<style>
-  tr[data-subtask-idx].is-dragging { opacity: 0.4; }
-  tr[data-subtask-idx].drag-over { border-top: 2px solid var(--tp-primary, #3273dc); }
-</style>
 
 {% set allowed_langs = task.get_allowed_languages() or [] %}
 {% set language_required = task.submission_format|any("endswith", ".%l") %}
@@ -1137,7 +1083,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                     <th style="width: 20%; vertical-align: middle;">Additional Tests Passed</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="subtask-tbody-{{ dataset.id }}" class="subtask-tbody">
                                 {% for subtask in subtask_info[dataset.id] %}
                                 {% set validator = dataset.subtask_validators.get(subtask.idx) %}
                                 {% set ns = namespace(subtask_tc_count=0, other_tc_count=0, subtask_passed=0, subtask_failed=0, subtask_error=0, subtask_not_validated=0, other_passed=0) %}
@@ -1170,9 +1116,11 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                     {% endif %}
                                   {% endif %}
                                 {% endfor %}
-                                <tr draggable="true" data-subtask-idx="{{ subtask.idx }}" style="cursor: grab;">
+                                <tr {% if admin.permission_all %}draggable="true"{% endif %} data-subtask-idx="{{ subtask.idx }}" style="cursor: grab;">
                                     <td style="vertical-align: middle; text-align: center; cursor: grab;">
-                                        <svg class="icon is-small" style="color: var(--tp-text-muted);"><use href="#icon-grip"/></svg>
+                                        <div class="grip-handle" title="Drag to reorder" aria-label="Drag to reorder subtask">
+                                            <svg class="icon is-small" style="color: var(--tp-text-muted);"><use href="#icon-grip"/></svg>
+                                        </div>
                                     </td>
                                     <td>
                                         <div id="st_name_display_{{ dataset.id }}_{{ subtask.idx }}" class="list-cell-wrapper has-text-weight-semibold">

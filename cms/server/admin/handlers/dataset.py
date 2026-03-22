@@ -1892,6 +1892,31 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Build testcase -> subtask mapping BEFORE stripping prefixes,
+        # because score_type_obj.public_testcases holds the current
+        # (pre-strip) codenames.  We key by testcase *id* so the mapping
+        # survives Phase 1's rename.
+        try:
+            from cms.server.util import build_tc_to_subtasks_mapping
+
+            tc_to_subtasks_by_name = build_tc_to_subtasks_mapping(
+                score_type_obj)
+        except (KeyError, ValueError, TypeError, re.error) as e:
+            self.service.add_notification(
+                make_datetime(), "Error",
+                "Could not retrieve subtask info: %s" % str(e)
+            )
+            self.redirect(fallback_page)
+            return
+
+        # Translate codename-keyed mapping to testcase-id-keyed mapping
+        tc_id_to_subtasks = {}
+        for tc in dataset.testcases.values():
+            subtask_indices = tc_to_subtasks_by_name.get(
+                tc.codename, set())
+            if subtask_indices:
+                tc_id_to_subtasks[tc.id] = subtask_indices
+
         # Phase 1: Strip all existing STi_ prefixes from all testcase names.
         # This uses the existing remove_substring batch rename logic so that
         # re-running after adding/removing subtasks produces clean results.
@@ -1911,26 +1936,12 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
         if not success:
             return
 
-        # Phase 2: Build testcase -> subtask mapping on the now-clean names
-        # We need to re-read score_type_obj since score params haven't changed
-        # yet; the mapping is based on the regex patterns.
-        try:
-            from cms.server.util import build_tc_to_subtasks_mapping
-
-            tc_to_subtasks = build_tc_to_subtasks_mapping(score_type_obj)
-        except (KeyError, ValueError, TypeError, re.error) as e:
-            self.service.add_notification(
-                make_datetime(), "Error", "Could not retrieve subtask info: %s" % str(e)
-            )
-            self.redirect(fallback_page)
-            return
-
-        # Phase 3: Add STi_ prefixes based on subtask membership
+        # Phase 2: Add STi_ prefixes based on subtask membership
         # Re-fetch testcases since codenames may have changed in phase 1
         all_testcases = list(dataset.testcases.values())
 
         def subtask_prefix_modifier(tc):
-            subtask_indices = tc_to_subtasks.get(tc.codename, set())
+            subtask_indices = tc_id_to_subtasks.get(tc.id, set())
             new_codename = tc.codename
             for i in sorted(subtask_indices, reverse=True):
                 new_codename = _add_prefix_if_missing(

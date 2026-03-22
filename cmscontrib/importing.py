@@ -318,6 +318,12 @@ def _update_subtask_validators(old_dict, new_dict, parent=None):
     # Phase 2: Delete validators that are being replaced or removed.
     # We must flush after this phase so the DELETE statements reach the DB
     # before we INSERT replacements with the same (dataset_id, subtask_index).
+
+    # Save a reference to any old object *before* deleting from old_dict,
+    # so we can obtain the session even if old_dict ends up empty (e.g.
+    # when all validators are being replaced).
+    _any_old_obj = next(iter(old_dict.values()), None) if old_dict else None
+
     for key in to_delete:
         del old_dict[key]
     for key, _new_val in to_replace:
@@ -325,18 +331,9 @@ def _update_subtask_validators(old_dict, new_dict, parent=None):
 
     if to_replace or to_delete:
         # Flush deletes so the unique constraint slots are freed.
-        # Try to obtain the session from any remaining object in old_dict,
-        # or from one of the new objects being added.
         session = None
-        for val in old_dict.values():
-            session = sqlalchemy.orm.Session.object_session(val)
-            if session is not None:
-                break
-        if session is None:
-            for _, val in to_add + to_replace:
-                session = sqlalchemy.orm.Session.object_session(val)
-                if session is not None:
-                    break
+        if _any_old_obj is not None:
+            session = sqlalchemy.orm.Session.object_session(_any_old_obj)
         if session is not None:
             session.flush()
 

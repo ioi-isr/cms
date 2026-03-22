@@ -522,8 +522,9 @@ class ReorderSubtasksHandler(BaseHandler):
 
         # We need to update subtask_index on each validator.
         # Because of the UNIQUE(dataset_id, subtask_index) constraint,
-        # use a two-phase approach: first move to temporary negative indices,
-        # then to final indices.
+        # use a two-phase approach: first move to temporary large-positive
+        # indices, then to final indices.  We cannot use negative indices
+        # because the DB has CheckConstraint("subtask_index >= 0").
         validators_to_move = []
         for old_idx, validator in list(dataset.subtask_validators.items()):
             new_idx = old_to_new.get(old_idx)
@@ -531,10 +532,10 @@ class ReorderSubtasksHandler(BaseHandler):
                 validators_to_move.append((validator, old_idx, new_idx))
 
         if validators_to_move:
-            # Phase 1: Move to temporary negative indices
+            # Phase 1: Move to temporary large-positive indices
             for validator, old_idx, new_idx in validators_to_move:
                 del dataset.subtask_validators[old_idx]
-                temp_idx = -(new_idx + 1000)  # Use large negative to avoid collision
+                temp_idx = n + new_idx + 1000  # Large positive to avoid collision
                 validator.subtask_index = temp_idx
                 dataset.subtask_validators[temp_idx] = validator
 
@@ -542,7 +543,7 @@ class ReorderSubtasksHandler(BaseHandler):
 
             # Phase 2: Move to final indices
             for validator, old_idx, new_idx in validators_to_move:
-                temp_idx = -(new_idx + 1000)
+                temp_idx = n + new_idx + 1000
                 del dataset.subtask_validators[temp_idx]
                 validator.subtask_index = new_idx
                 dataset.subtask_validators[new_idx] = validator
