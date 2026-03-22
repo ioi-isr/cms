@@ -101,6 +101,7 @@ from .subtask_validators import (
     SubtaskDetailsHandler,
     UpdateSubtaskRegexHandler,
     UpdateSubtaskNameHandler,
+    ReorderSubtasksHandler,
     RerunSubtaskValidatorsHandler,
 )
 from .main import (
@@ -354,6 +355,7 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/testcase/([0-9]+)/rename", RenameTestcaseHandler),
     (r"/dataset/([0-9]+)/testcases/batch_rename", BatchRenameTestcasesHandler),
     (r"/dataset/([0-9]+)/testcases/apply_subtask_prefixes", ApplySubtaskPrefixesHandler),
+    (r"/dataset/([0-9]+)/subtasks/reorder", ReorderSubtasksHandler),
     (r"/dataset/([0-9]+)/validators/rerun", RerunSubtaskValidatorsHandler),
     # Users/Teams
     (r"/users", UserListHandler),

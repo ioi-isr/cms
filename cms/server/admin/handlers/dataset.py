@@ -1869,7 +1869,11 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
 
     For each subtask i, sets the regex to .*STi_(?#CMS) and prepends
     STi_ to all testcases belonging to that subtask (sorted descending).
-    Skips adding a prefix if it's already a substring of the codename.
+
+    Before applying new prefixes, all existing STi_ substrings are stripped
+    from every testcase name so that re-running this operation after changing
+    subtask regex/order produces correct results instead of accumulating
+    stale prefixes.
     """
 
     @require_permission(BaseHandler.PERMISSION_ALL)
@@ -1888,7 +1892,28 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        # Build testcase -> sorted list of subtask indices using existing logic
+        # Phase 1: Strip all existing STi_ prefixes from all testcase names.
+        # This uses the existing remove_substring batch rename logic so that
+        # re-running after adding/removing subtasks produces clean results.
+        all_testcases = list(dataset.testcases.values())
+        _ST_PREFIX_RE = re.compile(r"ST\d+_")
+
+        def strip_st_modifier(tc):
+            new_codename = _ST_PREFIX_RE.sub("", tc.codename)
+            if not new_codename:
+                # Shouldn't happen in practice, but guard against it
+                return (tc.codename, None)
+            return (new_codename, None)
+
+        success, stripped_count = _batch_rename_testcases(
+            self, dataset, task, all_testcases,
+            strip_st_modifier, fallback_page)
+        if not success:
+            return
+
+        # Phase 2: Build testcase -> subtask mapping on the now-clean names
+        # We need to re-read score_type_obj since score params haven't changed
+        # yet; the mapping is based on the regex patterns.
         try:
             from cms.server.util import build_tc_to_subtasks_mapping
 
@@ -1900,6 +1925,10 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        # Phase 3: Add STi_ prefixes based on subtask membership
+        # Re-fetch testcases since codenames may have changed in phase 1
+        all_testcases = list(dataset.testcases.values())
+
         def subtask_prefix_modifier(tc):
             subtask_indices = tc_to_subtasks.get(tc.codename, set())
             new_codename = tc.codename
@@ -1908,7 +1937,6 @@ class ApplySubtaskPrefixesHandler(BaseHandler):
                     new_codename, "ST%d_" % i)
             return (new_codename, None)
 
-        all_testcases = list(dataset.testcases.values())
         success, renamed_count = _batch_rename_testcases(
             self, dataset, task, all_testcases,
             subtask_prefix_modifier, fallback_page)

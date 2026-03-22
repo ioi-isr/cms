@@ -464,6 +464,98 @@ class UpdateSubtaskNameHandler(BaseHandler):
         self.redirect(fallback_page)
 
 
+class ReorderSubtasksHandler(BaseHandler):
+    """Reorder subtasks by permuting the score_type_parameters list and
+    reassigning subtask_validator indices accordingly.
+
+    Expects a JSON body with ``order``: a list of old subtask indices in the
+    desired new order.  For example ``[2, 0, 1]`` means the subtask that was
+    previously at index 2 should become the first subtask, etc.
+
+    The handler:
+    1. Permutes ``score_type_parameters`` (scores + regex) to match the new order.
+    2. Reassigns ``subtask_index`` on every ``SubtaskValidator`` so each
+       validator keeps following the same score-parameter row.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        try:
+            body = json.loads(self.request.body)
+            order = body["order"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            self.set_status(400)
+            self.write({"error": "Invalid request body. Expected JSON with 'order' list."})
+            return
+
+        params = dataset.score_type_parameters
+        if not isinstance(params, list):
+            self.set_status(400)
+            self.write({"error": "Score type parameters are not a list."})
+            return
+
+        n = len(params)
+
+        # Validate the order is a valid permutation of [0..n-1]
+        if (not isinstance(order, list)
+                or len(order) != n
+                or set(order) != set(range(n))):
+            self.set_status(400)
+            self.write({
+                "error": "Order must be a permutation of [0..%d]." % (n - 1)
+            })
+            return
+
+        # 1. Permute score_type_parameters
+        new_params = [list(params[old_idx]) for old_idx in order]
+        dataset.score_type_parameters = new_params
+
+        # 2. Reassign subtask_validator indices.
+        # Build a mapping: old_index -> new_index
+        old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(order)}
+
+        # Cancel any running validators before reassigning indices
+        for v in list(dataset.subtask_validators.values()):
+            cancel_validator(v.id)
+
+        # We need to update subtask_index on each validator.
+        # Because of the UNIQUE(dataset_id, subtask_index) constraint,
+        # use a two-phase approach: first move to temporary negative indices,
+        # then to final indices.
+        validators_to_move = []
+        for old_idx, validator in list(dataset.subtask_validators.items()):
+            new_idx = old_to_new.get(old_idx)
+            if new_idx is not None and new_idx != old_idx:
+                validators_to_move.append((validator, old_idx, new_idx))
+
+        if validators_to_move:
+            # Phase 1: Move to temporary negative indices
+            for validator, old_idx, new_idx in validators_to_move:
+                del dataset.subtask_validators[old_idx]
+                temp_idx = -(new_idx + 1000)  # Use large negative to avoid collision
+                validator.subtask_index = temp_idx
+                dataset.subtask_validators[temp_idx] = validator
+
+            self.sql_session.flush()
+
+            # Phase 2: Move to final indices
+            for validator, old_idx, new_idx in validators_to_move:
+                temp_idx = -(new_idx + 1000)
+                del dataset.subtask_validators[temp_idx]
+                validator.subtask_index = new_idx
+                dataset.subtask_validators[new_idx] = validator
+
+            self.sql_session.flush()
+
+        if self.try_commit():
+            self.write({"success": True})
+        else:
+            self.set_status(500)
+            self.write({"error": "Failed to save changes."})
+
+
 class RerunSubtaskValidatorsHandler(BaseHandler):
     """Rerun all subtask validators for a dataset.
 
