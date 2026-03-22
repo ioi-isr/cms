@@ -160,6 +160,19 @@
     --sidebar-accent: #805ad5;
     --sidebar-accent-light: #9f7aea;
     --sidebar-slate: #4a5568;
+
+    /* PrismJS dark mode overrides */
+    --prism-fg: #c9d1d9;
+    --prism-bg: hsl(221, 14%, 11%);
+    --prism-comment: #8b949e;
+    --prism-number: #79c0ff;
+    --prism-string: #a5d6ff;
+    --prism-operator: #d2a8ff;
+    --prism-keyword: #ff7b72;
+    --prism-variable: #ffa657;
+    --prism-line-border: hsl(221, 14%, 24%);
+    --prism-line-num: hsl(221, 14%, 40%);
+    --prism-selection: rgba(56, 139, 253, 0.3);
 }
 
 [data-theme="arkansas-black"] .button.is-light {
@@ -218,21 +231,7 @@
     border-color: hsl(221, 14%, 22%);
 }
 
-/* PrismJS dark mode overrides for file display modal */
-[data-theme="arkansas-black"] {
-    --prism-fg: #c9d1d9;
-    --prism-bg: hsl(221, 14%, 11%);
-    --prism-comment: #8b949e;
-    --prism-number: #79c0ff;
-    --prism-string: #a5d6ff;
-    --prism-operator: #d2a8ff;
-    --prism-keyword: #ff7b72;
-    --prism-variable: #ffa657;
-    --prism-line-border: hsl(221, 14%, 24%);
-    --prism-line-num: hsl(221, 14%, 40%);
-    --prism-selection: rgba(56, 139, 253, 0.3);
-}
-
+/* PrismJS dark mode token overrides */
 [data-theme="arkansas-black"] code[class*=language-],
 [data-theme="arkansas-black"] pre[class*=language-] {
     color: var(--prism-fg);

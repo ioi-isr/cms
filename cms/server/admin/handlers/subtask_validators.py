@@ -478,47 +478,53 @@ class ReorderSubtasksHandler(BaseHandler):
        validator keeps following the same score-parameter row.
     """
 
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, dataset_id):
-        dataset = self.safe_get_item(Dataset, dataset_id)
+    def _validate_reorder_request(self, dataset):
+        """Parse and validate a reorder request.
 
+        Returns (order, None) on success or (None, error_message) on failure.
+        """
         try:
             body = json.loads(self.request.body)
             order = body["order"]
         except (json.JSONDecodeError, KeyError, TypeError):
-            self.set_status(400)
-            self.write({"error": "Invalid request body. Expected JSON with 'order' list."})
-            return
+            return None, "Invalid request body. Expected JSON with 'order' list."
 
         params = dataset.score_type_parameters
         if not isinstance(params, list):
-            self.set_status(400)
-            self.write({"error": "Score type parameters are not a list."})
-            return
+            return None, "Score type parameters are not a list."
 
         n = len(params)
-
-        # Validate the order is a valid permutation of [0..n-1]
         if (not isinstance(order, list)
                 or len(order) != n
                 or set(order) != set(range(n))):
+            return None, "Order must be a permutation of [0..%d]." % (n - 1)
+
+        return order, None
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, dataset_id):
+        dataset = self.safe_get_item(Dataset, dataset_id)
+
+        order, error = self._validate_reorder_request(dataset)
+        if error:
             self.set_status(400)
-            self.write({
-                "error": "Order must be a permutation of [0..%d]." % (n - 1)
-            })
+            self.write({"error": error})
             return
 
+        n = len(dataset.score_type_parameters)
+
         # 1. Permute score_type_parameters
-        new_params = [list(params[old_idx]) for old_idx in order]
+        new_params = [list(dataset.score_type_parameters[old_idx]) for old_idx in order]
         dataset.score_type_parameters = new_params
 
         # 2. Reassign subtask_validator indices.
         # Build a mapping: old_index -> new_index
         old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(order)}
 
-        # Cancel any running validators before reassigning indices
-        for v in dataset.subtask_validators.values():
-            cancel_validator(v.id)
+        # Cancel only validators whose index will actually change
+        for idx, v in dataset.subtask_validators.items():
+            if old_to_new.get(idx) != idx:
+                cancel_validator(v.id)
 
         # We need to update subtask_index on each validator.
         # Because of the UNIQUE(dataset_id, subtask_index) constraint,

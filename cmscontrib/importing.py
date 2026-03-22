@@ -288,10 +288,10 @@ def _update_subtask_validators(old_dict, new_dict, parent=None):
     """
     # Collect actions first, then execute in phases to avoid constraint
     # violations from concurrent delete+insert on the same key.
-    to_add = []       # (key, new_val) – brand new subtask indices
-    to_replace = []   # (key, new_val) – same index, content changed
-    to_update = []    # (old_val, new_val) – same index, content unchanged
-    to_delete = []    # key – removed subtask indices
+    to_add = []  # (key, new_val) - brand new subtask indices
+    to_replace = []  # (key, new_val) - same index, content changed
+    to_update = []  # (old_val, new_val) - same index, content unchanged
+    to_delete = []  # key - removed subtask indices
 
     for key in set(old_dict.keys()) | set(new_dict.keys()):
         if key in new_dict:
