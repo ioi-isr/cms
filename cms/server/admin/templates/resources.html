@@ -348,6 +348,133 @@ function fileCacherDeleteOrphans() {
     });
 }
 
+function fileCacherSearchContent() {
+    var term = document.getElementById('fc-search-term').value.trim();
+    if (!term) return;
+    var orphansOnly = document.getElementById('fc-search-orphans-only').checked;
+    var statusEl = document.getElementById('fc-search-status');
+    var resultsEl = document.getElementById('fc-search-results');
+    statusEl.textContent = 'Searching file contents\u2026 This reads every file and may take a long time.';
+    statusEl.className = 'has-text-grey';
+    resultsEl.innerHTML = '';
+    var url = '{{ url("filecacher", "search") }}?search_term=' + encodeURIComponent(term) +
+        '&orphans_only=' + orphansOnly;
+    fetch(url, {
+        headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+    }).then(function(resp) {
+        return resp.json().then(function(data) {
+            if (!resp.ok) throw new Error(data.error || 'Search failed');
+            return data;
+        });
+    }).then(function(data) {
+        statusEl.textContent = data.length + ' match(es) found.';
+        statusEl.className = 'has-text-success';
+        fileCacherRenderResults(data, 'fc-search-results', 'content');
+    }).catch(function(error) {
+        statusEl.textContent = 'Error: ' + error.message;
+        statusEl.className = 'has-text-danger';
+    });
+}
+
+function fileCacherSearchDescription() {
+    var pattern = document.getElementById('fc-desc-pattern').value.trim();
+    if (!pattern) return;
+    var orphansOnly = document.getElementById('fc-desc-orphans-only').checked;
+    var statusEl = document.getElementById('fc-desc-status');
+    var resultsEl = document.getElementById('fc-desc-results');
+    statusEl.textContent = 'Searching descriptions\u2026';
+    statusEl.className = 'has-text-grey';
+    resultsEl.innerHTML = '';
+    var url = '{{ url("filecacher", "list_by_description") }}?description_pattern=' + encodeURIComponent(pattern) +
+        '&orphans_only=' + orphansOnly;
+    fetch(url, {
+        headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+    }).then(function(resp) {
+        return resp.json().then(function(data) {
+            if (!resp.ok) throw new Error(data.error || 'Search failed');
+            return data;
+        });
+    }).then(function(data) {
+        statusEl.textContent = data.length + ' match(es) found.';
+        statusEl.className = 'has-text-success';
+        fileCacherRenderResults(data, 'fc-desc-results', 'description');
+    }).catch(function(error) {
+        statusEl.textContent = 'Error: ' + error.message;
+        statusEl.className = 'has-text-danger';
+    });
+}
+
+function fileCacherRenderResults(data, containerId, groupName) {
+    var container = document.getElementById(containerId);
+    if (data.length === 0) {
+        container.innerHTML = '<p class="has-text-grey">No results.</p>';
+        return;
+    }
+    var html = '<div class="mb-2"><label class="checkbox"><input type="checkbox" onchange="fileCacherToggleAll(this, \'' + groupName + '\')" /> <strong>Select All</strong></label></div>';
+    html += '<div style="max-height: 400px; overflow-y: auto;"><table class="table is-fullwidth is-hoverable is-striped is-narrow"><thead><tr>';
+    html += '<th style="width:2em;"></th><th>Digest</th><th>Description</th><th class="has-text-right">Size</th></tr></thead><tbody>';
+    for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var sizeStr = row.size >= 0 ? formatBytes(row.size) : 'N/A';
+        var shortDigest = row.digest.substring(0, 16) + '\u2026';
+        var descEscaped = (row.description || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += '<tr><td><input type="checkbox" class="fc-dl-check" name="' + groupName + '" value="' + row.digest + '" /></td>';
+        html += '<td style="font-family:monospace; font-size:0.85em;" title="' + row.digest + '">' + shortDigest + '</td>';
+        html += '<td style="font-size:0.85em; max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + descEscaped + '">' + descEscaped + '</td>';
+        html += '<td class="has-text-right" style="white-space:nowrap;">' + sizeStr + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    html += '<button class="button is-info is-small is-outlined mt-2" onclick="fileCacherDownloadSelected(\'' + groupName + '\')">';
+    html += '<span class="icon is-small"><svg class="icon"><use href="#icon-download"/></svg></span>';
+    html += '<span>Download Selected</span></button>';
+    container.innerHTML = html;
+}
+
+function fileCacherToggleAll(masterCheckbox, groupName) {
+    var checks = document.querySelectorAll('input.fc-dl-check[name="' + groupName + '"]');
+    for (var i = 0; i < checks.length; i++) {
+        checks[i].checked = masterCheckbox.checked;
+    }
+}
+
+function fileCacherDownloadSelected(groupName) {
+    var checks = document.querySelectorAll('input.fc-dl-check[name="' + groupName + '"]:checked');
+    var digests = [];
+    for (var i = 0; i < checks.length; i++) {
+        digests.push(checks[i].value);
+    }
+    if (digests.length === 0) {
+        AdminModals.showError('No files selected.', 'Download');
+        return;
+    }
+    fetch('{{ url("filecacher", "download") }}', {
+        method: 'POST',
+        headers: {
+            'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ digests: digests })
+    }).then(function(resp) {
+        if (!resp.ok) {
+            return resp.json().then(function(data) {
+                throw new Error(data.error || 'Download failed');
+            });
+        }
+        return resp.blob();
+    }).then(function(blob) {
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'filecacher_files.zip';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }).catch(function(error) {
+        AdminModals.showError(error.message, 'Download Failed');
+    });
+}
+
 {% endblock js %}
 
 {% block js_init %}
@@ -510,6 +637,45 @@ for (var i in shards)
         </button>
         <span id="filecacher-delete-status" class="has-text-grey" style="font-size: 0.85rem;"></span>
       </div>
+
+      {# ── Content Search ────────────────────────────────── #}
+      <hr style="margin: 1rem 0;">
+      <h4 class="has-text-weight-semibold mb-2">Search File Contents</h4>
+      <p class="has-text-grey mb-2" style="font-size: 0.85rem;">
+        This operation reads every file in the store and may take a long time.
+      </p>
+      <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
+        <input class="input is-small" type="text" id="fc-search-term" placeholder="Search term (e.g. created by liasa)" style="max-width: 20rem;">
+        <label class="checkbox" style="font-size: 0.85rem;">
+          <input type="checkbox" id="fc-search-orphans-only" checked> Orphans only
+        </label>
+        <button class="button is-info is-small is-outlined" onclick="fileCacherSearchContent()">
+          <span class="icon is-small"><svg class="icon"><use href="#icon-activity"/></svg></span>
+          <span>Search Contents</span>
+        </button>
+        <span id="fc-search-status" class="has-text-grey" style="font-size: 0.85rem;"></span>
+      </div>
+      <div id="fc-search-results" class="mt-3"></div>
+
+      {# ── Description Search ────────────────────────────── #}
+      <hr style="margin: 1rem 0;">
+      <h4 class="has-text-weight-semibold mb-2">Search by Description</h4>
+      <p class="has-text-grey mb-2" style="font-size: 0.85rem;">
+        Filter files by description substring (case-insensitive). Descriptions typically look like
+        &ldquo;Submission file solution.%l sent by username at UNIX_TIMESTAMP.&rdquo;
+      </p>
+      <div class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 0.5rem;">
+        <input class="input is-small" type="text" id="fc-desc-pattern" placeholder="Description pattern (e.g. at 17)" style="max-width: 20rem;">
+        <label class="checkbox" style="font-size: 0.85rem;">
+          <input type="checkbox" id="fc-desc-orphans-only"> Orphans only
+        </label>
+        <button class="button is-info is-small is-outlined" onclick="fileCacherSearchDescription()">
+          <span class="icon is-small"><svg class="icon"><use href="#icon-activity"/></svg></span>
+          <span>Search Descriptions</span>
+        </button>
+        <span id="fc-desc-status" class="has-text-grey" style="font-size: 0.85rem;"></span>
+      </div>
+      <div id="fc-desc-results" class="mt-3"></div>
     </div>
     <div id="filecacher-error" style="display: none;">
       <div class="notification is-danger is-light">
