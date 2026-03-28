@@ -481,43 +481,42 @@ class FileCacherDownloadHandler(BaseHandler):
 
         try:
             fc = self.service.file_cacher
-            buf = tempfile.SpooledTemporaryFile(
-                max_size=50 * 1024 * 1024)
-            with zipfile.ZipFile(buf, "w",
-                                 zipfile.ZIP_DEFLATED) as zf:
-                for digest in digests:
-                    try:
-                        src = fc.get_file(digest)
-                    except KeyError as e:
-                        logger.warning("Cannot read digest %s for "
-                                       "download: %s", digest, e)
-                        continue
-                    try:
-                        desc = fc.describe(digest)
-                    except KeyError:
-                        desc = ""
+            with tempfile.SpooledTemporaryFile(
+                    max_size=50 * 1024 * 1024) as buf:
+                with zipfile.ZipFile(buf, "w",
+                                     zipfile.ZIP_DEFLATED) as zf:
+                    for digest in digests:
+                        try:
+                            src = fc.get_file(digest)
+                        except KeyError as e:
+                            logger.warning("Cannot read digest %s for "
+                                           "download: %s", digest, e)
+                            continue
+                        try:
+                            desc = fc.describe(digest)
+                        except KeyError:
+                            desc = ""
 
-                    if desc:
-                        sanitized = re.sub(r'[^\w.\- ]', '_', desc[:30])
-                        filename = "%s_%s" % (digest, sanitized)
-                    else:
-                        filename = digest
+                        if desc:
+                            sanitized = re.sub(
+                                r'[^\w.\- ]', '_', desc[:30])
+                            filename = "%s_%s" % (digest, sanitized)
+                        else:
+                            filename = digest
 
-                    with zf.open(filename, "w") as dst:
-                        shutil.copyfileobj(src, dst)
-                    src.close()
+                        with src, zf.open(filename, "w") as dst:
+                            shutil.copyfileobj(src, dst)
 
-            buf.seek(0)
-            self.set_header("Content-Type", "application/zip")
-            self.set_header(
-                "Content-Disposition",
-                "attachment; filename=\"filecacher_files.zip\"")
-            while True:
-                chunk = buf.read(65536)
-                if not chunk:
-                    break
-                self.write(chunk)
-            buf.close()
+                buf.seek(0)
+                self.set_header("Content-Type", "application/zip")
+                self.set_header(
+                    "Content-Disposition",
+                    "attachment; filename=\"filecacher_files.zip\"")
+                while True:
+                    chunk = buf.read(65536)
+                    if not chunk:
+                        break
+                    self.write(chunk)
         except Exception as error:
             logger.error("Error creating ZIP download: %s", error,
                          exc_info=True)
