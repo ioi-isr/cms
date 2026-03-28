@@ -111,6 +111,9 @@ from .main import (
     NotificationsHandler,
     FileCacherStatsHandler,
     FileCacherDeleteOrphansHandler,
+    FileCacherSearchHandler,
+    FileCacherListByDescriptionHandler,
+    FileCacherDownloadHandler,
     MarkdownRenderHandler,
 )
 from .submission import \
@@ -233,6 +236,9 @@ HANDLERS = [
     (r"/notifications", NotificationsHandler),
     (r"/filecacher/stats", FileCacherStatsHandler),
     (r"/filecacher/delete_orphans", FileCacherDeleteOrphansHandler),
+    (r"/filecacher/search", FileCacherSearchHandler),
+    (r"/filecacher/list_by_description", FileCacherListByDescriptionHandler),
+    (r"/filecacher/download", FileCacherDownloadHandler),
     (r"/file/([a-f0-9]+)/([a-zA-Z0-9_.-]+)", FileFromDigestHandler),
     (r"/render_markdown", MarkdownRenderHandler),
     # Contest
