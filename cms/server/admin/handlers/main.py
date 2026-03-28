@@ -289,10 +289,15 @@ class FileCacherSearchHandler(BaseHandler):
     def get(self):
         search_term = self.get_argument("search_term", "")
         orphans_only = self.get_argument("orphans_only", "true").lower() == "true"
-        max_results = int(self.get_argument("max_results",
-                                            str(self.MAX_RESULTS_DEFAULT)))
-        max_file_size = int(self.get_argument("max_file_size",
-                                              str(self.MAX_FILE_SIZE_DEFAULT)))
+        try:
+            max_results = int(self.get_argument(
+                "max_results", str(self.MAX_RESULTS_DEFAULT)))
+            max_file_size = int(self.get_argument(
+                "max_file_size", str(self.MAX_FILE_SIZE_DEFAULT)))
+        except ValueError:
+            self.set_status(400)
+            self.write(json.dumps({"error": "Invalid numeric parameter"}))
+            return
 
         if not search_term:
             self.write(json.dumps([]))
@@ -361,8 +366,13 @@ class FileCacherListByDescriptionHandler(BaseHandler):
         description_pattern = self.get_argument("description_pattern", "")
         orphans_only = self.get_argument(
             "orphans_only", "false").lower() == "true"
-        max_results = int(self.get_argument("max_results",
-                                            str(self.MAX_RESULTS_DEFAULT)))
+        try:
+            max_results = int(self.get_argument(
+                "max_results", str(self.MAX_RESULTS_DEFAULT)))
+        except ValueError:
+            self.set_status(400)
+            self.write(json.dumps({"error": "Invalid numeric parameter"}))
+            return
 
         if not description_pattern:
             self.write(json.dumps([]))

@@ -417,7 +417,7 @@ function fileCacherRenderResults(data, containerId, groupName) {
         var row = data[i];
         var sizeStr = row.size >= 0 ? formatBytes(row.size) : 'N/A';
         var shortDigest = row.digest.substring(0, 16) + '\u2026';
-        var descEscaped = (row.description || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var descEscaped = (row.description || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         html += '<tr><td><input type="checkbox" class="fc-dl-check" name="' + groupName + '" value="' + row.digest + '" /></td>';
         html += '<td style="font-family:monospace; font-size:0.85em;" title="' + row.digest + '">' + shortDigest + '</td>';
         html += '<td style="font-size:0.85em; max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + descEscaped + '">' + descEscaped + '</td>';
