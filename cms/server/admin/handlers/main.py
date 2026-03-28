@@ -41,6 +41,9 @@ from .base import BaseHandler, SimpleHandler, require_permission
 
 logger = logging.getLogger(__name__)
 
+# Regex to validate file cacher digests (hex-only strings).
+_DIGEST_RE = re.compile(r'^[a-f0-9]+$')
+
 
 class LoginHandler(SimpleHandler("login.html", authenticated=False)):
     """Login handler.
@@ -429,6 +432,14 @@ class FileCacherDownloadHandler(BaseHandler):
             self.write(json.dumps({
                 "error": "Too many digests (max %d)" % self.MAX_DIGESTS
             }))
+            return
+
+        # Validate all digests are hex-only to prevent path traversal.
+        digests = [d for d in digests
+                   if isinstance(d, str) and _DIGEST_RE.match(d)]
+        if not digests:
+            self.set_status(400)
+            self.write(json.dumps({"error": "No valid digests provided"}))
             return
 
         try:
