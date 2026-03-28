@@ -25,10 +25,11 @@
 
 """
 
-import io
 import json
 import logging
 import re
+import shutil
+import tempfile
 import zipfile
 
 from cms import ServiceCoord, get_service_shards, get_service_address
@@ -205,14 +206,20 @@ class NotificationsHandler(BaseHandler):
 
         self.write(json.dumps(res))
 
-def _get_orphan_digests(file_cacher):
-    """Return (all_files, orphan_digests) from the file cacher.
+def _get_orphan_digests(file_cacher, all_files=None):
+    """Return (all_digests, orphan_digests) from the file cacher.
 
     Compares files present in the file store against those referenced
     in the database. Files not referenced by any task or contest are
     considered orphans.
+
+    If all_files is provided (a list of (digest, description) pairs
+    from file_cacher.list()), it is reused to avoid a duplicate scan.
     """
-    files = {digest for digest, _ in file_cacher.list()}
+    if all_files is None:
+        files = {digest for digest, _ in file_cacher.list()}
+    else:
+        files = {digest for digest, _ in all_files}
     with SessionGen() as session:
         referenced = enumerate_files(session)
     return files, files - referenced
@@ -286,32 +293,40 @@ class FileCacherSearchHandler(BaseHandler):
     MAX_RESULTS_DEFAULT = 100
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        search_term = self.get_argument("search_term", "")
-        orphans_only = self.get_argument("orphans_only", "true").lower() == "true"
+    def post(self):
         try:
-            max_results = int(self.get_argument(
-                "max_results", str(self.MAX_RESULTS_DEFAULT)))
-            max_file_size = int(self.get_argument(
-                "max_file_size", str(self.MAX_FILE_SIZE_DEFAULT)))
-        except ValueError:
+            body = json.loads(self.request.body)
+        except (json.JSONDecodeError, AttributeError):
+            self.set_status(400)
+            self.write(json.dumps({"error": "Invalid JSON body"}))
+            return
+
+        search_term = body.get("search_term", "")
+        orphans_only = body.get("orphans_only", True)
+        try:
+            max_results = int(body.get(
+                "max_results", self.MAX_RESULTS_DEFAULT))
+            max_file_size = int(body.get(
+                "max_file_size", self.MAX_FILE_SIZE_DEFAULT))
+        except (ValueError, TypeError):
             self.set_status(400)
             self.write(json.dumps({"error": "Invalid numeric parameter"}))
             return
 
         if not search_term:
-            self.write(json.dumps([]))
+            self.write(json.dumps({"results": [], "skipped": 0}))
             return
 
         try:
             fc = self.service.file_cacher
             all_files = fc.list()
             logger.info("FileCacher content search: %d total files, "
-                        "search_term=%r, orphans_only=%s",
-                        len(all_files), search_term, orphans_only)
+                        "query_length=%d, orphans_only=%s",
+                        len(all_files), len(search_term), orphans_only)
 
             if orphans_only:
-                _, orphan_digests = _get_orphan_digests(fc)
+                _, orphan_digests = _get_orphan_digests(
+                    fc, all_files=all_files)
                 digests_to_search = {
                     digest: desc for digest, desc in all_files
                     if digest in orphan_digests
@@ -340,7 +355,7 @@ class FileCacherSearchHandler(BaseHandler):
                             "description": desc or "",
                             "size": size,
                         })
-                except (KeyError, Exception) as e:
+                except KeyError as e:
                     logger.debug("Skipping digest %s during search: %s",
                                  digest, e)
                     continue
@@ -348,7 +363,8 @@ class FileCacherSearchHandler(BaseHandler):
             logger.info("FileCacher content search complete: "
                         "%d matches found, %d skipped (too large)",
                         len(results), skipped)
-            self.write(json.dumps(results))
+            self.write(json.dumps(
+                {"results": results, "skipped": skipped}))
         except Exception as error:
             logger.error("Error searching file contents: %s", error,
                          exc_info=True)
@@ -362,14 +378,20 @@ class FileCacherListByDescriptionHandler(BaseHandler):
     MAX_RESULTS_DEFAULT = 500
 
     @require_permission(BaseHandler.PERMISSION_ALL)
-    def get(self):
-        description_pattern = self.get_argument("description_pattern", "")
-        orphans_only = self.get_argument(
-            "orphans_only", "false").lower() == "true"
+    def post(self):
         try:
-            max_results = int(self.get_argument(
-                "max_results", str(self.MAX_RESULTS_DEFAULT)))
-        except ValueError:
+            body = json.loads(self.request.body)
+        except (json.JSONDecodeError, AttributeError):
+            self.set_status(400)
+            self.write(json.dumps({"error": "Invalid JSON body"}))
+            return
+
+        description_pattern = body.get("description_pattern", "")
+        orphans_only = body.get("orphans_only", False)
+        try:
+            max_results = int(body.get(
+                "max_results", self.MAX_RESULTS_DEFAULT))
+        except (ValueError, TypeError):
             self.set_status(400)
             self.write(json.dumps({"error": "Invalid numeric parameter"}))
             return
@@ -381,9 +403,14 @@ class FileCacherListByDescriptionHandler(BaseHandler):
         try:
             fc = self.service.file_cacher
             all_files = fc.list()
+            logger.info("FileCacher description search: %d total files, "
+                        "query_length=%d, orphans_only=%s",
+                        len(all_files), len(description_pattern),
+                        orphans_only)
 
             if orphans_only:
-                _, orphan_digests = _get_orphan_digests(fc)
+                _, orphan_digests = _get_orphan_digests(
+                    fc, all_files=all_files)
                 files_to_search = [
                     (digest, desc) for digest, desc in all_files
                     if digest in orphan_digests
@@ -401,7 +428,7 @@ class FileCacherListByDescriptionHandler(BaseHandler):
                 if pattern_lower in desc_str.lower():
                     try:
                         size = fc.get_size(digest)
-                    except (KeyError, Exception):
+                    except KeyError:
                         size = -1
                     results.append({
                         "digest": digest,
@@ -454,19 +481,20 @@ class FileCacherDownloadHandler(BaseHandler):
 
         try:
             fc = self.service.file_cacher
-            buf = io.BytesIO()
+            buf = tempfile.SpooledTemporaryFile(
+                max_size=50 * 1024 * 1024)
             with zipfile.ZipFile(buf, "w",
                                  zipfile.ZIP_DEFLATED) as zf:
                 for digest in digests:
                     try:
-                        content = fc.get_file_content(digest)
-                    except (KeyError, Exception) as e:
+                        src = fc.get_file(digest)
+                    except KeyError as e:
                         logger.warning("Cannot read digest %s for "
                                        "download: %s", digest, e)
                         continue
                     try:
                         desc = fc.describe(digest)
-                    except (KeyError, Exception):
+                    except KeyError:
                         desc = ""
 
                     if desc:
@@ -475,13 +503,21 @@ class FileCacherDownloadHandler(BaseHandler):
                     else:
                         filename = digest
 
-                    zf.writestr(filename, content)
+                    with zf.open(filename, "w") as dst:
+                        shutil.copyfileobj(src, dst)
+                    src.close()
 
+            buf.seek(0)
             self.set_header("Content-Type", "application/zip")
             self.set_header(
                 "Content-Disposition",
                 "attachment; filename=\"filecacher_files.zip\"")
-            self.write(buf.getvalue())
+            while True:
+                chunk = buf.read(65536)
+                if not chunk:
+                    break
+                self.write(chunk)
+            buf.close()
         except Exception as error:
             logger.error("Error creating ZIP download: %s", error,
                          exc_info=True)

@@ -357,19 +357,24 @@ function fileCacherSearchContent() {
     statusEl.textContent = 'Searching file contents\u2026 This reads every file and may take a long time.';
     statusEl.className = 'has-text-grey';
     resultsEl.innerHTML = '';
-    var url = '{{ url("filecacher", "search") }}?search_term=' + encodeURIComponent(term) +
-        '&orphans_only=' + orphansOnly;
-    fetch(url, {
-        headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+    fetch('{{ url("filecacher", "search") }}', {
+        method: 'POST',
+        headers: {
+            'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ search_term: term, orphans_only: orphansOnly })
     }).then(function(resp) {
         return resp.json().then(function(data) {
             if (!resp.ok) throw new Error(data.error || 'Search failed');
             return data;
         });
     }).then(function(data) {
-        statusEl.textContent = data.length + ' match(es) found.';
+        var msg = data.results.length + ' match(es) found.';
+        if (data.skipped > 0) msg += ' ' + data.skipped + ' file(s) skipped (too large).';
+        statusEl.textContent = msg;
         statusEl.className = 'has-text-success';
-        fileCacherRenderResults(data, 'fc-search-results', 'content');
+        fileCacherRenderResults(data.results, 'fc-search-results', 'content');
     }).catch(function(error) {
         statusEl.textContent = 'Error: ' + error.message;
         statusEl.className = 'has-text-danger';
@@ -385,10 +390,13 @@ function fileCacherSearchDescription() {
     statusEl.textContent = 'Searching descriptions\u2026';
     statusEl.className = 'has-text-grey';
     resultsEl.innerHTML = '';
-    var url = '{{ url("filecacher", "list_by_description") }}?description_pattern=' + encodeURIComponent(pattern) +
-        '&orphans_only=' + orphansOnly;
-    fetch(url, {
-        headers: { 'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value }
+    fetch('{{ url("filecacher", "list_by_description") }}', {
+        method: 'POST',
+        headers: {
+            'X-XSRFToken': document.querySelector('input[name="_xsrf"]').value,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ description_pattern: pattern, orphans_only: orphansOnly })
     }).then(function(resp) {
         return resp.json().then(function(data) {
             if (!resp.ok) throw new Error(data.error || 'Search failed');
@@ -424,7 +432,7 @@ function fileCacherRenderResults(data, containerId, groupName) {
         html += '<td class="has-text-right" style="white-space:nowrap;">' + sizeStr + '</td></tr>';
     }
     html += '</tbody></table></div>';
-    html += '<button class="button is-info is-small is-outlined mt-2" onclick="fileCacherDownloadSelected(\'' + groupName + '\')">';
+    html += '<button class="button is-info is-small is-outlined mt-2 is-hidden-touch" onclick="fileCacherDownloadSelected(\'' + groupName + '\')">';
     html += '<span class="icon is-small"><svg class="icon"><use href="#icon-download"/></svg></span>';
     html += '<span>Download Selected</span></button>';
     container.innerHTML = html;
