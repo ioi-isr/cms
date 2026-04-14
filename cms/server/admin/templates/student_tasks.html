@@ -58,7 +58,7 @@
         {% if admin.permission_all and available_tasks|length > 0 %}
         <div class="level-right">
             <div class="level-item">
-                <button type="button" class="button is-primary" onclick="var p=document.getElementById('add-task-panel');p.style.display=p.style.display==='none'?'':'none'">
+                <button type="button" class="button is-primary" aria-controls="add-task-panel" aria-expanded="{{ 'true' if student_tasks|length == 0 else 'false' }}" onclick="var p=document.getElementById('add-task-panel'),v=p.style.display==='none';p.style.display=v?'':'none';this.setAttribute('aria-expanded',v)">
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>Add Task</span>
                 </button>
@@ -68,11 +68,11 @@
     </div>
 
     {% if admin.permission_all and available_tasks|length > 0 %}
-    <div class="tp-filter-card mb-4" id="add-task-panel" style="display:none;">
+    <div class="tp-filter-card mb-4" id="add-task-panel" {% if student_tasks|length > 0 %}style="display:none;"{% endif %}>
         <form class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
             <div class="is-flex-grow-1" style="min-width: 200px;">
-                <select name="task_id" id="task_selector" class="searchable-select" style="width: 100%;">
+                <select name="task_id" id="task_selector" class="searchable-select" style="width: 100%;" required>
                     <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for task in available_tasks %}
                     <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
@@ -216,7 +216,7 @@
 <script>
 // Table sorting using CMS.AWSUtils
 $(document).ready(function() {
-    CMS.AWSUtils.init_table_sort($("#student-tasks-table"), false, 0);
+    CMS.AWSUtils.init_table_sort($("#student-tasks-table"), false, 0, true);
 });
 </script>
 {% endblock core %}

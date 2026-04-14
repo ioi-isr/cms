@@ -34,7 +34,7 @@ AdminTableUtils.initDragDropReorder({
 $(document).ready(function() {
     var table = $("#tasks-table");
     if (table.length) {
-        CMS.AWSUtils.init_table_sort(table, false, -1);
+        CMS.AWSUtils.init_table_sort(table, false, -1, true);
     }
 });
 {% endmacro %}

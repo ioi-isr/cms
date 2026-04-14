@@ -17,7 +17,7 @@
     {{ task_search_toolbar(training_program.managing_contest.tasks|length, admin.permission_all and unassigned_tasks|length > 0) }}
 
     {% if admin.permission_all and unassigned_tasks|length > 0 %}
-    <div class="tp-filter-card mb-4" id="add-task-panel" style="display:none;">
+    <div class="tp-filter-card mb-4" id="add-task-panel" {% if training_program.managing_contest.tasks|length > 0 %}style="display:none;"{% endif %}>
         <form class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
             <div class="is-flex-grow-1" style="min-width: 200px;">

@@ -20,7 +20,7 @@
     {% if show_add_button %}
     <div class="level-right">
         <div class="level-item">
-            <button type="button" class="button is-primary" onclick="var p=document.getElementById('add-task-panel');p.style.display=p.style.display==='none'?'':'none'">
+            <button type="button" class="button is-primary" aria-controls="add-task-panel" aria-expanded="{{ 'true' if task_count == 0 else 'false' }}" onclick="var p=document.getElementById('add-task-panel'),v=p.style.display==='none';p.style.display=v?'':'none';this.setAttribute('aria-expanded',v)">
                 <svg class="icon is-small"><use href="#icon-plus"/></svg>
                 <span>Add Task</span>
             </button>
