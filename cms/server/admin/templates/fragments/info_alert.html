@@ -9,30 +9,32 @@
 #}
 {% macro alert(title, message, items=none, type='warning') %}
 <article class="message is-{{ type }}">
-    <div class="message-body is-flex is-gap-2">
-        <div class="info-alert-icon">
-            {% if type == 'warning' %}
-            <svg class="icon"><use href="#icon-alert-triangle"/></svg>
-            {% else %}
-            <svg class="icon"><use href="#icon-info"/></svg>
-            {% endif %}
-        </div>
-        <div class="info-alert-content">
-            <strong>{{ title }}</strong>
-            <div>{{ message }}</div>
-            {% if items %}
-            <div class="info-alert-items">
-                {% for item in items %}
-                <a href="{{ item.url }}" class="info-alert-badge">
-                    {{ item.label }}
-                    {% if item.count is defined and item.count %}
-                    <span class="info-alert-count">{{ item.count }}</span>
-                    {% endif %}
-                </a>
-                {% endfor %}
+    <div class="message-body">
+        <article class="media">
+            <figure class="media-left">
+                {% if type == 'warning' %}
+                <svg class="icon"><use href="#icon-alert-triangle"/></svg>
+                {% else %}
+                <svg class="icon"><use href="#icon-info"/></svg>
+                {% endif %}
+            </figure>
+            <div class="media-content">
+                <strong>{{ title }}</strong>
+                <div>{{ message }}</div>
+                {% if items %}
+                <div class="info-alert-items">
+                    {% for item in items %}
+                    <a href="{{ item.url }}" class="info-alert-badge">
+                        {{ item.label }}
+                        {% if item.count is defined and item.count %}
+                        <span class="info-alert-count">{{ item.count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
-        </div>
+        </article>
     </div>
 </article>
 {% endmacro %}

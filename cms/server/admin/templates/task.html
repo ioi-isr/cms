@@ -891,7 +891,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                             <div class="fixed-grid has-2-cols">
                               <div class="grid">
                                 <div class="cell is-col-span-1">
-                                    {{ form_field('time_limit_' ~ dataset.id, 'Time limit (seconds)', dataset.time_limit if dataset.time_limit is not none else '', type='number', info_tooltip='Total maximum time for each evaluation, in seconds.') }}
+                                    {{ form_field('time_limit_' ~ dataset.id, 'Time limit (seconds)', dataset.time_limit if dataset.time_limit is not none else '', type='number', step='any', info_tooltip='Total maximum time for each evaluation, in seconds.') }}
                                 </div>
                                 <div class="cell is-col-span-1">
                                     {{ form_field('memory_limit_' ~ dataset.id, 'Memory limit (MiB)', dataset.memory_limit // (1024 * 1024) if dataset.memory_limit is not none else '', type='number', info_tooltip='Total maximum memory usage for each evaluation, in MiB (2^20 bytes).') }}
@@ -1046,28 +1046,32 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
 
                         {% if ds_ns.any_validator_running %}
                         <article class="message is-info" style="margin-bottom: 16px;">
-                            <div class="message-body is-flex is-gap-2">
-                                <div class="info-alert-icon">
-                                    <svg class="icon is-small"><use href="#icon-cpu"/></svg>
-                                </div>
-                                <div class="info-alert-content">
-                                    <div>One or more validators are currently running. Refresh the page to see updated results.</div>
-                                </div>
+                            <div class="message-body">
+                                <article class="media">
+                                    <figure class="media-left">
+                                        <svg class="icon is-small"><use href="#icon-cpu"/></svg>
+                                    </figure>
+                                    <div class="media-content">
+                                        <div>One or more validators are currently running. Refresh the page to see updated results.</div>
+                                    </div>
+                                </article>
                             </div>
                         </article>
                         {% elif ds_ns.total_not_validated > 0 %}
                         <article class="message is-warning" style="margin-bottom: 16px;">
-                            <div class="message-body is-flex is-gap-2">
-                                <div class="info-alert-icon">
-                                    <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-                                </div>
-                                <div class="info-alert-content">
-                                    <div>{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
-                                    {% if admin.permission_all %}
-                                        <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
-                                    {% endif %}
+                            <div class="message-body">
+                                <article class="media">
+                                    <figure class="media-left">
+                                        <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                                    </figure>
+                                    <div class="media-content">
+                                        <div>{{ ds_ns.total_not_validated }} testcase(s) have not been validated.
+                                        {% if admin.permission_all %}
+                                            <button type="button" onclick="document.getElementById('rerun_validators_form_{{ dataset.id }}').submit();" style="font-weight: 600; background: none; border: none; color: inherit; text-decoration: underline; cursor: pointer;">Rerun validators</button>
+                                        {% endif %}
+                                        </div>
                                     </div>
-                                </div>
+                                </article>
                             </div>
                         </article>
                         {% endif %}

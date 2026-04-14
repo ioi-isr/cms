@@ -64,13 +64,15 @@ if (addTaskForm) {
 
 {% if contest.start <= timestamp %}
     <article class="message is-warning" style="margin-bottom: 20px;">
-        <div class="message-body is-flex is-gap-2">
-            <div class="info-alert-icon">
-                <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-            </div>
-            <div class="info-alert-content">
-                <div>The contest is visible to contestants, tasks added can be seen.</div>
-            </div>
+        <div class="message-body">
+            <article class="media">
+                <figure class="media-left">
+                    <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                </figure>
+                <div class="media-content">
+                    <div>The contest is visible to contestants, tasks added can be seen.</div>
+                </div>
+            </article>
         </div>
     </article>
 {% endif %}
