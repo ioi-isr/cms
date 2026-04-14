@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "fragments/task_search_toolbar.html" import task_search_toolbar %}
+{% from "fragments/task_reorder_script.html" import task_reorder_script %}
 
 {% block js_init %}
 {% if is_training_day %}
@@ -76,28 +78,7 @@ if (addTaskForm) {
 {% endif %}
 
     <!-- Toolbar: Search + Add -->
-    <div class="level mb-4">
-        <div class="level-left">
-            {% if contest.get_tasks()|length > 0 %}
-            <div class="level-item">
-                <div class="control has-icons-left">
-                    <input type="text" class="input" id="task-search-input" placeholder="Search tasks..." aria-label="Search tasks" oninput="CMS.AWSUtils.filter_table('tasks-table', this.value)" style="width: 300px;">
-                    <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        {% if admin.permission_all and unassigned_tasks|length > 0 %}
-        <div class="level-right">
-            <div class="level-item">
-                <button type="button" class="button is-primary" onclick="var p=document.getElementById('add-task-panel');p.style.display=p.style.display==='none'?'':'none'">
-                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
-                    <span>Add Task</span>
-                </button>
-            </div>
-        </div>
-        {% endif %}
-    </div>
+    {{ task_search_toolbar(contest.get_tasks()|length, admin.permission_all and unassigned_tasks|length > 0) }}
 
     {% if admin.permission_all and unassigned_tasks|length > 0 %}
     <div class="tp-filter-card mb-4" id="add-task-panel" style="display:none;">
@@ -240,39 +221,8 @@ if (addTaskForm) {
     // Only initialize drag-drop if tasks table exists
     var tasksTbody = document.getElementById('tasks-tbody');
     if (tasksTbody) {
-        AdminTableUtils.initDragDropReorder({
-            tbodyId: 'tasks-tbody',
-            rowSelector: 'tr',
-            rowIdAttr: 'task-id',
-            colSpan: colSpan,
-            confirmMessage: 'Save the new task order?',
-            onSave: function(orderedIds) {
-                var order = orderedIds.map(function(item) {
-                    return { task_id: item.id, new_num: item.position };
-                });
-                var form = document.getElementById('tasks-form');
-                var reorderInput = document.getElementById('reorder-data');
-                reorderInput.value = JSON.stringify(order);
-
-                var operationInput = form.querySelector('input[name="operation"]');
-                if (!operationInput) {
-                    operationInput = document.createElement('input');
-                    operationInput.type = 'hidden';
-                    operationInput.name = 'operation';
-                    form.appendChild(operationInput);
-                }
-                operationInput.value = 'reorder';
-                form.submit();
-            }
-        });
+        {{ task_reorder_script(col_span='colSpan') }}
     }
-
-  $(document).ready(function() {
-      var table = $("#tasks-table");
-      if (table.length) {
-          CMS.AWSUtils.init_table_sort(table, false, -1);
-      }
-  });
 })();
 </script>
 {% endblock core %}

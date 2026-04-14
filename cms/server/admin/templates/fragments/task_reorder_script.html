@@ -1,0 +1,40 @@
+{#
+  Shared drag-drop reorder and table sort initialization for task list pages.
+
+  Parameters:
+  - col_span: Number of columns in the table (used for drag placeholder)
+#}
+{% macro task_reorder_script(col_span) %}
+AdminTableUtils.initDragDropReorder({
+    tbodyId: 'tasks-tbody',
+    rowSelector: 'tr',
+    rowIdAttr: 'task-id',
+    colSpan: {{ col_span }},
+    confirmMessage: 'Save the new task order?',
+    onSave: function(orderedIds) {
+        var order = orderedIds.map(function(item) {
+            return { task_id: item.id, new_num: item.position };
+        });
+        var form = document.getElementById('tasks-form');
+        var reorderInput = document.getElementById('reorder-data');
+        reorderInput.value = JSON.stringify(order);
+
+        var operationInput = form.querySelector('input[name="operation"]');
+        if (!operationInput) {
+            operationInput = document.createElement('input');
+            operationInput.type = 'hidden';
+            operationInput.name = 'operation';
+            form.appendChild(operationInput);
+        }
+        operationInput.value = 'reorder';
+        form.submit();
+    }
+});
+
+$(document).ready(function() {
+    var table = $("#tasks-table");
+    if (table.length) {
+        CMS.AWSUtils.init_table_sort(table, false, -1);
+    }
+});
+{% endmacro %}
