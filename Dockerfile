@@ -59,11 +59,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         >/etc/apt/keyrings/isolate.asc
     apt-get update
     apt-get install -y isolate
-    # isolate 2.3+ creates an 'isolate' user (often UID 1001) which conflicts
-    # with cmsuser. We only need the isolate *group*, so remove the user.
-    # Move the user's primary group away from 'isolate' first so that
-    # userdel does not remove the group along with the user.
-    if id isolate &>/dev/null; then usermod -g nogroup isolate && userdel isolate; fi
     sed -i 's@^cg_root .*@cg_root = /sys/fs/cgroup@' /etc/isolate
 EOF
 
