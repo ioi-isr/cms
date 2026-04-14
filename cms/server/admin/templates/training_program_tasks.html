@@ -5,34 +5,55 @@
     <!-- Header -->
     <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
-        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+        There are {{ training_program.managing_contest.tasks|length }} tasks in
+        <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
     </p>
 
     {% include "fragments/overload_warning.html" %}
 
-    <!-- Add Task Card -->
-    <div class="tp-filter-card">
-        <label class="tp-filter-label" for="task_id">Add Task:</label>
-        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+    <!-- Toolbar: Search + Add -->
+    <div class="level mb-4">
+        <div class="level-left">
+            {% if training_program.managing_contest.tasks|length > 0 %}
+            <div class="level-item">
+                <div class="control has-icons-left">
+                    <input type="text" class="input" id="task-search-input" placeholder="Search tasks..." aria-label="Search tasks" oninput="CMS.AWSUtils.filter_table('tasks-table', this.value)" style="width: 300px;">
+                    <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if admin.permission_all and unassigned_tasks|length > 0 %}
+        <div class="level-right">
+            <div class="level-item">
+                <button type="button" class="button is-primary" onclick="var p=document.getElementById('add-task-panel');p.style.display=p.style.display==='none'?'':'none'">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>Add Task</span>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if admin.permission_all and unassigned_tasks|length > 0 %}
+    <div class="tp-filter-card mb-4" id="add-task-panel" style="display:none;">
+        <form class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
-            <div style="flex-grow: 1;">
+            <div class="is-flex-grow-1" style="min-width: 200px;">
                 <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
-                    <option value="" selected disabled hidden>Select a task...</option>
+                    <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for t in unassigned_tasks %}
                     <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
-                <span>Add Task</span>
+            <button type="submit" class="button is-primary">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add</span>
             </button>
         </form>
     </div>
-
-    <!-- Tasks Table -->
-    <div class="tp-section-header">
-        <h2>All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
-    </div>
+    {% endif %}
 
     {% if training_program.managing_contest.tasks %}
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">

@@ -36,36 +36,56 @@
     </div>
 
     <!-- Header -->
-    <h1 class="title is-spaced">Task Archive: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a></h1>
+    <h1 class="title is-spaced">Task Archive</h1>
     <p class="subtitle has-text-grey">
-        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+        <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+        has {{ student_tasks|length }} assigned tasks in
+        <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
     </p>
 
-    <!-- Add Task Card -->
-    <div class="tp-filter-card">
-        <label class="tp-filter-label" for="task_selector">Manual Task Assignment:</label>
-        <form enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px;">
-            {{ xsrf_form_html|safe }}
+    <!-- Toolbar: Search + Add -->
+    <div class="level mb-4">
+        <div class="level-left">
+            {% if student_tasks|length > 0 %}
+            <div class="level-item">
+                <div class="control has-icons-left">
+                    <input type="text" class="input" placeholder="Search tasks..." aria-label="Search tasks" oninput="CMS.AWSUtils.filter_table('student-tasks-table', this.value)" style="width: 300px;">
+                    <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if admin.permission_all and available_tasks|length > 0 %}
+        <div class="level-right">
+            <div class="level-item">
+                <button type="button" class="button is-primary" onclick="var p=document.getElementById('add-task-panel');p.style.display=p.style.display==='none'?'':'none'">
+                    <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                    <span>Add Task</span>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
-            <div style="flex-grow: 1;">
-                <select name="task_id" id="task_selector" class="searchable-select" placeholder="Search for a task..." style="width: 100%;">
-                    <option value="" selected disabled hidden>Select a task...</option>
+    {% if admin.permission_all and available_tasks|length > 0 %}
+    <div class="tp-filter-card mb-4" id="add-task-panel" style="display:none;">
+        <form class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" enctype="multipart/form-data" action="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks", "add") }}" method="POST">
+            {{ xsrf_form_html|safe }}
+            <div class="is-flex-grow-1" style="min-width: 200px;">
+                <select name="task_id" id="task_selector" class="searchable-select" style="width: 100%;">
+                    <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for task in available_tasks %}
                     <option value="{{ task.id }}">{{ task.name }} - {{ task.title }}</option>
                     {% endfor %}
                 </select>
             </div>
-
-            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
-                <span>Add Task</span>
+            <button type="submit" class="button is-primary">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add</span>
             </button>
         </form>
     </div>
-
-    <!-- List Header -->
-    <div class="tp-section-header">
-        <h2>Assigned Tasks ({{ student_tasks|length }})</h2>
-    </div>
+    {% endif %}
 
     <!-- Table -->
     <div class="table-container">
