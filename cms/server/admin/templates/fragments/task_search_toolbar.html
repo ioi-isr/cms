@@ -6,7 +6,7 @@
   - show_add_button: Whether to show the Add Task button (requires permission + unassigned tasks)
 #}
 {% macro task_search_toolbar(task_count, show_add_button=false) %}
-<div class="level mb-4">
+<div class="level mb-4 is-mobile">
     <div class="level-left">
         {% if task_count > 0 %}
         <div class="level-item">
