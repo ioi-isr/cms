@@ -1,0 +1,31 @@
+{#
+  Shared toolbar for task list pages: search input + "Add Task" toggle button.
+
+  Parameters:
+  - task_count: Number of tasks currently in the list
+  - show_add_button: Whether to show the Add Task button (requires permission + unassigned tasks)
+#}
+{% macro task_search_toolbar(task_count, show_add_button=false) %}
+<div class="level mb-4 is-mobile">
+    <div class="level-left">
+        {% if task_count > 0 %}
+        <div class="level-item">
+            <div class="control has-icons-left">
+                <input type="text" class="input" id="task-search-input" placeholder="Search tasks..." aria-label="Search tasks" oninput="CMS.AWSUtils.filter_table('tasks-table', this.value)" style="width: 300px;">
+                <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% if show_add_button %}
+    <div class="level-right">
+        <div class="level-item">
+            <button type="button" class="button is-primary" aria-controls="add-task-panel" aria-expanded="{{ 'true' if task_count == 0 else 'false' }}" onclick="var p=document.getElementById('add-task-panel'),v=p.style.display==='none';p.style.display=v?'':'none';this.setAttribute('aria-expanded',v)">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add Task</span>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}

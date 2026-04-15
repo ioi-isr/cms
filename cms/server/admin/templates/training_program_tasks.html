@@ -1,38 +1,40 @@
 {% extends "base.html" %}
+{% from "fragments/task_search_toolbar.html" import task_search_toolbar %}
+{% from "fragments/task_reorder_script.html" import task_reorder_script %}
 
 {% block core %}
 <div class="content-constraint" style="max-width: 900px;">
     <!-- Header -->
     <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
-        Program: <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
+        There are {{ training_program.managing_contest.tasks|length }} tasks in
+        <a href="{{ url("training_program", training_program.id) }}">{{ training_program.name }}</a>
     </p>
 
     {% include "fragments/overload_warning.html" %}
 
-    <!-- Add Task Card -->
-    <div class="tp-filter-card">
-        <label class="tp-filter-label" for="task_id">Add Task:</label>
-        <form action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+    <!-- Toolbar: Search + Add -->
+    {{ task_search_toolbar(training_program.managing_contest.tasks|length, admin.permission_all and unassigned_tasks|length > 0) }}
+
+    {% if admin.permission_all and unassigned_tasks|length > 0 %}
+    <div class="tp-filter-card mb-4" id="add-task-panel" {% if training_program.managing_contest.tasks|length > 0 %}style="display:none;"{% endif %}>
+        <form class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" action="{{ url("training_program", training_program.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
-            <div style="flex-grow: 1;">
-                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
-                    <option value="" selected disabled hidden>Select a task...</option>
+            <div class="is-flex-grow-1" style="min-width: 200px;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;" required>
+                    <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for t in unassigned_tasks %}
                     <option value="{{ t.id }}">{{ t.name }} - {{ t.title }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
-                <span>Add Task</span>
+            <button type="submit" class="button is-primary">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add</span>
             </button>
         </form>
     </div>
-
-    <!-- Tasks Table -->
-    <div class="tp-section-header">
-        <h2>All Tasks ({{ training_program.managing_contest.tasks|length }})</h2>
-    </div>
+    {% endif %}
 
     {% if training_program.managing_contest.tasks %}
     <form action="{{ url("training_program", training_program.id, "tasks") }}" method="POST" id="tasks-form">
@@ -157,40 +159,8 @@
         });
     });
 
-// Drag and drop reordering using shared utility
-AdminTableUtils.initDragDropReorder({
-    tbodyId: 'tasks-tbody',
-    rowSelector: 'tr',
-    rowIdAttr: 'task-id',
-    colSpan: 4,
-    confirmMessage: 'Save the new task order?',
-    onSave: function(orderedIds) {
-        var order = orderedIds.map(function(item) {
-            return { task_id: item.id, new_num: item.position };
-        });
-        var form = document.getElementById('tasks-form');
-        var reorderInput = document.getElementById('reorder-data');
-        reorderInput.value = JSON.stringify(order);
-
-        var operationInput = form.querySelector('input[name="operation"]');
-        if (!operationInput) {
-            operationInput = document.createElement('input');
-            operationInput.type = 'hidden';
-            operationInput.name = 'operation';
-            form.appendChild(operationInput);
-        }
-        operationInput.value = 'reorder';
-        form.submit();
-    }
-});
-
-    // Table sorting using CMS.AWSUtils
-    $(document).ready(function() {
-        var table = $("#tasks-table");
-        if (table.length) {
-            CMS.AWSUtils.init_table_sort(table, false, -1);
-        }
-    });
+// Drag and drop reordering + table sorting using shared utility
+    {{ task_reorder_script(4) }}
 })();
 </script>
 {% endblock core %}

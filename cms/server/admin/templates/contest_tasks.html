@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "fragments/task_search_toolbar.html" import task_search_toolbar %}
+{% from "fragments/task_reorder_script.html" import task_reorder_script %}
 
 {% block js_init %}
 {% if is_training_day %}
@@ -49,11 +51,9 @@ if (addTaskForm) {
     <!-- Header -->
     <h1 class="title is-spaced">Tasks</h1>
     <p class="subtitle has-text-grey">
-        {% if is_training_day %}
-        Training Day: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
-        {% else %}
-        Contest: <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
-        {% endif %}
+        There are {{ contest.get_tasks()|length }} tasks in
+        {% if is_training_day %}training day{% else %}contest{% endif %}
+        <a href="{{ url("contest", contest.id) }}">{{ contest.name }}</a>
     </p>
 
 {% if is_training_day %}
@@ -63,26 +63,30 @@ if (addTaskForm) {
 {% endif %}
 
 {% if contest.start <= timestamp %}
-    <article class="message is-warning" style="margin-bottom: 20px;">
-        <div class="message-body is-flex is-gap-2">
-            <div class="info-alert-icon">
-                <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
-            </div>
-            <div class="info-alert-content">
-                <div>The contest is visible to contestants, tasks added can be seen.</div>
-            </div>
+    <article class="message is-warning mb-4">
+        <div class="message-body">
+            <article class="media">
+                <figure class="media-left">
+                    <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                </figure>
+                <div class="media-content">
+                    <div>The contest is visible to contestants, tasks added can be seen.</div>
+                </div>
+            </article>
         </div>
     </article>
 {% endif %}
 
-    <!-- Add Task Card -->
-    <div class="tp-filter-card">
-        <label class="tp-filter-label" for="task_id">Add Task:</label>
-        <form id="add-task-form" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST" style="display: flex; gap: 12px; flex: 1;">
+    <!-- Toolbar: Search + Add -->
+    {{ task_search_toolbar(contest.get_tasks()|length, admin.permission_all and unassigned_tasks|length > 0) }}
+
+    {% if admin.permission_all and unassigned_tasks|length > 0 %}
+    <div class="tp-filter-card mb-4" id="add-task-panel" {% if contest.get_tasks()|length > 0 %}style="display:none;"{% endif %}>
+        <form id="add-task-form" class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
-            <div style="flex-grow: 1;">
-                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
-                    <option value="" selected disabled hidden>Select a task...</option>
+            <div class="is-flex-grow-1" style="min-width: 200px;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;" required>
+                    <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for t in unassigned_tasks %}
                     <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
                         {{ t.name }}{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} (not in training program){% endif %}
@@ -90,16 +94,13 @@ if (addTaskForm) {
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="button is-primary" {% if not admin.permission_all %}disabled{% endif %} style="white-space: nowrap;">
-                <span>Add Task</span>
+            <button type="submit" class="button is-primary">
+                <svg class="icon is-small"><use href="#icon-plus"/></svg>
+                <span>Add</span>
             </button>
         </form>
     </div>
-
-    <!-- Tasks Table -->
-    <div class="tp-section-header">
-        <h2>All Tasks ({{ contest.get_tasks()|length }})</h2>
-    </div>
+    {% endif %}
 
     {% if contest.get_tasks() %}
     <form action="{{ url("contest", contest.id, "tasks") }}" method="POST" id="tasks-form">
@@ -220,39 +221,8 @@ if (addTaskForm) {
     // Only initialize drag-drop if tasks table exists
     var tasksTbody = document.getElementById('tasks-tbody');
     if (tasksTbody) {
-        AdminTableUtils.initDragDropReorder({
-            tbodyId: 'tasks-tbody',
-            rowSelector: 'tr',
-            rowIdAttr: 'task-id',
-            colSpan: colSpan,
-            confirmMessage: 'Save the new task order?',
-            onSave: function(orderedIds) {
-                var order = orderedIds.map(function(item) {
-                    return { task_id: item.id, new_num: item.position };
-                });
-                var form = document.getElementById('tasks-form');
-                var reorderInput = document.getElementById('reorder-data');
-                reorderInput.value = JSON.stringify(order);
-
-                var operationInput = form.querySelector('input[name="operation"]');
-                if (!operationInput) {
-                    operationInput = document.createElement('input');
-                    operationInput.type = 'hidden';
-                    operationInput.name = 'operation';
-                    form.appendChild(operationInput);
-                }
-                operationInput.value = 'reorder';
-                form.submit();
-            }
-        });
+        {{ task_reorder_script(col_span='colSpan') }}
     }
-
-  $(document).ready(function() {
-      var table = $("#tasks-table");
-      if (table.length) {
-          CMS.AWSUtils.init_table_sort(table, false, -1);
-      }
-  });
 })();
 </script>
 {% endblock core %}
