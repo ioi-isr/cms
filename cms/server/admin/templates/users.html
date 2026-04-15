@@ -133,14 +133,14 @@
                 </div>
             </div>
             {% if u.grade is not none %}
-            <div style="font-size: 0.8rem; color: var(--tp-text-muted); margin-bottom: 2px;">
-                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 2px; width: 14px; height: 14px;"><use href="#icon-graduation-cap"/></svg>
+            <div class="is-size-7 has-text-grey mb-1">
+                <svg class="icon is-small"><use href="#icon-graduation-cap"/></svg>
                 {% if u.grade > config.admin_web_server.max_grade %}Finished school{% else %}Grade {{ u.grade }}{% endif %}
             </div>
             {% endif %}
             {% if u.date_of_birth %}
-            <div style="font-size: 0.8rem; color: var(--tp-text-muted);">
-                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 2px; width: 14px; height: 14px;"><use href="#icon-calendar"/></svg>
+            <div class="is-size-7 has-text-grey">
+                <svg class="icon is-small"><use href="#icon-calendar"/></svg>
                 {{ u.date_of_birth.strftime('%Y-%m-%d') }}
             </div>
             {% endif %}

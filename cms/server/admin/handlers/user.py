@@ -1172,7 +1172,7 @@ class NewSchoolYearHandler(BaseHandler):
         updated = 0
         for user in users:
             if user.grade < finished_grade:
-                user.grade = min(user.grade + 1, finished_grade)
+                user.grade += 1
                 updated += 1
 
         if self.try_commit():
