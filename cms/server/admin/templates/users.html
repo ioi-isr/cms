@@ -21,6 +21,14 @@
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>New User</span>
                 </button>
+                <form action="{{ url("users", "new_school_year") }}" method="POST" style="display:inline;"
+                      onsubmit='return AdminModals.confirmSubmit(event, "Start a new school year? This will increase the grade of all users by 1. Users already at the maximum grade will be marked as finished school.", {icon: "question"});'>
+                    {{ xsrf_form_html|safe }}
+                    <button type="submit" class="button is-warning">
+                        <svg class="icon is-small"><use href="#icon-calendar"/></svg>
+                        <span>New School Year</span>
+                    </button>
+                </form>
                 {% endif %}
             </div>
         </div>
@@ -124,6 +132,12 @@
                     <a href="{{ url("user", u.id) }}" style="font-size: 0.85rem; color: var(--tp-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.username }}</a>
                 </div>
             </div>
+            {% if u.grade is not none %}
+            <div style="font-size: 0.8rem; color: var(--tp-text-muted); margin-bottom: 2px;">
+                <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 2px; width: 14px; height: 14px;"><use href="#icon-graduation-cap"/></svg>
+                {% if u.grade > config.admin_web_server.max_grade %}Finished school{% else %}Grade {{ u.grade }}{% endif %}
+            </div>
+            {% endif %}
             {% if u.date_of_birth %}
             <div style="font-size: 0.8rem; color: var(--tp-text-muted);">
                 <svg class="icon is-small" style="vertical-align: text-bottom; margin-right: 2px; width: 14px; height: 14px;"><use href="#icon-calendar"/></svg>

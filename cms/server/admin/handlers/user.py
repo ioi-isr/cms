@@ -35,6 +35,7 @@ import re
 from datetime import date
 
 from sqlalchemy import and_, exists
+from cms import config
 from cms.db import Contest, Participation, Team, User, TrainingDay, TrainingProgram
 from cms.server.picture_utils import (
     process_picture_upload, PictureValidationError
@@ -91,6 +92,20 @@ class UserValidationMixin:
         self.get_password(attrs, old_password, False, allow_weak)
         self.get_string_list(attrs, "preferred_languages")
         self.get_string(attrs, "timezone", empty=None)
+
+        # Handle id_number
+        id_number_str = self.get_argument("id_number", "").strip()
+        attrs["id_number"] = id_number_str if id_number_str else None
+
+        # Handle grade
+        grade_str = self.get_argument("grade", "").strip()
+        if grade_str:
+            try:
+                attrs["grade"] = int(grade_str)
+            except ValueError:
+                raise ValueError("Invalid grade value.")
+        else:
+            attrs["grade"] = None
 
         # Handle date of birth
         date_of_birth_str = self.get_argument("date_of_birth", "").strip()
@@ -294,6 +309,8 @@ class ExportUsersHandler(BaseHandler):
                 "Date of birth",
                 "Timezone",
                 "Preferred languages",
+                "ID number",
+                "Grade",
             ]
         )
 
@@ -314,6 +331,14 @@ class ExportUsersHandler(BaseHandler):
                 user.date_of_birth.isoformat() if user.date_of_birth else ""
             )
 
+            grade_str = ""
+            if user.grade is not None:
+                max_grade = config.admin_web_server.max_grade
+                if user.grade > max_grade:
+                    grade_str = "Finished school"
+                else:
+                    grade_str = str(user.grade)
+
             writer.writerow(
                 [
                     user.first_name or "",
@@ -325,6 +350,8 @@ class ExportUsersHandler(BaseHandler):
                     date_of_birth_str,
                     user.timezone or "",
                     preferred_languages,
+                    user.id_number or "",
+                    grade_str,
                 ]
             )
 
@@ -404,6 +431,8 @@ class ImportUsersHandler(BaseHandler):
             "Date of birth",
             "Timezone",
             "Preferred languages",
+            "ID number",
+            "Grade",
         }
 
         # Only require the required columns, not optional ones
@@ -449,6 +478,8 @@ class ImportUsersHandler(BaseHandler):
             date_of_birth_str = row.get("Date of birth", "").strip()
             timezone = row.get("Timezone", "").strip()
             preferred_languages_str = row.get("Preferred languages", "").strip()
+            id_number = row.get("ID number", "").strip()
+            grade_str_val = row.get("Grade", "").strip()
 
             if not username:
                 errors.append("Username is required")
@@ -491,6 +522,26 @@ class ImportUsersHandler(BaseHandler):
                         f"Invalid date of birth '{date_of_birth_str}': {str(e)}"
                     )
 
+            # Parse grade (optional, validate if provided)
+            grade = None
+            if grade_str_val:
+                max_grade = config.admin_web_server.max_grade
+                if grade_str_val.lower() == "finished school":
+                    grade = max_grade + 1
+                else:
+                    try:
+                        grade = int(grade_str_val)
+                        if grade < 1 or grade > max_grade + 1:
+                            errors.append(
+                                f"Grade must be between 1 and {max_grade}, "
+                                f"or 'Finished school'"
+                            )
+                    except ValueError:
+                        errors.append(
+                            f"Invalid grade '{grade_str_val}'. "
+                            f"Must be a number (1-{max_grade}) or 'Finished school'"
+                        )
+
             if errors:
                 failed_users.append(
                     {
@@ -530,6 +581,8 @@ class ImportUsersHandler(BaseHandler):
                 "date_of_birth": date_of_birth.isoformat() if date_of_birth else None,
                 "timezone": timezone if timezone else None,
                 "preferred_languages": preferred_languages,
+                "id_number": id_number if id_number else None,
+                "grade": grade,
                 "row": row_num,
             }
 
@@ -625,6 +678,8 @@ class ImportUsersConfirmHandler(BaseHandler):
                     date_of_birth=date_of_birth,
                     timezone=user_data.get("timezone"),
                     preferred_languages=user_data.get("preferred_languages", []),
+                    id_number=user_data.get("id_number"),
+                    grade=user_data.get("grade"),
                 )
                 self.sql_session.add(user)
                 created_count += 1
@@ -658,6 +713,8 @@ class ImportUsersConfirmHandler(BaseHandler):
                         user.date_of_birth = None
                     user.timezone = user_data.get("timezone")
                     user.preferred_languages = user_data.get("preferred_languages", [])
+                    user.id_number = user_data.get("id_number")
+                    user.grade = user_data.get("grade")
                     updated_count += 1
             except Exception as error:
                 errors.append(
@@ -1094,3 +1151,36 @@ class RemovePictureHandler(BaseHandler):
             self.service.proxy_service.reinitialize()
 
         self.write(fallback_page)
+
+
+class NewSchoolYearHandler(BaseHandler):
+    """Increment the grade of all users by 1 (new school year).
+
+    Users whose grade exceeds max_grade are marked as "finished school"
+    (grade = max_grade + 1).
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self):
+        max_grade = config.admin_web_server.max_grade
+        finished_grade = max_grade + 1
+
+        users = self.sql_session.query(User).filter(
+            User.grade.isnot(None)
+        ).all()
+
+        updated = 0
+        for user in users:
+            if user.grade < finished_grade:
+                user.grade = min(user.grade + 1, finished_grade)
+                updated += 1
+
+        if self.try_commit():
+            self.service.add_notification(
+                make_datetime(),
+                "New school year",
+                "Updated grades for %d user(s)." % updated,
+            )
+            self.service.proxy_service.reinitialize()
+
+        self.redirect(self.url("users"))

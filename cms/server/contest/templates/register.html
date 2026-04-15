@@ -30,6 +30,8 @@ const registerFields = [
     "last_name",
     "email",
     "date_of_birth",
+    "id_number",
+    "grade",
     "picture",
     "password-confirm",
 ];
@@ -44,6 +46,10 @@ function clearErrors() {
     $("#username-input span.help-block").text("");
     $("#date_of_birth-input").removeClass("error");
     $("#date_of_birth-input span.help-block").text("");
+    $("#id_number-input").removeClass("error");
+    $("#id_number-input span.help-block").text("");
+    $("#grade-input").removeClass("error");
+    $("#grade-input span.help-block").text("");
     $("#picture-input").removeClass("error");
     $("#picture-input span.help-block").text("");
 }
@@ -232,6 +238,14 @@ $(document).ready(function() {
                         $("#picture-input").addClass("error");
                         $("#picture-input span.help-block").text("{% trans %}The uploaded file is not a valid image.{% endtrans %}");
                         $("#picture").focus();
+                    } else if (payload.code === "missing_id_number" || payload.code === "invalid_id_number") {
+                        $("#id_number-input").addClass("error");
+                        $("#id_number-input span.help-block").text("{% trans %}Please enter a valid ID number.{% endtrans %}");
+                        $("#id_number").focus();
+                    } else if (payload.code === "missing_grade" || payload.code === "invalid_grade") {
+                        $("#grade-input").addClass("error");
+                        $("#grade-input span.help-block").text("{% trans %}Please select a valid grade.{% endtrans %}");
+                        $("#grade").focus();
                     } else {
                         // Generic fallback for missing_field or unknown errors
                         $("#password-input").addClass("error");
@@ -304,6 +318,26 @@ $(document).ready(function() {
                         input.setAttribute('min', minDate);
                     })();
                     </script>
+                    <div class="control-group" id="id_number-input">
+                        <label class="control-label" for="id_number">{% trans %}ID number{% endtrans %}</label>
+                        <div class="controls">
+                            <input required minlength="1" maxlength="{{ MAX_INPUT_LENGTH }}" type="text" class="input-xlarge" name="id_number" id="id_number">
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
+                    <div class="control-group" id="grade-input">
+                        <label class="control-label" for="grade">{% trans %}Grade{% endtrans %}</label>
+                        <div class="controls">
+                            <select required class="input-xlarge" name="grade" id="grade">
+                                <option value="" selected disabled hidden>{% trans %}Select grade...{% endtrans %}</option>
+                                {% for g in range(1, max_grade + 1) %}
+                                <option value="{{ g }}">{{ g }}</option>
+                                {% endfor %}
+                                <option value="{{ max_grade + 1 }}">{% trans %}Finished school{% endtrans %}</option>
+                            </select>
+                            <span class="help-block"></span>
+                        </div>
+                    </div>
                     <div class="control-group" id="picture-input">
                         <label class="control-label" for="picture">{% trans %}Profile picture{% endtrans %}</label>
                         <div class="controls">

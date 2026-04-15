@@ -775,4 +775,8 @@ CREATE INDEX ix_training_days_training_day_types_gin ON public.training_days USI
 -- Eligibility to view is based on student_tags during the training (from ArchivedStudentRanking)
 ALTER TABLE public.training_days ADD COLUMN scoreboard_sharing jsonb;
 
+-- Add id_number and grade fields to users
+ALTER TABLE public.users ADD COLUMN id_number character varying;
+ALTER TABLE public.users ADD COLUMN grade integer;
+
 COMMIT;

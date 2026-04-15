@@ -161,7 +161,8 @@ from .user import \
     ClearResetTokenHandler, \
     ApprovePasswordResetHandler, \
     DenyPasswordResetHandler, \
-    RemovePictureHandler
+    RemovePictureHandler, \
+    NewSchoolYearHandler
 from .usertest import \
     UserTestHandler, \
     UserTestFileHandler
@@ -368,6 +369,7 @@ HANDLERS = [
     (r"/users/export", ExportUsersHandler),
     (r"/users/import", ImportUsersHandler),
     (r"/users/import/confirm", ImportUsersConfirmHandler),
+    (r"/users/new_school_year", NewSchoolYearHandler),
     (r"/users/([0-9]+)/remove", RemoveUserHandler),
     (r"/teams", TeamListHandler),
     (r"/teams/([0-9]+)/remove", RemoveTeamHandler),
