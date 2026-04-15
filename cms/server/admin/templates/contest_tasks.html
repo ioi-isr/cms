@@ -85,7 +85,7 @@ if (addTaskForm) {
         <form id="add-task-form" class="is-flex is-align-items-center is-flex-wrap-wrap" style="gap: 12px; flex: 1;" action="{{ url("contest", contest.id, "tasks", "add") }}" method="POST">
             {{ xsrf_form_html|safe }}
             <div class="is-flex-grow-1" style="min-width: 200px;">
-                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;">
+                <select name="task_id" id="task_id" class="searchable-select" style="width: 100%;" required>
                     <option value="" selected disabled hidden>Choose a task to add...</option>
                     {% for t in unassigned_tasks %}
                     <option value="{{ t.id }}"{% if is_training_day and program_task_ids is defined and t.id not in program_task_ids %} data-not-in-program="true"{% endif %}>
