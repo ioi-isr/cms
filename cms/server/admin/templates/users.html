@@ -21,7 +21,7 @@
                     <svg class="icon is-small"><use href="#icon-plus"/></svg>
                     <span>New User</span>
                 </button>
-                <form action="{{ url("users", "new_school_year") }}" method="POST" style="display:inline;"
+                <form action="{{ url("users", "new_school_year") }}" method="POST" class="is-inline"
                       onsubmit='return AdminModals.confirmSubmit(event, "Start a new school year? This will increase the grade of all users by 1. Users already at the maximum grade will be marked as finished school.", {icon: "question"});'>
                     {{ xsrf_form_html|safe }}
                     <button type="submit" class="button is-warning">

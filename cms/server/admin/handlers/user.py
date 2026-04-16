@@ -103,7 +103,7 @@ class UserValidationMixin:
             try:
                 attrs["grade"] = int(grade_str)
             except ValueError:
-                raise ValueError("Invalid grade value.")
+                raise ValueError("Invalid grade value.") from None
         else:
             attrs["grade"] = None
 

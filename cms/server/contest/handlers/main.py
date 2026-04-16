@@ -301,7 +301,7 @@ class RegistrationHandler(ContestHandler):
         try:
             id_number = self.get_argument("id_number")
         except tornado.web.MissingArgumentError:
-            raise RegistrationError("missing_field")
+            raise RegistrationError("missing_field") from None
         if not id_number or not id_number.strip():
             raise RegistrationError("missing_id_number", "id_number")
         id_number = id_number.strip()
@@ -312,13 +312,13 @@ class RegistrationHandler(ContestHandler):
         try:
             grade_str = self.get_argument("grade")
         except tornado.web.MissingArgumentError:
-            raise RegistrationError("missing_field")
+            raise RegistrationError("missing_field") from None
         if not grade_str or not grade_str.strip():
             raise RegistrationError("missing_grade", "grade")
         try:
             grade = int(grade_str)
         except ValueError:
-            raise RegistrationError("invalid_grade", "grade")
+            raise RegistrationError("invalid_grade", "grade") from None
         max_grade = config.admin_web_server.max_grade
         # grade value of max_grade + 1 means "finished school"
         if grade < 1 or grade > max_grade + 1:
