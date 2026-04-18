@@ -211,6 +211,7 @@ class RegistrationHandler(ContestHandler):
         self.r_params["MIN_PASSWORD_LENGTH"] = self.MIN_PASSWORD_LENGTH
         self.r_params["teams"] = self.sql_session.query(Team)\
                                      .order_by(Team.name).all()
+        self.r_params["max_grade"] = config.admin_web_server.max_grade
 
         self.render("register.html", **self.r_params)
 
@@ -296,9 +297,37 @@ class RegistrationHandler(ContestHandler):
         except PictureValidationError as e:
             raise RegistrationError(e.code, "picture") from e
 
+        # Parse id_number (required)
+        try:
+            id_number = self.get_argument("id_number")
+        except tornado.web.MissingArgumentError:
+            raise RegistrationError("missing_field") from None
+        if not id_number or not id_number.strip():
+            raise RegistrationError("missing_id_number", "id_number")
+        id_number = id_number.strip()
+        if len(id_number) > self.MAX_INPUT_LENGTH:
+            raise RegistrationError("invalid_id_number", "id_number")
+
+        # Parse grade (required)
+        try:
+            grade_str = self.get_argument("grade")
+        except tornado.web.MissingArgumentError:
+            raise RegistrationError("missing_field") from None
+        if not grade_str or not grade_str.strip():
+            raise RegistrationError("missing_grade", "grade")
+        try:
+            grade = int(grade_str)
+        except ValueError:
+            raise RegistrationError("invalid_grade", "grade") from None
+        max_grade = config.admin_web_server.max_grade
+        # grade value of max_grade + 1 means "finished school"
+        if grade < 1 or grade > max_grade + 1:
+            raise RegistrationError("invalid_grade", "grade")
+
         # Store new user
         user = User(first_name, last_name, username, password, email=email,
-                    date_of_birth=date_of_birth, picture=picture_digest)
+                    date_of_birth=date_of_birth, picture=picture_digest,
+                    id_number=id_number, grade=grade)
         self.sql_session.add(user)
 
         return user

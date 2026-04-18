@@ -134,6 +134,17 @@ class User(Base):
         Date,
         nullable=True)
 
+    # Official ID number of the person (e.g. national ID).
+    id_number: str | None = Column(
+        Unicode,
+        nullable=True)
+
+    # School grade of the user (e.g. 5 for 5th grade, 12 for 12th grade).
+    # None means not set. A value greater than max_grade means "finished school".
+    grade: int | None = Column(
+        Integer,
+        nullable=True)
+
     # Profile picture of the user, stored as a digest in FileCacher.
     picture: str | None = Column(
         Digest,

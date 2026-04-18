@@ -139,6 +139,9 @@ class AWSConfig:
     listen_port: int = 8889
     cookie_duration: int = 10 * 60 * 60  # 10 hours
     num_proxies_used: int = 0
+    # Maximum school grade for users (e.g. 12 for 12th grade).
+    # Users with grade above this are considered "finished school".
+    max_grade: int = 12
 
 
 @dataclass()
