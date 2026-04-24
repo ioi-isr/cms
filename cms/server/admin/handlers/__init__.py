@@ -198,6 +198,7 @@ from .trainingday import \
     UpdateTrainingDayGroupsHandler, \
     RemoveTrainingDayGroupHandler, \
     TrainingDayTypesHandler, \
+    UpdateArchivedTrainingDayDescriptionHandler, \
     ScoreboardSharingHandler
 from .student import \
     TrainingProgramStudentsHandler, \
@@ -442,6 +443,10 @@ HANDLERS = [
     (
         r"/training_program/([0-9]+)/training_day/([0-9]+)/types",
         TrainingDayTypesHandler,
+    ),
+    (
+        r"/training_program/([0-9]+)/training_day/([0-9]+)/description",
+        UpdateArchivedTrainingDayDescriptionHandler,
     ),
     (
         r"/training_program/([0-9]+)/training_day/([0-9]+)/scoreboard_sharing",

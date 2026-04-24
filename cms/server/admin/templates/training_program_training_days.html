@@ -109,6 +109,44 @@ CMS.TrainingProgram.init({
     taskMaxScoresByTrainingDay: taskMaxScoresByTrainingDay
 });
 
+window.toggleArchivedTdDescriptionEdit = function(editId, displayId) {
+    document.getElementById(displayId).classList.add('is-hidden');
+    document.getElementById(editId).classList.remove('is-hidden');
+    var input = document.getElementById(editId).querySelector('input[data-field="description"]');
+    if (input) { input.focus(); input.select(); }
+};
+
+window.cancelArchivedTdDescriptionEdit = function(editId, displayId) {
+    document.getElementById(editId).classList.add('is-hidden');
+    document.getElementById(displayId).classList.remove('is-hidden');
+};
+
+window.submitArchivedTdDescriptionEdit = function(editId, displayId) {
+    var container = document.getElementById(editId);
+    var input = container.querySelector('input[data-field="description"]');
+    if (!input) return;
+    var actionUrl = container.dataset.actionUrl;
+    var xsrf = document.querySelector('input[name="_xsrf"]');
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = actionUrl;
+    form.style.display = 'none';
+    if (xsrf) {
+        var xsrfInput = document.createElement('input');
+        xsrfInput.type = 'hidden';
+        xsrfInput.name = '_xsrf';
+        xsrfInput.value = xsrf.value;
+        form.appendChild(xsrfInput);
+    }
+    var descInput = document.createElement('input');
+    descInput.type = 'hidden';
+    descInput.name = 'description';
+    descInput.value = input.value;
+    form.appendChild(descInput);
+    document.body.appendChild(form);
+    form.submit();
+};
+
 window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
     var key = trainingDayId + '_' + taskId;
     var scores = archivedTaskScores[key] || [];
@@ -323,7 +361,31 @@ window.showArchivedTaskHistogram = function(trainingDayId, taskId, taskName) {
 
                     <!-- Description -->
                     <td style="max-width: 1px;">
-                        <span class="is-trimmed">{{ td.description or "(no description)" }}</span>
+                        <div id="td_desc_display_{{ td.id }}" class="list-cell-wrapper">
+                            <span class="is-trimmed">{{ td.description or "(no description)" }}</span>
+                            {% if admin.permission_all %}
+                            <button type="button" class="button is-ghost is-small has-text-grey-light ml-1" onclick="toggleArchivedTdDescriptionEdit('td_desc_edit_{{ td.id }}', 'td_desc_display_{{ td.id }}')" title="Edit description" aria-label="Edit description">
+                                <svg class="icon is-small"><use href="#icon-edit"/></svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if admin.permission_all %}
+                        <div id="td_desc_edit_{{ td.id }}" class="is-hidden mt-1" data-action-url="{{ url("training_program", training_program.id, "training_day", td.id, "description") }}">
+                            <div class="field mb-2">
+                                <div class="control">
+                                    <input class="input is-small is-fullwidth" type="text" data-field="description" value="{{ td.description|default('', true) }}" onkeydown="if(event.key==='Enter'){event.preventDefault();submitArchivedTdDescriptionEdit('td_desc_edit_{{ td.id }}', 'td_desc_display_{{ td.id }}');}" />
+                                </div>
+                            </div>
+                            <div class="field is-grouped">
+                                <div class="control">
+                                    <button class="button is-small is-success" type="button" onclick="submitArchivedTdDescriptionEdit('td_desc_edit_{{ td.id }}', 'td_desc_display_{{ td.id }}')">Save</button>
+                                </div>
+                                <div class="control">
+                                    <button class="button is-small" type="button" onclick="cancelArchivedTdDescriptionEdit('td_desc_edit_{{ td.id }}', 'td_desc_display_{{ td.id }}')">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </td>
 
                     <!-- Types -->

@@ -689,6 +689,41 @@ class TrainingDayTypesHandler(BaseHandler):
             self.write({"error": str(error)})
 
 
+class UpdateArchivedTrainingDayDescriptionHandler(BaseHandler):
+    """Handler for updating the description of an archived training day.
+
+    The description of an active training day is synced with its contest and
+    must be edited through the contest. Once a training day is archived, the
+    description lives directly on the TrainingDay row and can be edited here.
+    """
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, training_program_id: str, training_day_id: str):
+        fallback_page = self.url(
+            "training_program", training_program_id, "training_days")
+
+        training_program = self.safe_get_item(TrainingProgram, training_program_id)
+        training_day = self.safe_get_item(TrainingDay, training_day_id)
+
+        if training_day.training_program_id != training_program.id:
+            raise tornado.web.HTTPError(404)
+
+        if training_day.contest is not None:
+            self.service.add_notification(
+                make_datetime(),
+                "Cannot edit description",
+                "The description of an active training day is managed through "
+                "its contest.")
+            self.redirect(fallback_page)
+            return
+
+        description = self.get_argument("description", "").strip()
+        training_day.description = description or None
+
+        self.try_commit()
+        self.redirect(fallback_page)
+
+
 class ScoreboardSharingHandler(BaseHandler):
     """Handler for updating scoreboard sharing settings for archived training days.
 
