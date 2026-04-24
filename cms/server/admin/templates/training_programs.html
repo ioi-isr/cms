@@ -102,7 +102,7 @@
 
             <!-- Date Range -->
             <div class="tp-card-dates">
-                <svg class="icon is-small has-text-light"><use href="#icon-calendar"/></svg>
+                <svg class="icon is-small has-text-grey"><use href="#icon-calendar"/></svg>
                 {% if tp.managing_contest.start and tp.managing_contest.stop %}
                 <span>{{ tp.managing_contest.start.strftime('%Y-%m-%d') }} &mdash; {{ tp.managing_contest.stop.strftime('%Y-%m-%d') }}</span>
                 {% else %}
