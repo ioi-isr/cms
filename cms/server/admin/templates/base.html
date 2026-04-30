@@ -274,16 +274,11 @@ $(document).ready(applySidebarState);
 $(document).ready(initSidebarEvents);
 
 function initThemeToggle() {
-    var saved = localStorage.getItem('cms_theme');
-    // Always set a data-theme attribute to prevent prefers-color-scheme from applying
-    // Default to 'original' if no theme is saved
-    if (saved) {
-        document.documentElement.setAttribute('data-theme', saved);
-    } else {
-        // Set to 'original' by default, which allows prefers-color-scheme to work
-        // but only when the user hasn't explicitly chosen a theme
-        document.documentElement.setAttribute('data-theme', 'original');
-    }
+    var serverTheme = {{ (admin.preferred_theme if admin is defined and admin.preferred_theme else "")|tojson }};
+    var saved = serverTheme || localStorage.getItem('cms_theme') || 'original';
+    document.documentElement.setAttribute('data-theme', saved);
+    localStorage.setItem('cms_theme', saved);
+
     var dropdown = document.getElementById('theme-dropdown');
     if (dropdown) {
         var toggle = dropdown.querySelector('.navbar-item');
@@ -303,6 +298,13 @@ function initThemeToggle() {
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('cms_theme', theme);
                 dropdown.classList.remove('is-active');
+                $.ajax({
+                    type: "POST",
+                    url: utils.url("admin", "theme"),
+                    data: JSON.stringify({theme: theme}),
+                    contentType: "application/json",
+                    headers: {"X-XSRFToken": get_cookie("_xsrf")}
+                });
             });
         }
         document.addEventListener('click', function(e) {

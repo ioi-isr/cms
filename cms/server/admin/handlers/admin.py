@@ -21,9 +21,11 @@
 
 """
 
+import json
 import logging
 
 from cms.db import Admin
+from cms.db.admin import VALID_THEMES
 from cmscommon.crypto import hash_password, validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -157,3 +159,26 @@ class AdminHandler(BaseHandler):
 
         # Page to redirect to.
         self.write("../admins")
+
+
+class AdminThemeHandler(BaseHandler):
+    """AJAX endpoint for saving the current admin's preferred theme."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            theme = data.get("theme")
+        except (json.JSONDecodeError, AttributeError):
+            self.set_status(400)
+            self.write({"error": "Invalid JSON"})
+            return
+
+        if theme is not None and theme not in VALID_THEMES:
+            self.set_status(400)
+            self.write({"error": "Invalid theme"})
+            return
+
+        self.current_user.preferred_theme = theme
+        self.sql_session.commit()
+        self.write({"ok": True})

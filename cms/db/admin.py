@@ -20,11 +20,16 @@
 
 """
 
-from sqlalchemy.schema import Column
+from sqlalchemy.schema import CheckConstraint, Column
 from sqlalchemy.types import Boolean, Integer, Unicode
 
 from .types import Codename
 from .base import Base
+
+VALID_THEMES = frozenset({
+    "original", "granny-smith", "pink-lady",
+    "arkansas-black", "golden", "mcintosh",
+})
 
 
 class Admin(Base):
@@ -82,3 +87,13 @@ class Admin(Base):
         Boolean,
         nullable=False,
         default=False)
+
+    # The admin's preferred UI color theme (NULL means default).
+    preferred_theme: str | None = Column(
+        Unicode,
+        CheckConstraint(
+            "preferred_theme IN ('original', 'granny-smith', 'pink-lady',"
+            " 'arkansas-black', 'golden', 'mcintosh')",
+            name="admins_preferred_theme_check",
+        ),
+        nullable=True)

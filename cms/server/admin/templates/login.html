@@ -8,6 +8,13 @@
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_style.css") }}">
     <link rel="stylesheet" type="text/css" href="{{ url("static", "aws_themes.css") }}">
     <title>Admin Login</title>
+    <script>
+    (function() {
+      var theme = {{ (admin.preferred_theme if admin is defined and admin.preferred_theme else "")|tojson }}
+                  || localStorage.getItem('cms_theme') || 'original';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    </script>
   </head>
   <body class="admin">
     {% include 'fragments/svg_icons.html' %}
