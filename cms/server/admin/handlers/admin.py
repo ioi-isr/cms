@@ -24,6 +24,8 @@
 import json
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from cms.db import Admin
 from cms.db.admin import VALID_THEMES
 from cmscommon.crypto import hash_password, validate_password_strength
@@ -180,5 +182,15 @@ class AdminThemeHandler(BaseHandler):
             return
 
         self.current_user.preferred_theme = theme
-        self.sql_session.commit()
+        try:
+            self.sql_session.commit()
+        except SQLAlchemyError:
+            self.sql_session.rollback()
+            logger.exception(
+                "Failed to persist theme preference for admin_id=%s",
+                self.current_user.id,
+            )
+            self.set_status(500)
+            self.write({"error": "Failed to save theme"})
+            return
         self.write({"ok": True})

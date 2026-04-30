@@ -294,6 +294,7 @@ function initThemeToggle() {
             options[i].addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                var previousTheme = document.documentElement.getAttribute('data-theme') || 'original';
                 var theme = this.getAttribute('data-theme-switch');
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('cms_theme', theme);
@@ -303,7 +304,11 @@ function initThemeToggle() {
                     url: utils.url("admin", "theme"),
                     data: JSON.stringify({theme: theme}),
                     contentType: "application/json",
-                    headers: {"X-XSRFToken": get_cookie("_xsrf")}
+                    headers: {"X-XSRFToken": get_cookie("_xsrf")},
+                    timeout: 5000
+                }).fail(function() {
+                    document.documentElement.setAttribute('data-theme', previousTheme);
+                    localStorage.setItem('cms_theme', previousTheme);
                 });
             });
         }
