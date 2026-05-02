@@ -1,0 +1,26 @@
+{#
+  Renders a clickable circular user avatar.
+  - user: a User object with .picture, .first_name, .last_name
+  - size: pixel size for the avatar (default 64)
+  Clicking the avatar opens a modal with the larger image.
+  Falls back to an initials placeholder if the user has no picture.
+#}
+{% macro user_avatar(user, size=64) %}
+  {% if user.picture %}
+  {% set picture_url = url("picture", user.picture) %}
+  {% set full_name = user.first_name ~ ' ' ~ user.last_name %}
+  <a href="{{ picture_url }}" target="_blank" rel="noopener"
+     onclick="return AdminModals.showAvatarPreview(event, {{ picture_url|tojson }}, {{ full_name|tojson }});"
+     title="Click to enlarge">
+    <figure class="image is-{{ size }}x{{ size }}" style="width: {{ size }}px; height: {{ size }}px;">
+      <img class="is-rounded" src="{{ picture_url }}" alt="{{ full_name }}"
+           style="width: {{ size }}px; height: {{ size }}px; object-fit: cover; cursor: zoom-in;"/>
+    </figure>
+  </a>
+  {% else %}
+  <div class="student-avatar-placeholder"
+       style="width: {{ size }}px; height: {{ size }}px; font-size: {{ (size / 3.2)|round(2) }}px;">
+    {{ user.first_name[:1] or '?' }}{{ user.last_name[:1] }}
+  </div>
+  {% endif %}
+{% endmacro %}

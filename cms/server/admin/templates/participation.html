@@ -5,20 +5,30 @@
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/delay_request.html' as macro_delay_request with context %}
 {% import 'macro/message.html' as macro_message with context %}
+{% import 'macro/user_avatar.html' as macro_user_avatar with context %}
 
 {% block core %}
-<h1 class="title is-spaced">
-  Participation:
-  {# For training day participations, link to the student page in the training program #}
-  {% if contest.training_day is not none and contest.training_day.training_program is not none %}
-  <a href="{{ url("training_program", contest.training_day.training_program.id, "student", selected_user.id, "edit") }}">{{ selected_user.username }}</a>
-  {% else %}
-  <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
-  {% endif %}
-</h1>
-<p class="subtitle has-text-grey mb-5">
-  Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
-</p>
+<article class="media mb-5" style="align-items: center;">
+  <figure class="media-left">
+    {{ macro_user_avatar.user_avatar(selected_user) }}
+  </figure>
+  <div class="media-content">
+    <h1 class="title is-spaced mb-2">
+      Participation:
+      {# For training day participations, link to the student page in the training program #}
+      {% if contest.training_day is not none and contest.training_day.training_program is not none %}
+      <a href="{{ url("training_program", contest.training_day.training_program.id, "student", selected_user.id, "edit") }}">{{ selected_user.username }}</a>
+      {% else %}
+      <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+      {% endif %}
+    </h1>
+    <p class="subtitle has-text-grey is-6 mb-0">
+      {{ selected_user.first_name }} {{ selected_user.last_name }}
+      &middot;
+      Contest: <a href="{{ url("contest", contest.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ contest.name }}</a>
+    </p>
+  </div>
+</article>
 
 <!-- Participation Information -->
 <h2 class="title is-5">Participation Information</h2>

@@ -326,6 +326,41 @@ AdminModals.confirmLink = function(event, message, options) {
 };
 
 /**
+ * Shows an avatar/profile picture in a lightbox-style modal.
+ * Intended for inline onclick handlers on <a> tags so that Ctrl/middle-click
+ * still opens the image in a new tab as a regular link.
+ * @param {Event} event - The click event
+ * @param {string} imageUrl - URL of the full-size image
+ * @param {string} [label] - Accessible label / caption (e.g. user name)
+ * @returns {boolean} Always returns false to prevent default navigation for
+ *   regular left-clicks (Ctrl/Shift/middle-clicks fall through to the link).
+ */
+AdminModals.showAvatarPreview = function (event, imageUrl, label) {
+    // Allow users to still open the image in a new tab via modifier keys
+    // or middle-click.
+    if (event && (event.ctrlKey || event.metaKey || event.shiftKey
+        || event.button === 1)) {
+        return true;
+    }
+    if (event) {
+        event.preventDefault();
+    }
+    var safeLabel = label ? AdminModals.escapeHtml(label) : '';
+    var safeUrl = AdminModals.escapeHtml(imageUrl);
+    Swal.fire({
+        title: safeLabel || undefined,
+        html: '<img src="' + safeUrl + '" alt="' + safeLabel + '"'
+            + ' style="max-width: 100%; max-height: 70vh; border-radius: 8px;"/>',
+        showConfirmButton: false,
+        showCloseButton: true,
+        width: 'auto',
+        background: '#fff',
+        padding: '1rem'
+    });
+    return false;
+};
+
+/**
  * Shows a SweetAlert2 error dialog.
  * @param {string} message - Error message
  * @param {string} [title] - Dialog title (default "Error")
