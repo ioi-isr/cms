@@ -21,9 +21,13 @@
 
 """
 
+import json
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from cms.db import Admin
+from cms.db.admin import VALID_THEMES
 from cmscommon.crypto import hash_password, validate_password_strength
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
@@ -157,3 +161,36 @@ class AdminHandler(BaseHandler):
 
         # Page to redirect to.
         self.write("../admins")
+
+
+class AdminThemeHandler(BaseHandler):
+    """AJAX endpoint for saving the current admin's preferred theme."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            theme = data.get("theme")
+        except (json.JSONDecodeError, AttributeError):
+            self.set_status(400)
+            self.write({"error": "Invalid JSON"})
+            return
+
+        if theme is not None and theme not in VALID_THEMES:
+            self.set_status(400)
+            self.write({"error": "Invalid theme"})
+            return
+
+        self.current_user.preferred_theme = theme
+        try:
+            self.sql_session.commit()
+        except SQLAlchemyError:
+            self.sql_session.rollback()
+            logger.exception(
+                "Failed to persist theme preference for admin_id=%s",
+                self.current_user.id,
+            )
+            self.set_status(500)
+            self.write({"error": "Failed to save theme"})
+            return
+        self.write({"ok": True})

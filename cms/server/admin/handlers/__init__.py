@@ -22,7 +22,8 @@
 from .admin import \
     AddAdminHandler, \
     AdminsHandler, \
-    AdminHandler
+    AdminHandler, \
+    AdminThemeHandler
 from .base import \
     FileFromDigestHandler, \
     SimpleHandler, \
@@ -498,6 +499,7 @@ HANDLERS = [
     (r"/admins", AdminsHandler),
     (r"/admins/add", AddAdminHandler),
     (r"/admin/([0-9]+)", AdminHandler),
+    (r"/admin/theme", AdminThemeHandler),
     # Submissions
     (r"/submission/([0-9]+)(?:/([0-9]+))?", SubmissionHandler),
     (r"/submission/([0-9]+)(?:/([0-9]+))?/comment", SubmissionCommentHandler),

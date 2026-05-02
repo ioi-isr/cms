@@ -779,4 +779,10 @@ ALTER TABLE public.training_days ADD COLUMN scoreboard_sharing jsonb;
 ALTER TABLE public.users ADD COLUMN id_number character varying;
 ALTER TABLE public.users ADD COLUMN grade integer;
 
+-- Add preferred_theme column to admins for persisting UI theme choice
+ALTER TABLE public.admins ADD COLUMN preferred_theme character varying;
+ALTER TABLE ONLY public.admins
+    ADD CONSTRAINT admins_preferred_theme_check
+    CHECK (preferred_theme IN ('original', 'granny-smith', 'pink-lady', 'arkansas-black', 'golden', 'mcintosh'));
+
 COMMIT;
