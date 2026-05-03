@@ -10,7 +10,7 @@
   {% set picture_url = url("picture", user.picture) %}
   {% set full_name = user.first_name ~ ' ' ~ user.last_name %}
   <a href="{{ picture_url }}" target="_blank" rel="noopener"
-     onclick="return AdminModals.showAvatarPreview(event, {{ picture_url|tojson }}, {{ full_name|tojson }});"
+     onclick='return AdminModals.showAvatarPreview(event, {{ picture_url|tojson }}, {{ full_name|tojson }});'
      title="Click to enlarge">
     <figure class="image is-{{ size }}x{{ size }}" style="width: {{ size }}px; height: {{ size }}px;">
       <img class="is-rounded" src="{{ picture_url }}" alt="{{ full_name }}"
