@@ -345,10 +345,10 @@ AdminModals.showAvatarPreview = function (event, imageUrl, label) {
     if (event) {
         event.preventDefault();
     }
-    var safeLabel = label ? AdminModals.escapeHtml(label) : '';
-    var safeUrl = AdminModals.escapeHtml(imageUrl);
+    var safeLabel = label ? AdminModals.escapeHtml(label).replace(/"/g, '&quot;') : '';
+    var safeUrl = AdminModals.escapeHtml(imageUrl).replace(/"/g, '&quot;');
     Swal.fire({
-        title: safeLabel || undefined,
+        title: label ? AdminModals.escapeHtml(label) : undefined,
         html: '<img src="' + safeUrl + '" alt="' + safeLabel + '"'
             + ' style="max-width: 100%; max-height: 70vh; border-radius: 8px;"/>',
         showConfirmButton: false,
