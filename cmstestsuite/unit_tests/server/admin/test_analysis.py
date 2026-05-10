@@ -955,6 +955,90 @@ class TestBadDayBonus(unittest.TestCase):
         result = apply_bad_day_bonus(info, weights, norm, avgs)
         self.assertAlmostEqual(result[10], 0.0)
 
+    # --- Rank normalization (lower is better) ---
+
+    def test_rank_single_bad_day_improves(self):
+        """With ranks, dropping a high-rank (bad) day should lower the avg."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=90),   # rank 1
+                2: make_info(10, 2, score=10, declared_bad_day=True),  # rank 10
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        norm = {10: {1: 1.0, 2: 10.0}}  # rank scores
+        avgs = {10: 5.5}  # (1+10)/2
+
+        result = apply_bad_day_bonus(
+            info, weights, norm, avgs, higher_is_better=False
+        )
+        # Dropping TD 2 gives avg=1.0, which is < 5.5 (better for ranks)
+        self.assertAlmostEqual(result[10], 1.0)
+
+    def test_rank_bad_day_no_improvement(self):
+        """With ranks, if the bad day has a good rank, dropping doesn't help."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=50),   # rank 5
+                2: make_info(10, 2, score=100, declared_bad_day=True),  # rank 1
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        norm = {10: {1: 5.0, 2: 1.0}}  # rank scores
+        avgs = {10: 3.0}  # (5+1)/2
+
+        result = apply_bad_day_bonus(
+            info, weights, norm, avgs, higher_is_better=False
+        )
+        # Dropping TD 2 gives avg=5.0, which is > 3.0 (worse for ranks)
+        self.assertAlmostEqual(result[10], 3.0)
+
+    def test_rank_expected_value_no_bad_days(self):
+        """With ranks, expected value uses min instead of max."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=100),  # rank 1
+                2: make_info(10, 2, score=80),   # rank 2
+                3: make_info(10, 3, score=40),   # rank 3
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        norm = {10: {1: 1.0, 2: 2.0, 3: 3.0}}  # rank scores
+        original_avg = (1 + 2 + 3) / 3.0  # 2.0
+        avgs = {10: original_avg}
+
+        result = apply_bad_day_bonus(
+            info, weights, norm, avgs, higher_is_better=False
+        )
+
+        # For each TD: min(original_avg, avg_without)
+        avg_without_1 = (2 + 3) / 2.0  # 2.5 > 2.0 -> use 2.0
+        avg_without_2 = (1 + 3) / 2.0  # 2.0 = 2.0 -> use 2.0
+        avg_without_3 = (1 + 2) / 2.0  # 1.5 < 2.0 -> use 1.5
+        expected = (min(original_avg, avg_without_1) +
+                    min(original_avg, avg_without_2) +
+                    min(original_avg, avg_without_3)) / 3.0
+        self.assertAlmostEqual(result[10], expected, places=5)
+
+    def test_rank_multiple_bad_days(self):
+        """With ranks, dropping multiple high-rank days picks the best combo."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=100),  # rank 1
+                2: make_info(10, 2, score=20, declared_bad_day=True),   # rank 8
+                3: make_info(10, 3, score=10, declared_bad_day=True),   # rank 10
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        norm = {10: {1: 1.0, 2: 8.0, 3: 10.0}}
+        avgs = {10: (1 + 8 + 10) / 3.0}  # ~6.33
+
+        result = apply_bad_day_bonus(
+            info, weights, norm, avgs, higher_is_better=False
+        )
+        # Dropping both bad days gives avg=1.0 (best for ranks)
+        self.assertAlmostEqual(result[10], 1.0)
+
 
 class TestGeneratePairwiseData(unittest.TestCase):
 

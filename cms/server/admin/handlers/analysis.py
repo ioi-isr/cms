@@ -514,6 +514,7 @@ def _best_avg_dropping_bad_days(
     td_scores: dict[int, float],
     weights: dict[int, float],
     original_avg: float,
+    higher_is_better: bool = True,
 ) -> float:
     """Try all 2^K subsets of bad days to drop, return best average."""
     best = original_avg
@@ -521,7 +522,7 @@ def _best_avg_dropping_bad_days(
     for mask in range(1, 1 << k):
         drop = {bad_day_td_ids[i] for i in range(k) if mask & (1 << i)}
         avg = _weighted_avg_without(td_scores, weights, drop)
-        if avg > best:
+        if (avg > best) if higher_is_better else (avg < best):
             best = avg
     return best
 
@@ -531,10 +532,12 @@ def _expected_random_bad_day_bonus(
     td_scores: dict[int, float],
     weights: dict[int, float],
     original_avg: float,
+    higher_is_better: bool = True,
 ) -> float:
     """Expected score when the bad day is chosen uniformly at random."""
+    pick_best = max if higher_is_better else min
     total = sum(
-        max(original_avg, _weighted_avg_without(td_scores, weights, {td_id}))
+        pick_best(original_avg, _weighted_avg_without(td_scores, weights, {td_id}))
         for td_id in active_td_ids
     )
     return total / len(active_td_ids)
@@ -545,19 +548,24 @@ def apply_bad_day_bonus(
     student_weights: dict[int, dict[int, float]],
     normalized_scores: dict[int, dict[int, float]],
     weighted_avgs: dict[int, float],
+    higher_is_better: bool = True,
 ) -> dict[int, float]:
     """Adjust weighted averages to account for declared bad days.
 
     For students *with* declared bad days: calculate the weighted average
-    both with and without each bad day, and take the maximum.  When a
+    both with and without each bad day, and take the best.  When a
     student has K bad days, all 2^K drop combinations are tried (K is
     typically very small).
 
     For students *without* declared bad days: compute the expected value
     of the bonus assuming each active training day is equally likely to
     be the bad one.  For each active TD *i*:
-        bonus_i = max(original_avg, avg_without_i)
+        bonus_i = best(original_avg, avg_without_i)
     The expected score is the mean of bonus_i over all active TDs.
+
+    higher_is_better: True for raw/mean/median normalization (higher
+        scores are better).  False for rank normalization (lower ranks
+        are better).
     """
     result = dict(weighted_avgs)
 
@@ -580,11 +588,13 @@ def apply_bad_day_bonus(
 
         if bad_day_td_ids:
             result[student_id] = _best_avg_dropping_bad_days(
-                bad_day_td_ids, td_scores, weights, original_avg
+                bad_day_td_ids, td_scores, weights, original_avg,
+                higher_is_better,
             )
         else:
             result[student_id] = _expected_random_bad_day_bonus(
-                active_td_ids, td_scores, weights, original_avg
+                active_td_ids, td_scores, weights, original_avg,
+                higher_is_better,
             )
 
     return result
