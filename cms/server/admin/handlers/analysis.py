@@ -509,6 +509,37 @@ def _weighted_avg_without(
     return (numerator / denominator) if denominator > 0 else 0.0
 
 
+def _best_avg_dropping_bad_days(
+    bad_day_td_ids: list[int],
+    td_scores: dict[int, float],
+    weights: dict[int, float],
+    original_avg: float,
+) -> float:
+    """Try all 2^K subsets of bad days to drop, return best average."""
+    best = original_avg
+    k = len(bad_day_td_ids)
+    for mask in range(1, 1 << k):
+        drop = {bad_day_td_ids[i] for i in range(k) if mask & (1 << i)}
+        avg = _weighted_avg_without(td_scores, weights, drop)
+        if avg > best:
+            best = avg
+    return best
+
+
+def _expected_random_bad_day_bonus(
+    active_td_ids: list[int],
+    td_scores: dict[int, float],
+    weights: dict[int, float],
+    original_avg: float,
+) -> float:
+    """Expected score when the bad day is chosen uniformly at random."""
+    total = sum(
+        max(original_avg, _weighted_avg_without(td_scores, weights, {td_id}))
+        for td_id in active_td_ids
+    )
+    return total / len(active_td_ids)
+
+
 def apply_bad_day_bonus(
     student_info: dict[int, dict[int, StudentTrainingDayInfo]],
     student_weights: dict[int, dict[int, float]],
@@ -527,13 +558,6 @@ def apply_bad_day_bonus(
     be the bad one.  For each active TD *i*:
         bonus_i = max(original_avg, avg_without_i)
     The expected score is the mean of bonus_i over all active TDs.
-
-    student_info: student_id -> td_id -> StudentTrainingDayInfo.
-    student_weights: student_id -> td_id -> weight.
-    normalized_scores: student_id -> td_id -> normalized score.
-    weighted_avgs: student_id -> original weighted average.
-
-    return: student_id -> adjusted weighted average.
     """
     result = dict(weighted_avgs)
 
@@ -542,9 +566,8 @@ def apply_bad_day_bonus(
         weights = student_weights.get(student_id, {})
         infos = student_info.get(student_id, {})
 
-        # Identify active TDs (weight > 0 and score exists)
         active_td_ids = [
-            td_id for td_id, score in td_scores.items()
+            td_id for td_id in td_scores
             if weights.get(td_id, 0.0) > 0
         ]
         if not active_td_ids:
@@ -556,28 +579,13 @@ def apply_bad_day_bonus(
         ]
 
         if bad_day_td_ids:
-            # Try all 2^K subsets of bad days to drop, take max average
-            best = original_avg
-            k = len(bad_day_td_ids)
-            for mask in range(1, 1 << k):
-                drop = {
-                    bad_day_td_ids[i]
-                    for i in range(k) if mask & (1 << i)
-                }
-                avg = _weighted_avg_without(td_scores, weights, drop)
-                if avg > best:
-                    best = avg
-            result[student_id] = best
+            result[student_id] = _best_avg_dropping_bad_days(
+                bad_day_td_ids, td_scores, weights, original_avg
+            )
         else:
-            # Expected value: for each active TD, try dropping it
-            total = 0.0
-            n = len(active_td_ids)
-            for td_id in active_td_ids:
-                avg_without = _weighted_avg_without(
-                    td_scores, weights, {td_id}
-                )
-                total += max(original_avg, avg_without)
-            result[student_id] = total / n
+            result[student_id] = _expected_random_bad_day_bonus(
+                active_td_ids, td_scores, weights, original_avg
+            )
 
     return result
 

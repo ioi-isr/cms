@@ -321,95 +321,91 @@ function closeAttendanceModal() {
     currentAttendanceData = {};
 }
 
+function _updateRecordedBadge(wrapper, recorded) {
+    var locationRow = wrapper.querySelector('.location-row');
+    if (!locationRow) return;
+    var badge = locationRow.querySelector('.recorded-badge');
+    if (recorded && !badge) {
+        var svgNS = 'http://www.w3.org/2000/svg';
+        var newBadge = document.createElementNS(svgNS, 'svg');
+        newBadge.setAttribute('class', 'icon is-small recorded-badge');
+        var title = document.createElementNS(svgNS, 'title');
+        title.textContent = 'Recorded';
+        var use = document.createElementNS(svgNS, 'use');
+        use.setAttribute('href', '#icon-video');
+        newBadge.appendChild(title);
+        newBadge.appendChild(use);
+        locationRow.appendChild(newBadge);
+    } else if (!recorded && badge) {
+        badge.remove();
+    }
+}
+
+function _updateJustifiedBadge(wrapper, justified) {
+    var statusBadge = wrapper.querySelector('.tag');
+    if (!statusBadge) return;
+    if (justified) {
+        statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
+        statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
+    } else {
+        statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
+        statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
+    }
+}
+
+function _updateBadDayBadge(wrapper, declaredBadDay) {
+    var existing = wrapper.querySelector('.bad-day-row');
+    if (declaredBadDay && !existing) {
+        var div = document.createElement('div');
+        div.className = 'bad-day-row is-size-7 has-text-warning-75 is-flex is-align-items-center icon-text gap-1 mt-1';
+        div.innerHTML = '<svg class="icon is-small" xmlns="http://www.w3.org/2000/svg"><use href="#icon-alert-triangle"/></svg><span>Bad Day</span>';
+        var locationRow = wrapper.querySelector('.location-row');
+        if (locationRow) { locationRow.after(div); } else { wrapper.appendChild(div); }
+    } else if (!declaredBadDay && existing) {
+        existing.remove();
+    }
+}
+
+function _updateCommentText(wrapper, comment) {
+    var existing = wrapper.querySelector('.comment-text');
+    var html = comment
+        ? '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'
+        : '';
+    if (comment && !existing) {
+        var div = document.createElement('div');
+        div.className = 'comment-text is-flex is-align-items-center gap-1';
+        div.title = comment;
+        div.innerHTML = html;
+        wrapper.appendChild(div);
+    } else if (!comment && existing) {
+        existing.remove();
+    } else if (comment && existing) {
+        existing.title = comment;
+        existing.innerHTML = html;
+    }
+}
+
 function updateAttendanceCell(attendanceId, justified, declaredBadDay, recorded, comment) {
-    // Find the cell by attendance ID
     var cell = document.querySelector('[data-attendance-id="' + attendanceId + '"]');
     if (!cell) return;
 
-    // Update the dataset attributes
     cell.dataset.justified = justified ? 'true' : 'false';
     cell.dataset.declaredBadDay = declaredBadDay ? 'true' : 'false';
     cell.dataset.recorded = recorded ? 'true' : 'false';
     cell.dataset.comment = comment || '';
 
-    // Update data-value for sorting (must match template logic)
     if (cell.dataset.status === 'missed') {
         cell.dataset.value = justified ? '2.5' : '3';
     }
 
-    // Update the visual content
     var wrapper = cell.querySelector('.cell-wrapper');
     if (!wrapper) return;
 
-    // Update recorded badge - create or remove as needed
-    var locationRow = wrapper.querySelector('.location-row');
-    if (locationRow && cell.dataset.status !== 'missed') {
-        var recordedBadge = locationRow.querySelector('.recorded-badge');
-        if (recorded && !recordedBadge) {
-            // Create recorded badge
-            var svgNS = 'http://www.w3.org/2000/svg';
-            var badge = document.createElementNS(svgNS, 'svg');
-            badge.setAttribute('class', 'icon is-small recorded-badge');
-            var title = document.createElementNS(svgNS, 'title');
-            title.textContent = 'Recorded';
-            var use = document.createElementNS(svgNS, 'use');
-            use.setAttribute('href', '#icon-video');
-            badge.appendChild(title);
-            badge.appendChild(use);
-            locationRow.appendChild(badge);
-        } else if (!recorded && recordedBadge) {
-            // Remove recorded badge
-            recordedBadge.remove();
-        }
-    }
-
-    // Update justified status for missed entries
-    var statusBadge = wrapper.querySelector('.tag');
-    if (statusBadge && cell.dataset.status === 'missed') {
-        if (justified) {
-            statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
-            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
-        } else {
-            statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
-            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
-        }
-    }
-
-    // Update bad day badge for non-missed entries
-    if (cell.dataset.status !== 'missed') {
-        var existingBadDay = wrapper.querySelector('.bad-day-row');
-        if (declaredBadDay && !existingBadDay) {
-            var badDayDiv = document.createElement('div');
-            badDayDiv.className = 'bad-day-row is-size-7 has-text-warning-75 is-flex is-align-items-center icon-text gap-1 mt-1';
-            badDayDiv.innerHTML = '<svg class="icon is-small" xmlns="http://www.w3.org/2000/svg"><use href="#icon-alert-triangle"/></svg><span>Bad Day</span>';
-            var locationRow2 = wrapper.querySelector('.location-row');
-            if (locationRow2) {
-                locationRow2.after(badDayDiv);
-            } else {
-                wrapper.appendChild(badDayDiv);
-            }
-        } else if (!declaredBadDay && existingBadDay) {
-            existingBadDay.remove();
-        }
-    }
-
-    // Update comment text
-    var existingComment = wrapper.querySelector('.comment-text');
-    if (comment && !existingComment) {
-        // Create comment text
-        var commentDiv = document.createElement('div');
-        commentDiv.className = 'comment-text is-flex is-align-items-center gap-1';
-        commentDiv.title = comment;
-        commentDiv.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
-        wrapper.appendChild(commentDiv);
-    } else if (!comment && existingComment) {
-        // Remove comment text
-        existingComment.remove();
-    } else if (comment && existingComment) {
-        // Update existing comment text
-        existingComment.title = comment;
-        existingComment.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
-    }
+    var isMissed = cell.dataset.status === 'missed';
+    if (!isMissed) { _updateRecordedBadge(wrapper, recorded); }
+    if (isMissed) { _updateJustifiedBadge(wrapper, justified); }
+    if (!isMissed) { _updateBadDayBadge(wrapper, declaredBadDay); }
+    _updateCommentText(wrapper, comment);
 }
 
 function saveAttendance() {
