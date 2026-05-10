@@ -890,8 +890,41 @@ class TestBadDayBonus(unittest.TestCase):
         avgs = {10: 80.0}
 
         result = apply_bad_day_bonus(info, weights, norm, avgs)
-        # Dropping the only TD gives avg=0; max(80,0)=80; E=80
+        # Dropping the only TD leaves nothing; fallback = original_avg = 80
+        # max(80, 80) = 80; E = 80
         self.assertAlmostEqual(result[10], 80.0)
+
+    def test_rank_expected_value_single_td(self):
+        """With ranks, single-TD student should keep original rank, not get 0."""
+        info = {
+            10: {1: make_info(10, 1, score=50)},
+        }
+        weights = {10: {1: 1.0}}
+        norm = {10: {1: 5.0}}  # rank 5
+        avgs = {10: 5.0}
+
+        result = apply_bad_day_bonus(
+            info, weights, norm, avgs, higher_is_better=False
+        )
+        # Dropping the only TD leaves nothing; fallback = 5.0
+        # min(5.0, 5.0) = 5.0; must NOT be 0.0
+        self.assertAlmostEqual(result[10], 5.0)
+
+    def test_all_bad_days_dropped_keeps_original(self):
+        """If all active TDs are bad days, dropping all should keep original avg."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=40, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 1.0}}
+        norm = {10: {1: 40.0}}
+        avgs = {10: 40.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping the only TD leaves nothing; fallback = 40.0
+        # max(40.0, 40.0) = 40.0
+        self.assertAlmostEqual(result[10], 40.0)
 
     def test_weighted_avg_without_helper(self):
         """Test the _weighted_avg_without helper directly."""

@@ -495,8 +495,14 @@ def _weighted_avg_without(
     td_scores: dict[int, float],
     weights: dict[int, float],
     drop_td_ids: set[int],
+    fallback: float = 0.0,
 ) -> float:
-    """Compute weighted average excluding the given training day IDs."""
+    """Compute weighted average excluding the given training day IDs.
+
+    Returns *fallback* when no TDs remain after dropping (denominator == 0).
+    Callers should pass ``original_avg`` as fallback so that dropping
+    everything never appears as an improvement.
+    """
     numerator = 0.0
     denominator = 0.0
     for td_id, score in td_scores.items():
@@ -506,7 +512,7 @@ def _weighted_avg_without(
         if w > 0:
             numerator += w * score
             denominator += w
-    return (numerator / denominator) if denominator > 0 else 0.0
+    return (numerator / denominator) if denominator > 0 else fallback
 
 
 def _best_avg_dropping_bad_days(
@@ -521,7 +527,7 @@ def _best_avg_dropping_bad_days(
     k = len(bad_day_td_ids)
     for mask in range(1, 1 << k):
         drop = {bad_day_td_ids[i] for i in range(k) if mask & (1 << i)}
-        avg = _weighted_avg_without(td_scores, weights, drop)
+        avg = _weighted_avg_without(td_scores, weights, drop, original_avg)
         if (avg > best) if higher_is_better else (avg < best):
             best = avg
     return best
@@ -537,7 +543,7 @@ def _expected_random_bad_day_bonus(
     """Expected score when the bad day is chosen uniformly at random."""
     pick_best = max if higher_is_better else min
     total = sum(
-        pick_best(original_avg, _weighted_avg_without(td_scores, weights, {td_id}))
+        pick_best(original_avg, _weighted_avg_without(td_scores, weights, {td_id}, original_avg))
         for td_id in active_td_ids
     )
     return total / len(active_td_ids)
