@@ -48,6 +48,7 @@ class StudentTrainingDayInfo:
     recorded: bool
     status: str
     justified: bool
+    declared_bad_day: bool = False
 
 
 def collect_student_td_info(
@@ -86,6 +87,7 @@ def collect_student_td_info(
                 recorded=att.recorded if att else False,
                 status=att.status if att else "participated",
                 justified=att.justified if att else False,
+                declared_bad_day=att.declared_bad_day if att else False,
             )
 
     return result
@@ -482,6 +484,101 @@ def calculate_weighted_averages(
                 denominator += w
 
         result[student_id] = (numerator / denominator) if denominator > 0 else 0.0
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Bad day bonus
+# ---------------------------------------------------------------------------
+
+def _weighted_avg_without(
+    td_scores: dict[int, float],
+    weights: dict[int, float],
+    drop_td_ids: set[int],
+) -> float:
+    """Compute weighted average excluding the given training day IDs."""
+    numerator = 0.0
+    denominator = 0.0
+    for td_id, score in td_scores.items():
+        if td_id in drop_td_ids:
+            continue
+        w = weights.get(td_id, 0.0)
+        if w > 0:
+            numerator += w * score
+            denominator += w
+    return (numerator / denominator) if denominator > 0 else 0.0
+
+
+def apply_bad_day_bonus(
+    student_info: dict[int, dict[int, StudentTrainingDayInfo]],
+    student_weights: dict[int, dict[int, float]],
+    normalized_scores: dict[int, dict[int, float]],
+    weighted_avgs: dict[int, float],
+) -> dict[int, float]:
+    """Adjust weighted averages to account for declared bad days.
+
+    For students *with* declared bad days: calculate the weighted average
+    both with and without each bad day, and take the maximum.  When a
+    student has K bad days, all 2^K drop combinations are tried (K is
+    typically very small).
+
+    For students *without* declared bad days: compute the expected value
+    of the bonus assuming each active training day is equally likely to
+    be the bad one.  For each active TD *i*:
+        bonus_i = max(original_avg, avg_without_i)
+    The expected score is the mean of bonus_i over all active TDs.
+
+    student_info: student_id -> td_id -> StudentTrainingDayInfo.
+    student_weights: student_id -> td_id -> weight.
+    normalized_scores: student_id -> td_id -> normalized score.
+    weighted_avgs: student_id -> original weighted average.
+
+    return: student_id -> adjusted weighted average.
+    """
+    result = dict(weighted_avgs)
+
+    for student_id, original_avg in weighted_avgs.items():
+        td_scores = normalized_scores.get(student_id, {})
+        weights = student_weights.get(student_id, {})
+        infos = student_info.get(student_id, {})
+
+        # Identify active TDs (weight > 0 and score exists)
+        active_td_ids = [
+            td_id for td_id, score in td_scores.items()
+            if weights.get(td_id, 0.0) > 0
+        ]
+        if not active_td_ids:
+            continue
+
+        bad_day_td_ids = [
+            td_id for td_id in active_td_ids
+            if infos.get(td_id) and infos[td_id].declared_bad_day
+        ]
+
+        if bad_day_td_ids:
+            # Try all 2^K subsets of bad days to drop, take max average
+            best = original_avg
+            k = len(bad_day_td_ids)
+            for mask in range(1, 1 << k):
+                drop = {
+                    bad_day_td_ids[i]
+                    for i in range(k) if mask & (1 << i)
+                }
+                avg = _weighted_avg_without(td_scores, weights, drop)
+                if avg > best:
+                    best = avg
+            result[student_id] = best
+        else:
+            # Expected value: for each active TD, try dropping it
+            total = 0.0
+            n = len(active_td_ids)
+            for td_id in active_td_ids:
+                avg_without = _weighted_avg_without(
+                    td_scores, weights, {td_id}
+                )
+                total += max(original_avg, avg_without)
+            result[student_id] = total / n
+
     return result
 
 

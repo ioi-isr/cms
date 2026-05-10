@@ -36,6 +36,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from cms.db import TrainingDay, TrainingProgram, Student
 from .analysis import (
     PairInfo,
+    apply_bad_day_bonus,
     apply_location_weights,
     apply_training_type_correction,
     calculate_time_decay_weights,
@@ -209,7 +210,10 @@ def generate_attendance_sheet(ws: Worksheet, view_data: dict, context: FilterCon
     writer = TrainingExcelWriter(ws)
     writer.setup_static_headers()
 
-    subcols = ["Status", "Location", "Recorded", "Delay Reasons", "Comments"]
+    subcols = [
+        "Status", "Location", "Recorded", "Bad Day",
+        "Delay Reasons", "Comments",
+    ]
     width = len(subcols)
 
     # Write Headers
@@ -254,12 +258,17 @@ def generate_attendance_sheet(ws: Worksheet, view_data: dict, context: FilterCon
 
                 if att.status == "missed":
                     rec = ""
+                    bad_day = ""
                 else:
                     rec = "Yes" if att.recorded else "No"
+                    bad_day = "Yes" if att.declared_bad_day else ""
 
-                vals = [status, loc, rec, att.delay_reasons or "", att.comment or ""]
+                vals = [
+                    status, loc, rec, bad_day,
+                    att.delay_reasons or "", att.comment or "",
+                ]
             else:
-                vals = ["", "", "", "", ""]
+                vals = ["", "", "", "", "", ""]
 
             for i, val in enumerate(vals):
                 cell = ws.cell(row=row, column=curr_col + i, value=excel_safe(val))
@@ -659,10 +668,19 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
                 student_weights, raw_scores, num_outliers
             )
 
+        consider_bad_days = self.get_argument(
+            "consider_bad_days", "off"
+        ) == "on"
+
         norm_scores = normalize_scores(
             norm_method, student_info, td_list, top_x, normalize_variability
         )
         weighted_avgs = calculate_weighted_averages(student_weights, norm_scores)
+
+        if consider_bad_days:
+            weighted_avgs = apply_bad_day_bonus(
+                student_info, student_weights, norm_scores, weighted_avgs
+            )
 
         sorted_students = ranking_view["sorted_students"]
 
