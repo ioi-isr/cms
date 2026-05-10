@@ -137,7 +137,7 @@ AdminTableUtils.initFilterTagify({
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
           {% if att %}
             {% set data_value = 3 if att.status == 'missed' and not att.justified else (2.5 if att.status == 'missed' else (2 if att.delay_time else 1)) %}
-            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)" onKeyDown="openAttendanceModal(this)">
+            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-declared-bad-day="{{ 'true' if att.declared_bad_day else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" tabindex="0" role="button" aria-label="Edit attendance" onclick="openAttendanceModal(this)" onkeydown="handleAttendanceCellKey(event, this)">
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
                   <div class="tag is-bordered is-rounded {% if att.justified %}has-text-warning{% else %}has-text-danger{% endif %}">
@@ -189,6 +189,12 @@ AdminTableUtils.initFilterTagify({
                     <svg class="icon is-small recorded-badge"><title>Recorded</title><use href="#icon-video"/></svg>
                   {% endif %}
                 </div>
+                {% if att.declared_bad_day %}
+                <div class="bad-day-row is-size-7 has-text-warning-75 is-flex is-align-items-center icon-text gap-1 mt-1">
+                  <svg class="icon is-small"><use href="#icon-alert-triangle"/></svg>
+                  <span>Bad Day</span>
+                </div>
+                {% endif %}
                 {% endif %}
 
                 {% if att.delay_reasons %}
@@ -244,6 +250,13 @@ AdminTableUtils.initFilterTagify({
           </label>
           <small class="modal__hint">Check this if the absence was justified (e.g., sick leave)</small>
         </div>
+        <div class="modal__checkbox-row" id="declared-bad-day-row">
+          <label for="modal-declared-bad-day">
+            <input type="checkbox" id="modal-declared-bad-day" />
+            Declared Bad Day
+          </label>
+          <small class="modal__hint">Check this if the student declared feeling unwell before the training day</small>
+        </div>
         <div class="modal__checkbox-row">
           <label for="modal-recorded">
             <input type="checkbox" id="modal-recorded" />
@@ -277,6 +290,13 @@ AdminTableUtils.initFilterTagify({
 var currentAttendanceId = null;
 var currentAttendanceData = {};
 
+function handleAttendanceCellKey(event, el) {
+    if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') {
+        event.preventDefault();
+        openAttendanceModal(el);
+    }
+}
+
 function openAttendanceModal(el) {
     var ds = el.dataset;
     currentAttendanceId = ds.attendanceId;
@@ -284,16 +304,19 @@ function openAttendanceModal(el) {
     currentAttendanceData = {
         status: ds.status,
         justified: ds.justified === 'true',
+        declaredBadDay: ds.declaredBadDay === 'true',
         recorded: ds.recorded === 'true',
         comment: ds.comment
     };
 
     document.getElementById('modal-justified').checked = currentAttendanceData.justified;
+    document.getElementById('modal-declared-bad-day').checked = currentAttendanceData.declaredBadDay;
     document.getElementById('modal-recorded').checked = currentAttendanceData.recorded;
     document.getElementById('modal-comment').value = currentAttendanceData.comment;
 
     var isMissed = currentAttendanceData.status === 'missed';
     document.getElementById('justified-row').style.display = isMissed ? 'flex' : 'none';
+    document.getElementById('declared-bad-day-row').style.display = isMissed ? 'none' : 'flex';
     document.getElementById('modal-recorded').closest('.modal__checkbox-row').style.display = isMissed ? 'none' : 'flex';
 
     MicroModal.show('modal-attendance');
@@ -305,82 +328,98 @@ function closeAttendanceModal() {
     currentAttendanceData = {};
 }
 
-function updateAttendanceCell(attendanceId, justified, recorded, comment) {
-    // Find the cell by attendance ID
+function _updateRecordedBadge(wrapper, recorded) {
+    var locationRow = wrapper.querySelector('.location-row');
+    if (!locationRow) return;
+    var badge = locationRow.querySelector('.recorded-badge');
+    if (recorded && !badge) {
+        var svgNS = 'http://www.w3.org/2000/svg';
+        var newBadge = document.createElementNS(svgNS, 'svg');
+        newBadge.setAttribute('class', 'icon is-small recorded-badge');
+        var title = document.createElementNS(svgNS, 'title');
+        title.textContent = 'Recorded';
+        var use = document.createElementNS(svgNS, 'use');
+        use.setAttribute('href', '#icon-video');
+        newBadge.appendChild(title);
+        newBadge.appendChild(use);
+        locationRow.appendChild(newBadge);
+    } else if (!recorded && badge) {
+        badge.remove();
+    }
+}
+
+function _updateJustifiedBadge(wrapper, justified) {
+    var statusBadge = wrapper.querySelector('.tag');
+    if (!statusBadge) return;
+    if (justified) {
+        statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
+        statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
+    } else {
+        statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
+        statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
+    }
+}
+
+function _updateBadDayBadge(wrapper, declaredBadDay) {
+    var existing = wrapper.querySelector('.bad-day-row');
+    if (declaredBadDay && !existing) {
+        var div = document.createElement('div');
+        div.className = 'bad-day-row is-size-7 has-text-warning-75 is-flex is-align-items-center icon-text gap-1 mt-1';
+        div.innerHTML = '<svg class="icon is-small" xmlns="http://www.w3.org/2000/svg"><use href="#icon-alert-triangle"/></svg><span>Bad Day</span>';
+        var locationRow = wrapper.querySelector('.location-row');
+        if (locationRow) { locationRow.after(div); } else { wrapper.appendChild(div); }
+    } else if (!declaredBadDay && existing) {
+        existing.remove();
+    }
+}
+
+function _updateCommentText(wrapper, comment) {
+    var existing = wrapper.querySelector('.comment-text');
+    var html = comment
+        ? '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>'
+        : '';
+    if (comment && !existing) {
+        var div = document.createElement('div');
+        div.className = 'comment-text is-flex is-align-items-center gap-1';
+        div.title = comment;
+        div.innerHTML = html;
+        wrapper.appendChild(div);
+    } else if (!comment && existing) {
+        existing.remove();
+    } else if (comment && existing) {
+        existing.title = comment;
+        existing.innerHTML = html;
+    }
+}
+
+function updateAttendanceCell(attendanceId, justified, declaredBadDay, recorded, comment) {
     var cell = document.querySelector('[data-attendance-id="' + attendanceId + '"]');
     if (!cell) return;
 
-    // Update the dataset attributes
     cell.dataset.justified = justified ? 'true' : 'false';
+    cell.dataset.declaredBadDay = declaredBadDay ? 'true' : 'false';
     cell.dataset.recorded = recorded ? 'true' : 'false';
     cell.dataset.comment = comment || '';
 
-    // Update data-value for sorting (must match template logic)
     if (cell.dataset.status === 'missed') {
         cell.dataset.value = justified ? '2.5' : '3';
     }
 
-    // Update the visual content
     var wrapper = cell.querySelector('.cell-wrapper');
     if (!wrapper) return;
 
-    // Update recorded badge - create or remove as needed
-    var locationRow = wrapper.querySelector('.location-row');
-    if (locationRow && cell.dataset.status !== 'missed') {
-        var recordedBadge = locationRow.querySelector('.recorded-badge');
-        if (recorded && !recordedBadge) {
-            // Create recorded badge
-            var svgNS = 'http://www.w3.org/2000/svg';
-            var badge = document.createElementNS(svgNS, 'svg');
-            badge.setAttribute('class', 'icon is-small recorded-badge');
-            var title = document.createElementNS(svgNS, 'title');
-            title.textContent = 'Recorded';
-            var use = document.createElementNS(svgNS, 'use');
-            use.setAttribute('href', '#icon-video');
-            badge.appendChild(title);
-            badge.appendChild(use);
-            locationRow.appendChild(badge);
-        } else if (!recorded && recordedBadge) {
-            // Remove recorded badge
-            recordedBadge.remove();
-        }
-    }
-
-    // Update justified status for missed entries
-    var statusBadge = wrapper.querySelector('.tag');
-    if (statusBadge && cell.dataset.status === 'missed') {
-        if (justified) {
-            statusBadge.className = 'tag is-bordered is-rounded has-text-warning';
-            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-file-text"/></svg><span>Justified</span>';
-        } else {
-            statusBadge.className = 'tag is-bordered is-rounded has-text-danger';
-            statusBadge.innerHTML = '<svg class="icon is-small"><use href="#icon-x"/></svg><span>Missed</span>';
-        }
-    }
-
-    // Update comment text
-    var existingComment = wrapper.querySelector('.comment-text');
-    if (comment && !existingComment) {
-        // Create comment text
-        var commentDiv = document.createElement('div');
-        commentDiv.className = 'comment-text is-flex is-align-items-center gap-1';
-        commentDiv.title = comment;
-        commentDiv.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
-        wrapper.appendChild(commentDiv);
-    } else if (!comment && existingComment) {
-        // Remove comment text
-        existingComment.remove();
-    } else if (comment && existingComment) {
-        // Update existing comment text
-        existingComment.title = comment;
-        existingComment.innerHTML = '<svg class="icon is-small mr-1"><use href="#icon-message-circle"/></svg><span>' + comment.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
-    }
+    var isMissed = cell.dataset.status === 'missed';
+    if (!isMissed) { _updateRecordedBadge(wrapper, recorded); }
+    if (isMissed) { _updateJustifiedBadge(wrapper, justified); }
+    if (!isMissed) { _updateBadDayBadge(wrapper, declaredBadDay); }
+    _updateCommentText(wrapper, comment);
 }
 
 function saveAttendance() {
     if (!currentAttendanceId) return;
 
     var justified = document.getElementById('modal-justified').checked;
+    var declaredBadDay = document.getElementById('modal-declared-bad-day').checked;
     var recorded = document.getElementById('modal-recorded').checked;
     var comment = document.getElementById('modal-comment').value.trim();
 
@@ -388,17 +427,18 @@ function saveAttendance() {
     if (currentAttendanceData.status === 'missed' && justified !== currentAttendanceData.justified) {
         var action = justified ? 'mark this absence as justified' : 'remove the justified status';
         AdminModals.confirmThen('Are you sure you want to ' + action + '?', function() {
-            _doSaveAttendance(justified, recorded, comment);
+            _doSaveAttendance(justified, declaredBadDay, recorded, comment);
         }, {icon: 'question'});
         return;
     }
-    _doSaveAttendance(justified, recorded, comment);
+    _doSaveAttendance(justified, declaredBadDay, recorded, comment);
 }
 
-function _doSaveAttendance(justified, recorded, comment) {
+function _doSaveAttendance(justified, declaredBadDay, recorded, comment) {
 
     var data = {
         justified: justified,
+        declared_bad_day: declaredBadDay,
         recorded: recorded,
         comment: comment || null
     };
@@ -426,7 +466,7 @@ function _doSaveAttendance(justified, recorded, comment) {
     .then(function(result) {
         if (result.success) {
             // Success - update the cell dynamically and close modal
-            updateAttendanceCell(currentAttendanceId, justified, recorded, comment);
+            updateAttendanceCell(currentAttendanceId, justified, declaredBadDay, recorded, comment);
             closeAttendanceModal();
         } else {
             AdminModals.showError(result.error || 'Unknown error');

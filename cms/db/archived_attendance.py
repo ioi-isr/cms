@@ -97,6 +97,15 @@ class ArchivedAttendance(Base):
         server_default=text("false"),
     )
 
+    # Whether the student declared feeling unwell before the training day.
+    # Only applicable for non-missed training days.
+    declared_bad_day: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+
     # Admin comment for this attendance record
     comment: str | None = Column(
         Unicode,

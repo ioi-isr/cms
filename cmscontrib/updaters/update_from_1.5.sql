@@ -665,6 +665,7 @@ CREATE TABLE public.archived_attendances (
     delay_time interval,
     delay_reasons character varying,
     justified boolean NOT NULL DEFAULT false,
+    declared_bad_day boolean NOT NULL DEFAULT false,
     comment character varying,
     recorded boolean NOT NULL DEFAULT false
 );

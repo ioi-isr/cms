@@ -547,6 +547,36 @@ class TrainingProgramCombinedRankingDetailHandler(
         self.render("training_program_combined_ranking_detail.html", **self.r_params)
 
 
+def _apply_attendance_fields(att: ArchivedAttendance, data: dict) -> None:
+    """Validate and apply attendance field updates.
+
+    Raises ValueError if validation fails.
+    """
+    if "justified" in data:
+        justified = bool(data["justified"])
+        if justified and att.status != "missed":
+            raise ValueError("Only missed attendances can be justified")
+        att.justified = justified
+
+    if "declared_bad_day" in data:
+        declared_bad_day = bool(data["declared_bad_day"])
+        if declared_bad_day and att.status == "missed":
+            raise ValueError(
+                "Only non-missed attendances can be marked as bad day"
+            )
+        att.declared_bad_day = declared_bad_day
+
+    if "comment" in data:
+        comment = data["comment"]
+        att.comment = str(comment).strip() if comment else None
+
+    if "recorded" in data:
+        recorded = bool(data["recorded"])
+        if recorded and att.status == "missed":
+            raise ValueError("Only non-missed attendances can be recorded")
+        att.recorded = recorded
+
+
 class UpdateAttendanceHandler(BaseHandler):
     """Update attendance record (justified status, comment, and recorded)."""
 
@@ -565,24 +595,8 @@ class UpdateAttendanceHandler(BaseHandler):
             self.write_error_json(400, "Invalid JSON")
             return
 
-        # Validate and Apply
         try:
-            if "justified" in data:
-                justified = bool(data["justified"])
-                if justified and att.status != "missed":
-                    raise ValueError("Only missed attendances can be justified")
-                att.justified = justified
-
-            if "comment" in data:
-                comment = data["comment"]
-                att.comment = str(comment).strip() if comment else None
-
-            if "recorded" in data:
-                recorded = bool(data["recorded"])
-                if recorded and att.status == "missed":
-                    raise ValueError("Only non-missed attendances can be recorded")
-                att.recorded = recorded
-
+            _apply_attendance_fields(att, data)
         except ValueError as e:
             self.write_error_json(400, str(e))
             return
@@ -592,6 +606,7 @@ class UpdateAttendanceHandler(BaseHandler):
                 {
                     "success": True,
                     "justified": att.justified,
+                    "declared_bad_day": att.declared_bad_day,
                     "comment": att.comment,
                     "recorded": att.recorded,
                 }
