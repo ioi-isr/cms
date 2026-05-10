@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 from cms.server.admin.handlers.analysis import (
     StudentTrainingDayInfo,
     PairInfo,
+    apply_bad_day_bonus,
     calculate_time_decay_weights,
     apply_location_weights,
     apply_training_type_correction,
@@ -34,6 +35,7 @@ from cms.server.admin.handlers.analysis import (
     _mad,
     _collect_reference_scores,
     _top_x_scores,
+    _weighted_avg_without,
     MAD_MULTIPLIER,
 )
 
@@ -64,7 +66,8 @@ def make_td(td_id, start_time=None, training_day_types=None):
 
 
 def make_info(student_id, td_id, score=0.0, location="class",
-              recorded=False, status="participated", justified=False):
+              recorded=False, status="participated", justified=False,
+              declared_bad_day=False):
     return StudentTrainingDayInfo(
         student_id=student_id,
         training_day_id=td_id,
@@ -73,6 +76,7 @@ def make_info(student_id, td_id, score=0.0, location="class",
         recorded=recorded,
         status=status,
         justified=justified,
+        declared_bad_day=declared_bad_day,
     )
 
 
@@ -763,6 +767,193 @@ class TestDropOutliers(unittest.TestCase):
         self.assertAlmostEqual(result[10][5], 0.0)
         self.assertAlmostEqual(result[20][5], 0.0)
         self.assertAlmostEqual(result[20][1], 0.0)
+
+
+class TestBadDayBonus(unittest.TestCase):
+
+    def test_no_bad_days_no_change_when_not_applied(self):
+        """Without bad days and without calling apply_bad_day_bonus, avgs unchanged."""
+        tds = [make_td(1), make_td(2)]
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, score=60),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        norm = get_raw_scores(info, tds)
+        avgs = calculate_weighted_averages(weights, norm)
+        self.assertAlmostEqual(avgs[10], 70.0)
+
+    def test_single_bad_day_improves_score(self):
+        """Dropping a low-scoring bad day should improve the average."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=90),
+                2: make_info(10, 2, score=30, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        norm = {10: {1: 90.0, 2: 30.0}}
+        avgs = {10: 60.0}  # (90+30)/2
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping TD 2 gives avg=90, which is > 60
+        self.assertAlmostEqual(result[10], 90.0)
+
+    def test_single_bad_day_no_improvement(self):
+        """If the bad day has a high score, dropping it shouldn't help."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=50),
+                2: make_info(10, 2, score=100, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}}
+        norm = {10: {1: 50.0, 2: 100.0}}
+        avgs = {10: 75.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping TD 2 gives avg=50, which is < 75, so keep original
+        self.assertAlmostEqual(result[10], 75.0)
+
+    def test_multiple_bad_days(self):
+        """Multiple bad days: try all subsets and pick the best."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=100),
+                2: make_info(10, 2, score=20, declared_bad_day=True),
+                3: make_info(10, 3, score=10, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        norm = {10: {1: 100.0, 2: 20.0, 3: 10.0}}
+        avgs = {10: (100 + 20 + 10) / 3.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping both bad days gives avg=100, which is the best
+        self.assertAlmostEqual(result[10], 100.0)
+
+    def test_multiple_bad_days_partial_drop(self):
+        """Dropping only some bad days may be optimal."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=60),
+                2: make_info(10, 2, score=80, declared_bad_day=True),
+                3: make_info(10, 3, score=10, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        norm = {10: {1: 60.0, 2: 80.0, 3: 10.0}}
+        original_avg = 50.0
+        avgs = {10: original_avg}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Drop only TD 3: (60+80)/2 = 70
+        # Drop only TD 2: (60+10)/2 = 35
+        # Drop both: 60
+        # Best is dropping TD 3 -> 70
+        self.assertAlmostEqual(result[10], 70.0)
+
+    def test_expected_value_no_bad_days(self):
+        """Students without bad days get expected score of random bad day."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=100),
+                2: make_info(10, 2, score=80),
+                3: make_info(10, 3, score=40),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0, 3: 1.0}}
+        norm = {10: {1: 100.0, 2: 80.0, 3: 40.0}}
+        original_avg = (100 + 80 + 40) / 3.0  # ~73.33
+        avgs = {10: original_avg}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+
+        # For each TD: max(original_avg, avg_without)
+        avg_without_1 = (80 + 40) / 2.0  # 60 < 73.33 -> use 73.33
+        avg_without_2 = (100 + 40) / 2.0  # 70 < 73.33 -> use 73.33
+        avg_without_3 = (100 + 80) / 2.0  # 90 > 73.33 -> use 90
+        expected = (max(original_avg, avg_without_1) +
+                    max(original_avg, avg_without_2) +
+                    max(original_avg, avg_without_3)) / 3.0
+        self.assertAlmostEqual(result[10], expected, places=5)
+
+    def test_expected_value_single_td(self):
+        """Student with one TD gets the original avg (dropping leaves nothing)."""
+        info = {
+            10: {1: make_info(10, 1, score=80)},
+        }
+        weights = {10: {1: 1.0}}
+        norm = {10: {1: 80.0}}
+        avgs = {10: 80.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping the only TD gives avg=0; max(80,0)=80; E=80
+        self.assertAlmostEqual(result[10], 80.0)
+
+    def test_weighted_avg_without_helper(self):
+        """Test the _weighted_avg_without helper directly."""
+        scores = {1: 100.0, 2: 60.0, 3: 80.0}
+        weights = {1: 1.0, 2: 0.5, 3: 2.0}
+        # Without TD 2: (1*100 + 2*80)/(1+2) = 260/3
+        result = _weighted_avg_without(scores, weights, {2})
+        self.assertAlmostEqual(result, 260.0 / 3.0)
+
+    def test_bad_day_with_different_weights(self):
+        """Bad day bonus respects non-uniform weights."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=90),
+                2: make_info(10, 2, score=30, declared_bad_day=True),
+            },
+        }
+        weights = {10: {1: 2.0, 2: 1.0}}
+        norm = {10: {1: 90.0, 2: 30.0}}
+        original_avg = (2 * 90 + 1 * 30) / 3.0  # 70
+        avgs = {10: original_avg}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        # Dropping TD 2: avg = 90 > 70
+        self.assertAlmostEqual(result[10], 90.0)
+
+    def test_mixed_students_with_and_without_bad_days(self):
+        """One student has bad days, another doesn't."""
+        info = {
+            10: {
+                1: make_info(10, 1, score=80),
+                2: make_info(10, 2, score=40, declared_bad_day=True),
+            },
+            20: {
+                1: make_info(20, 1, score=80),
+                2: make_info(20, 2, score=40),
+            },
+        }
+        weights = {10: {1: 1.0, 2: 1.0}, 20: {1: 1.0, 2: 1.0}}
+        norm = {10: {1: 80.0, 2: 40.0}, 20: {1: 80.0, 2: 40.0}}
+        avgs = {10: 60.0, 20: 60.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+
+        # Student 10: has bad day on TD 2, drop it -> avg=80
+        self.assertAlmostEqual(result[10], 80.0)
+
+        # Student 20: no bad days, expected value
+        # Drop TD 1: avg=40, max(60,40)=60
+        # Drop TD 2: avg=80, max(60,80)=80
+        # E = (60+80)/2 = 70
+        self.assertAlmostEqual(result[20], 70.0)
+
+    def test_no_active_tds(self):
+        """Student with no active TDs should keep original average."""
+        info = {10: {}}
+        weights = {10: {}}
+        norm = {10: {}}
+        avgs = {10: 0.0}
+
+        result = apply_bad_day_bonus(info, weights, norm, avgs)
+        self.assertAlmostEqual(result[10], 0.0)
 
 
 class TestGeneratePairwiseData(unittest.TestCase):

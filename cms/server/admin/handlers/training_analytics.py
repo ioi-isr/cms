@@ -573,6 +573,14 @@ class UpdateAttendanceHandler(BaseHandler):
                     raise ValueError("Only missed attendances can be justified")
                 att.justified = justified
 
+            if "declared_bad_day" in data:
+                declared_bad_day = bool(data["declared_bad_day"])
+                if declared_bad_day and att.status == "missed":
+                    raise ValueError(
+                        "Only non-missed attendances can be marked as bad day"
+                    )
+                att.declared_bad_day = declared_bad_day
+
             if "comment" in data:
                 comment = data["comment"]
                 att.comment = str(comment).strip() if comment else None
@@ -592,6 +600,7 @@ class UpdateAttendanceHandler(BaseHandler):
                 {
                     "success": True,
                     "justified": att.justified,
+                    "declared_bad_day": att.declared_bad_day,
                     "comment": att.comment,
                     "recorded": att.recorded,
                 }

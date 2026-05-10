@@ -378,6 +378,9 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                   {% elif attendance and attendance.location == 'home' %}
                     <svg class="icon has-text-grey"><title>Participated from home</title><use href="#icon-home"/></svg>
                   {% endif %}
+                  {% if attendance and attendance.declared_bad_day %}
+                    <svg class="icon has-text-warning-75"><title>Declared bad day</title><use href="#icon-alert-triangle"/></svg>
+                  {% endif %}
                   {% if attendance and attendance.recorded %}
                     <svg class="icon has-text-grey"><title>Recorded</title><use href="#icon-video"/></svg>
                   {% endif %}
@@ -389,6 +392,9 @@ window.showTrainingDayHistogram = function(trainingDayId, trainingDayName) {
                     <svg class="icon has-text-danger"><title>Missed training</title><use href="#icon-x"/></svg>
                   {% else %}
                     <span class="has-text-grey-light has-text-centered has-text-weight-normal">-</span>
+                  {% endif %}
+                  {% if attendance and attendance.declared_bad_day %}
+                    <svg class="icon has-text-warning-75"><title>Declared bad day</title><use href="#icon-alert-triangle"/></svg>
                   {% endif %}
                   {% if attendance and attendance.recorded %}
                     <svg class="icon has-text-grey"><title>Recorded</title><use href="#icon-video"/></svg>
