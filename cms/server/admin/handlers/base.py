@@ -1160,6 +1160,50 @@ class FileFromDigestHandler(FileHandler):
         self.fetch(digest, "text/plain", filename)
 
 
+def _sniff_image_mime(head: bytes) -> tuple[str, str]:
+    """Return (mime_type, extension) sniffed from the first bytes of a file.
+
+    Falls back to ("application/octet-stream", "bin") if unknown.
+    """
+    if head.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg", "jpg"
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", "png"
+    if head.startswith(b"GIF87a") or head.startswith(b"GIF89a"):
+        return "image/gif", "gif"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "image/webp", "webp"
+    return "application/octet-stream", "bin"
+
+
+class PictureHandler(FileHandler):
+    """Return a user's profile picture inline, with a sniffed image MIME type.
+
+    Unlike `FileFromDigestHandler`, this serves with `Content-Disposition:
+    inline` so that opening the URL in a new tab displays the image instead
+    of downloading it, and with the correct `image/*` Content-Type so the
+    browser can render it.
+    """
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, digest):
+        # Sniff the format from the file's magic bytes so we can set a
+        # proper Content-Type (the file store does not keep the MIME type).
+        try:
+            fobj = self.service.file_cacher.get_file(digest)
+        except KeyError:
+            raise tornado.web.HTTPError(404)
+        try:
+            head = fobj.read(16)
+        finally:
+            fobj.close()
+
+        self.sql_session.close()
+
+        mime, ext = _sniff_image_mime(head)
+        self.fetch(digest, mime, "picture.%s" % ext, disposition="inline")
+
+
 def SimpleHandler(page, authenticated=True, permission_all=False) -> type[BaseHandler]:
     if permission_all:
 

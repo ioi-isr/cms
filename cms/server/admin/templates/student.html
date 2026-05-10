@@ -4,6 +4,7 @@
 {% import 'macro/submission.html' as macro_submission %}
 {% import 'macro/question.html' as macro_question with context %}
 {% import 'macro/message.html' as macro_message with context %}
+{% import 'macro/user_avatar.html' as macro_user_avatar with context %}
 
 {% block js_init %}
 CMS.AWSFormUtils.initTagify({
@@ -21,14 +22,23 @@ CMS.AWSFormUtils.initTagify({
 {% endblock js_init %}
 
 {% block core %}
-<h1 class="title is-spaced">
-  Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
-</h1>
-<p class="subtitle has-text-grey mb-5">
-  Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
-  &middot;
-  <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View Task Archive ({{ student.student_tasks|length }} tasks)</a>
-</p>
+<article class="media mb-5" style="align-items: center;">
+  <figure class="media-left">
+    {{ macro_user_avatar.user_avatar(selected_user) }}
+  </figure>
+  <div class="media-content">
+    <h1 class="title is-spaced mb-2">
+      Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+    </h1>
+    <p class="subtitle has-text-grey is-6 mb-0">
+      {{ selected_user.first_name }} {{ selected_user.last_name }}
+      &middot;
+      Training Program: <a href="{{ url("training_program", training_program.id) }}" style="color: var(--tp-text-secondary); font-weight: 600; text-decoration: none;">{{ training_program.name }}</a>
+      &middot;
+      <a href="{{ url("training_program", training_program.id, "student", selected_user.id, "tasks") }}">View Task Archive ({{ student.student_tasks|length }} tasks)</a>
+    </p>
+  </div>
+</article>
 
 <!-- Student Information -->
 <h2 class="title is-5">Student Information</h2>

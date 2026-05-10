@@ -24,10 +24,12 @@ from .admin import \
     AdminsHandler, \
     AdminHandler, \
     AdminThemeHandler
-from .base import \
-    FileFromDigestHandler, \
-    SimpleHandler, \
-    SimpleContestHandler
+from .base import (
+    FileFromDigestHandler,
+    PictureHandler,
+    SimpleHandler,
+    SimpleContestHandler,
+)
 from .contest import \
     AddContestHandler, \
     ContestHandler, \
@@ -243,6 +245,7 @@ HANDLERS = [
     (r"/filecacher/list_by_description", FileCacherListByDescriptionHandler),
     (r"/filecacher/download", FileCacherDownloadHandler),
     (r"/file/([a-f0-9]+)/([a-zA-Z0-9_.-]+)", FileFromDigestHandler),
+    (r"/picture/([a-f0-9]+)", PictureHandler),
     (r"/render_markdown", MarkdownRenderHandler),
     # Contest
     (r"/contests", ContestListHandler),
@@ -363,7 +366,10 @@ HANDLERS = [
     (r"/dataset/([0-9]+)/subtask/([0-9]+)/name", UpdateSubtaskNameHandler),
     (r"/dataset/([0-9]+)/testcase/([0-9]+)/rename", RenameTestcaseHandler),
     (r"/dataset/([0-9]+)/testcases/batch_rename", BatchRenameTestcasesHandler),
-    (r"/dataset/([0-9]+)/testcases/apply_subtask_prefixes", ApplySubtaskPrefixesHandler),
+    (
+        r"/dataset/([0-9]+)/testcases/apply_subtask_prefixes",
+        ApplySubtaskPrefixesHandler,
+    ),
     (r"/dataset/([0-9]+)/subtasks/reorder", ReorderSubtasksHandler),
     (r"/dataset/([0-9]+)/validators/rerun", RerunSubtaskValidatorsHandler),
     # Users/Teams
