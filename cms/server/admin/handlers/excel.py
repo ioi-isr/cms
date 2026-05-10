@@ -679,7 +679,8 @@ class ExportAnalysedRankingHandler(ExportAttendanceHandler):
 
         if consider_bad_days:
             weighted_avgs = apply_bad_day_bonus(
-                student_info, student_weights, norm_scores, weighted_avgs
+                student_info, student_weights, norm_scores, weighted_avgs,
+                higher_is_better=(norm_method != "rank"),
             )
 
         sorted_students = ranking_view["sorted_students"]
