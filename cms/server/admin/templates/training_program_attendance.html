@@ -137,7 +137,7 @@ AdminTableUtils.initFilterTagify({
           {% set att = attendance_data.get(student.id, {}).get(td.id) %}
           {% if att %}
             {% set data_value = 3 if att.status == 'missed' and not att.justified else (2.5 if att.status == 'missed' else (2 if att.delay_time else 1)) %}
-            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-declared-bad-day="{{ 'true' if att.declared_bad_day else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" onclick="openAttendanceModal(this)" onKeyDown="openAttendanceModal(this)">
+            <td data-value="{{ data_value }}" class="attendance-cell" data-attendance-id="{{ att.id }}" data-status="{{ att.status }}" data-justified="{{ 'true' if att.justified else 'false' }}" data-declared-bad-day="{{ 'true' if att.declared_bad_day else 'false' }}" data-recorded="{{ 'true' if att.recorded else 'false' }}" data-comment="{{ att.comment or '' }}" tabindex="0" role="button" aria-label="Edit attendance" onclick="openAttendanceModal(this)" onkeydown="handleAttendanceCellKey(event, this)">
               <div class="cell-wrapper">
                 {% if att.status == "missed" %}
                   <div class="tag is-bordered is-rounded {% if att.justified %}has-text-warning{% else %}has-text-danger{% endif %}">
@@ -289,6 +289,13 @@ AdminTableUtils.initFilterTagify({
 // Attendance edit modal functionality
 var currentAttendanceId = null;
 var currentAttendanceData = {};
+
+function handleAttendanceCellKey(event, el) {
+    if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') {
+        event.preventDefault();
+        openAttendanceModal(el);
+    }
+}
 
 function openAttendanceModal(el) {
     var ds = el.dataset;
