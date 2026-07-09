@@ -544,7 +544,12 @@ def run_validator_in_background(service, file_cacher, validator_id, dataset_id,
             return
         _running_validations[validator_id] = greenlet
 
-    # Start the greenlet through the pool *without* holding the lock. This may
-    # block until a slot frees up, but running validators can now acquire the
-    # lock, deregister, and free their slots, so the pool cannot deadlock.
-    _validator_pool.start(greenlet)
+    # Start the greenlet through the pool *without* holding the lock, from a
+    # detached greenlet. _validator_pool.start blocks until a slot is free once
+    # the pool is full; dispatching it from a detached greenlet keeps that wait
+    # off the caller, so the "Rerun validators" handler (which loops over every
+    # validator) can return promptly instead of blocking on the last launches.
+    # The pool still bounds concurrency to _VALIDATOR_CONCURRENCY_LIMIT, and
+    # because the lock is released before the wait, running validators can
+    # deregister and free their slots, so the pool cannot deadlock.
+    gevent.spawn(_validator_pool.start, greenlet)
