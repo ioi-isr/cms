@@ -54,7 +54,7 @@ from cms.db import (
     TrainingProgram,
     User,
 )
-from cmscommon.datetime import make_datetime
+from cmscommon.datetime import make_datetime, make_timestamp
 from cmscontrib.importing import ImportDataError
 
 if typing.TYPE_CHECKING:
@@ -75,7 +75,7 @@ Notifier = Callable[[str, str], None]
 
 
 def _ts(value: datetime | None) -> float | None:
-    return value.timestamp() if value is not None else None
+    return make_timestamp(value) if value is not None else None
 
 
 def _from_ts(value: float | int | None) -> datetime | None:
@@ -96,7 +96,7 @@ def _from_seconds(value: float | int | None) -> timedelta | None:
 
 
 def _export_student(student: Student, task_names: dict[int, str],
-                    training_day_names: dict[int, str]) -> dict:
+                    training_day_indexes: dict[int, int]) -> dict:
     participation = student.participation
     data: dict = {
         "username": participation.user.username,
@@ -113,9 +113,10 @@ def _export_student(student: Student, task_names: dict[int, str],
             "task": task_name,
             "assigned_at": _ts(student_task.assigned_at),
         }
-        source_name = training_day_names.get(student_task.source_training_day_id)
-        if source_name is not None:
-            entry["source_training_day"] = source_name
+        source_index = training_day_indexes.get(
+            student_task.source_training_day_id)
+        if source_index is not None:
+            entry["source_training_day"] = source_index
         student_tasks.append(entry)
     if student_tasks:
         data["tasks"] = student_tasks
@@ -216,7 +217,9 @@ def build_training_program_config(
                      if td.contest is None]
     skipped_days = [td for td in training_program.training_days
                     if td.contest is not None]
-    training_day_names = {td.id: td.name for td in archived_days}
+    # Training day names are not unique; student tasks reference their
+    # source training day by index in the exported training_days list.
+    training_day_indexes = {td.id: i for i, td in enumerate(archived_days)}
 
     students = sorted(
         (s for s in training_program.students if s.participation is not None),
@@ -227,7 +230,7 @@ def build_training_program_config(
         "description": training_program.description,
         "managing_contest": contest.name,
         "students": [
-            _export_student(student, task_names, training_day_names)
+            _export_student(student, task_names, training_day_indexes)
             for student in students
         ],
         "training_days": [
@@ -305,13 +308,11 @@ class TrainingProgramImporter:
         students_by_username = self._import_students(
             training_program, contest)
 
-        training_days_by_name: dict[str, TrainingDay] = {}
+        training_days: list[TrainingDay] = []
         for td_config in self.config.get("training_days") or []:
-            training_day = self._import_training_day(
+            training_days.append(self._import_training_day(
                 training_program, td_config, tasks_by_name,
-                students_by_username)
-            if training_day.name is not None:
-                training_days_by_name[training_day.name] = training_day
+                students_by_username))
 
         for student_config in self.config.get("students") or []:
             student = students_by_username.get(student_config.get("username"))
@@ -319,7 +320,7 @@ class TrainingProgramImporter:
                 continue
             self._import_student_tasks(
                 student, student_config.get("tasks") or [],
-                tasks_by_name, training_days_by_name)
+                tasks_by_name, training_days)
 
         if self.skipped_usernames:
             shown = ", ".join(self.skipped_usernames[:5])
@@ -374,7 +375,7 @@ class TrainingProgramImporter:
     def _import_student_tasks(
         self, student: Student, tasks_config: list[dict],
         tasks_by_name: dict[str, Task],
-        training_days_by_name: dict[str, TrainingDay],
+        training_days: list[TrainingDay],
     ) -> None:
         seen: set[int] = set()
         for entry in tasks_config:
@@ -386,9 +387,10 @@ class TrainingProgramImporter:
             student_task = StudentTask(assigned_at=assigned_at)
             student_task.student = student
             student_task.task = task
-            source = training_days_by_name.get(entry.get("source_training_day"))
-            if source is not None:
-                student_task.source_training_day = source
+            source_index = entry.get("source_training_day")
+            if (isinstance(source_index, int)
+                    and 0 <= source_index < len(training_days)):
+                student_task.source_training_day = training_days[source_index]
             self.session.add(student_task)
 
     def _build_task_id_map(

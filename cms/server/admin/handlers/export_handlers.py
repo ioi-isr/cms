@@ -574,6 +574,18 @@ class ExportContestHandler(BaseHandler):
             fallback_url = self.url("contest", entity_id)
             error_prefix = "Contest"
 
+        if training_program is not None:
+            missing = [task.name for task in contest.tasks
+                       if task.active_dataset is None]
+            if missing:
+                self.service.add_notification(
+                    make_datetime(),
+                    f"{error_prefix} export failed",
+                    "Tasks without an active dataset cannot be exported: "
+                    + ", ".join(missing))
+                self.redirect(fallback_url)
+                return
+
         temp_dir = None
         try:
             temp_dir = tempfile.mkdtemp(prefix="cms_export_")

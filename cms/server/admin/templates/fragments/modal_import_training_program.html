@@ -1,5 +1,5 @@
 <!-- Import Training Program Modal Fragment -->
-<!-- Required context: admin, url, xsrf_form_html -->
+<!-- Required context: admin, url, handler -->
 
 {% from "macro/modal.html" import modal_header, modal_footer %}
 {% from "macro/bulma_file_input.html" import bulma_file_input %}
@@ -9,7 +9,7 @@
         <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-import-training-program-title">
             {{ modal_header("Import Training Program from ZIP", "modal-import-training-program-title") }}
             <form enctype="multipart/form-data" action="{{ url("training_programs", "import") }}" method="POST" id="import-training-program-form">
-                {{ xsrf_form_html|safe }}
+                <input type="hidden" name="_xsrf" value="{{ handler.xsrf_token.decode() }}"/>
                 <main class="modal__content">
                     <div class="modal__form-group">
                         <label>
