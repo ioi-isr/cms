@@ -772,6 +772,40 @@ def collect_archived_task_scores(
     return task_scores, tags_seen
 
 
+ALIGN_TOP_LEFT_WRAP = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+
+def _write_task_scores_row(
+    ws: Worksheet,
+    row: int,
+    td: TrainingDay,
+    task_id: str,
+    task_info: dict,
+    entries: list[tuple[list[str], float]],
+    all_tags: list[str],
+):
+    """Write one (training day, task) row of the task scores sheet."""
+    values: list[Any] = [
+        td.name or "",
+        td.description or "",
+        td.start_time.date() if td.start_time else None,
+        task_info.get("name", f"Task {task_id}"),
+        task_info.get("max_score", 100),
+    ]
+    for tag in all_tags:
+        values.append(format_score_distribution(
+            [s for tags, s in entries if tag in tags]
+        ))
+    values.append(format_score_distribution([s for _, s in entries]))
+
+    for col, val in enumerate(values, start=1):
+        cell = ws.cell(row=row, column=col, value=excel_safe(val))
+        cell.border = STYLE_BORDER_THIN
+        cell.alignment = ALIGN_TOP_LEFT_WRAP
+        if col == 3 and val is not None:
+            cell.number_format = numbers.FORMAT_DATE_YYYYMMDD2
+
+
 def generate_task_scores_sheet(ws: Worksheet, training_days: list[TrainingDay]):
     """Populate a worksheet with score distributions of archived tasks.
 
@@ -791,31 +825,13 @@ def generate_task_scores_sheet(ws: Worksheet, training_days: list[TrainingDay]):
         cell.border = STYLE_BORDER_THIN
         cell.alignment = ALIGN_CENTER
 
-    top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
     row = 2
     for td, task_scores, _ in per_td:
-        tasks_data = td.archived_tasks_data or {}
-        for task_id, task_info in tasks_data.items():
-            entries = task_scores.get(task_id, [])
-            values: list[Any] = [
-                td.name or "",
-                td.description or "",
-                td.start_time.date() if td.start_time else None,
-                task_info.get("name", f"Task {task_id}"),
-                task_info.get("max_score", 100),
-            ]
-            for tag in all_tags:
-                values.append(format_score_distribution(
-                    [s for tags, s in entries if tag in tags]
-                ))
-            values.append(format_score_distribution([s for _, s in entries]))
-
-            for col, val in enumerate(values, start=1):
-                cell = ws.cell(row=row, column=col, value=excel_safe(val))
-                cell.border = STYLE_BORDER_THIN
-                cell.alignment = top_left
-                if col == 3 and val is not None:
-                    cell.number_format = numbers.FORMAT_DATE_YYYYMMDD2
+        for task_id, task_info in (td.archived_tasks_data or {}).items():
+            _write_task_scores_row(
+                ws, row, td, task_id, task_info,
+                task_scores.get(task_id, []), all_tags,
+            )
             row += 1
 
     ws.freeze_panes = "E2"
