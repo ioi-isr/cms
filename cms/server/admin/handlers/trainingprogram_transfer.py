@@ -270,7 +270,8 @@ class TrainingProgramImporter:
     """Create a training program (and all its archived data) from a
     training program archive, inside a caller-provided session.
 
-    Nothing is committed here; the caller decides.
+    Nothing is committed here; the caller decides, and should call
+    notify_skipped() once the transaction has been committed.
     """
 
     def __init__(self, session: Session, importer: "ContestImporter",
@@ -322,6 +323,9 @@ class TrainingProgramImporter:
                 student, student_config.get("tasks") or [],
                 tasks_by_name, training_days)
 
+        return training_program
+
+    def notify_skipped(self) -> None:
         if self.skipped_usernames:
             shown = ", ".join(self.skipped_usernames[:5])
             if len(self.skipped_usernames) > 5:
@@ -330,8 +334,6 @@ class TrainingProgramImporter:
                 "Some students not imported",
                 f"Skipped {len(self.skipped_usernames)} student(s) whose "
                 f"user does not exist in the database: {shown}")
-
-        return training_program
 
     def _import_students(
         self, training_program: TrainingProgram, contest: Contest

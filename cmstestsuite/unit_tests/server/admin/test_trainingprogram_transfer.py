@@ -269,10 +269,11 @@ class TestTrainingProgramTransfer(DatabaseMixin, unittest.TestCase):
         config["students"][0]["username"] = "nobody"
         config["training_days"][0]["rankings"][0]["username"] = "nobody"
 
-        program = TrainingProgramImporter(
+        importer = TrainingProgramImporter(
             self.session,
             FakeContestImporter(self, "tp_contest_copy", ["task_a", "task_b"]),
-            config, self.notify).do_import()
+            config, self.notify)
+        program = importer.do_import()
         self.session.flush()
 
         self.assertEqual([s.participation.user.username
@@ -280,6 +281,8 @@ class TestTrainingProgramTransfer(DatabaseMixin, unittest.TestCase):
         day = program.training_days[0]
         self.assertEqual(day.archived_student_rankings, [])
         self.assertEqual(len(day.archived_attendances), 1)
+        self.assertEqual(self.notifications, [])
+        importer.notify_skipped()
         self.assertEqual(len(self.notifications), 1)
         self.assertIn("nobody", self.notifications[0][1])
 

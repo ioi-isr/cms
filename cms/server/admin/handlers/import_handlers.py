@@ -427,24 +427,35 @@ class ImportTrainingProgramHandler(BaseHandler):
 
                 _setup_importer_with_notifier(importer, self.service)
 
-                training_program = TrainingProgramImporter(
-                    self.sql_session, importer, config, notify).do_import()
+                tp_importer = TrainingProgramImporter(
+                    self.sql_session, importer, config, notify)
+                training_program = tp_importer.do_import()
 
-            if self.try_commit():
-                importer.notify_model_solutions()
-                self.service.proxy_service.reinitialize()
-                self.service.add_notification(
-                    make_datetime(),
-                    "Training program imported successfully",
-                    "")
-                self.redirect(self.url("training_program", training_program.id))
-            else:
-                self.redirect(fallback_page)
+            committed = self.try_commit()
 
         except (LoaderValidationError, ImportDataError) as error:
             self.sql_session.rollback()
             _handle_import_error(self, error, "Training program", fallback_page)
+            return
         except Exception as error:
             self.sql_session.rollback()
             _handle_import_error(self, error, "Training program", fallback_page,
                                  log_error=True)
+            return
+
+        if not committed:
+            self.redirect(fallback_page)
+            return
+
+        tp_importer.notify_skipped()
+        importer.notify_model_solutions()
+        try:
+            self.service.proxy_service.reinitialize()
+        except Exception:
+            logger.exception("Proxy service reinitialization failed after "
+                             "training program import")
+        self.service.add_notification(
+            make_datetime(),
+            "Training program imported successfully",
+            "")
+        self.redirect(self.url("training_program", training_program.id))
