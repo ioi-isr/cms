@@ -26,6 +26,8 @@ import io
 import json
 import logging
 import re
+from datetime import tzinfo
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from openpyxl import Workbook
@@ -34,6 +36,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from cms.db import TrainingDay, TrainingProgram, Student
+from cmscommon.datetime import get_timezone, utc_to_local
 from .analysis import (
     PairInfo,
     apply_bad_day_bonus,
@@ -730,7 +733,8 @@ def format_score_distribution(scores: list[float]) -> str:
         return ""
     groups: dict[str, int] = {}
     for score in scores:
-        key = f"{score:.1f}"
+        # Round half up like JavaScript's toFixed(1) in the histogram modal.
+        key = str(Decimal(score).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
         groups[key] = groups.get(key, 0) + 1
     total = len(scores)
     lines = []
@@ -760,10 +764,10 @@ def collect_archived_task_scores(
     }
     tags_seen: set[str] = set()
     for ranking in td.archived_student_rankings:
-        if ranking.student_id not in participated or not ranking.task_scores:
-            continue
         tags = list(ranking.student_tags or [])
         tags_seen.update(tags)
+        if ranking.student_id not in participated or not ranking.task_scores:
+            continue
         for task_id, score in ranking.task_scores.items():
             if task_id in task_scores:
                 task_scores[task_id].append(
@@ -783,12 +787,14 @@ def _write_task_scores_row(
     task_info: dict,
     entries: list[tuple[list[str], float]],
     all_tags: list[str],
+    tz: tzinfo,
 ):
     """Write one (training day, task) row of the task scores sheet."""
+    local_start = utc_to_local(td.start_time, tz) if td.start_time else None
     values: list[Any] = [
         td.name or "",
         td.description or "",
-        td.start_time.date() if td.start_time else None,
+        local_start.date() if local_start else None,
         task_info.get("name", f"Task {task_id}"),
         task_info.get("max_score", 100),
     ]
@@ -806,7 +812,9 @@ def _write_task_scores_row(
             cell.number_format = numbers.FORMAT_DATE_YYYYMMDD2
 
 
-def generate_task_scores_sheet(ws: Worksheet, training_days: list[TrainingDay]):
+def generate_task_scores_sheet(
+    ws: Worksheet, training_days: list[TrainingDay], tz: tzinfo
+):
     """Populate a worksheet with score distributions of archived tasks.
 
     One row per (training day, task); one column per student tag holding the
@@ -830,7 +838,7 @@ def generate_task_scores_sheet(ws: Worksheet, training_days: list[TrainingDay]):
         for task_id, task_info in (td.archived_tasks_data or {}).items():
             _write_task_scores_row(
                 ws, row, td, task_id, task_info,
-                task_scores.get(task_id, []), all_tags,
+                task_scores.get(task_id, []), all_tags, tz,
             )
             row += 1
 
@@ -855,7 +863,8 @@ class ExportArchivedTaskScoresHandler(ExportAttendanceHandler):
         wb = Workbook()
         ws = wb.active
         ws.title = "Task Scores"
-        generate_task_scores_sheet(ws, archived)
+        tz = get_timezone(None, tp.managing_contest)
+        generate_task_scores_sheet(ws, archived, tz)
 
         slug = re.sub(SLUG_REGEX, "_", tp.name)
         self._serve_excel(wb, f"{slug}_archived_task_scores.xlsx")
