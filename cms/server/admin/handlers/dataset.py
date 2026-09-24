@@ -1011,6 +1011,22 @@ class GenerateTestcasesHandler(BaseHandler):
         public = self.get_argument("public", "") == "on"
         output_source = self.get_argument("output_source", "generator")
         stdin_input = self.get_argument("stdin_input", "")
+        time_limit_arg = self.get_argument("time_limit", "").strip()
+
+        generator_time_limit = None
+        if time_limit_arg != "":
+            try:
+                generator_time_limit = float(time_limit_arg)
+                if generator_time_limit <= 0:
+                    raise ValueError()
+            except ValueError:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid time limit",
+                    "The generator time limit must be a positive number "
+                    "of seconds.")
+                self.redirect(fallback_page)
+                return
 
         input_template = generator.input_filename_template
         output_template = generator.output_filename_template
@@ -1098,7 +1114,10 @@ class GenerateTestcasesHandler(BaseHandler):
             # Apply resource limits to prevent runaway generators
             set_sandbox_resource_limits(sandbox)
 
-            if task_time_limit is not None:
+            if generator_time_limit is not None:
+                sandbox.timeout = generator_time_limit
+                sandbox.wallclock_timeout = generator_time_limit * 2
+            elif task_time_limit is not None:
                 effective_timeout = max(
                     sandbox.timeout, task_time_limit)
                 sandbox.timeout = effective_timeout
