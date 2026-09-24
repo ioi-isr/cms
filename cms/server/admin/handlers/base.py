@@ -479,6 +479,7 @@ class BaseHandler(CommonRequestHandler):
             params["training_program"] = self.contest.training_program
         params["url"] = self.url
         params["xsrf_form_html"] = self.xsrf_form_html()
+        params["xsrf_token"] = self.xsrf_token.decode("ascii")
         # FIXME These objects provide too broad an access: their usage
         # should be extracted into with narrower-scoped parameters.
         params["config"] = config

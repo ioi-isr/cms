@@ -1753,7 +1753,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
             <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-statement-{{ statement.id }}-title">
                 {{ modal_header("Replace Statement", "modal-replace-statement-" ~ statement.id ~ "-title") }}
                 <form action="{{ url("task", task.id, "statement", statement.id, "replace") }}" method="POST" enctype="multipart/form-data">
-                    {{ xsrf_form_html|safe }}
+                    <input type="hidden" name="_xsrf" value="{{ xsrf_token }}"/>
                     <main class="modal__content">
                         <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
                             Upload a new PDF for the <strong>{{ statement.language }}</strong> statement.
