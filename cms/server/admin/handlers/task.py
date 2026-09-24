@@ -379,7 +379,88 @@ class TaskHandler(BaseHandler):
         self.redirect(self.url("task", task_id))
 
 
-class AddStatementHandler(BaseHandler):
+class StatementUploadMixin:
+    """Shared validation and storage of uploaded statement files."""
+
+    def _validate_statement_files(self, fallback_page: str) -> bool:
+        """Check the uploaded statement (and optional source) files.
+
+        On failure, a notification is added and the client is redirected;
+        the caller must return immediately when False is returned.
+        """
+        if "statement" not in self.request.files or len(self.request.files["statement"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "No statement file provided",
+                "A PDF statement file is required.")
+            self.redirect(fallback_page)
+            return False
+        statement = self.request.files["statement"][0]
+
+        if len(statement["body"]) == 0:
+            self.service.add_notification(
+                make_datetime(),
+                "Empty file",
+                "The selected file is empty. Please select a non-empty PDF file.")
+            self.redirect(fallback_page)
+            return False
+        if not statement["filename"].lower().endswith(".pdf"):
+            self.service.add_notification(
+                make_datetime(),
+                "Invalid task statement",
+                "The task statement must be a .pdf file.")
+            self.redirect(fallback_page)
+            return False
+        return True
+
+    def _store_statement_files(
+        self, task_name: str, language: str, fallback_page: str
+    ) -> tuple[str, str | None, str | None] | None:
+        """Store the uploaded files in the file cacher.
+
+        Must be called after _validate_statement_files succeeded and with
+        the SQL session closed. Returns (digest, source_digest,
+        source_extension), or None if storage failed (the client has
+        already been redirected in that case).
+        """
+        statement = self.request.files["statement"][0]
+
+        source_file = None
+        source_digest = None
+        source_extension = None
+        if "source" in self.request.files and len(self.request.files["source"]) > 0:
+            source_file = self.request.files["source"][0]
+            _, source_extension = os.path.splitext(source_file["filename"].lower())
+
+        try:
+            digest = self.service.file_cacher.put_file_content(
+                statement["body"],
+                "Statement for task %s (lang: %s)" % (task_name, language))
+        except Exception as error:
+            self.service.add_notification(
+                make_datetime(),
+                "Task statement storage failed",
+                repr(error))
+            self.redirect(fallback_page)
+            return None
+
+        if source_file is not None:
+            try:
+                source_digest = self.service.file_cacher.put_file_content(
+                    source_file["body"],
+                    "Statement source for task %s (lang: %s)" % (task_name, language))
+            except Exception as error:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Source file storage failed",
+                    repr(error))
+                self.redirect(fallback_page)
+                return None
+
+        return digest, source_digest, source_extension
+
+
+class AddStatementHandler(StatementUploadMixin, BaseHandler):
     """Add a statement to a task."""
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self, task_id):
@@ -395,71 +476,24 @@ class AddStatementHandler(BaseHandler):
                 "The language code can be any string.")
             self.redirect(fallback_page)
             return
-        if "statement" not in self.request.files or len(self.request.files["statement"]) == 0:
+        if language in task.statements:
             self.service.add_notification(
                 make_datetime(),
-                "No statement file provided",
-                "A PDF statement file is required.")
+                "Statement already exists",
+                "A statement for language '%s' already exists. "
+                "Use 'Replace' to upload a new version." % language)
             self.redirect(fallback_page)
             return
-        statement = self.request.files["statement"][0]
-
-        # Check for empty file
-        if len(statement["body"]) == 0:
-            self.service.add_notification(
-                make_datetime(),
-                "Empty file",
-                "The selected file is empty. Please select a non-empty PDF file.")
-            self.redirect(fallback_page)
+        if not self._validate_statement_files(fallback_page):
             return
-        if not statement["filename"].lower().endswith(".pdf"):
-            self.service.add_notification(
-                make_datetime(),
-                "Invalid task statement",
-                "The task statement must be a .pdf file.")
-            self.redirect(fallback_page)
-            return
-
-        # Check for optional source file
-        source_file = None
-        source_digest = None
-        source_extension = None
-        if "source" in self.request.files and len(self.request.files["source"]) > 0:
-            source_file = self.request.files["source"][0]
-            source_filename = source_file["filename"].lower()
-            _, source_extension = os.path.splitext(source_filename)
 
         task_name = task.name
         self.sql_session.close()
 
-        try:
-            digest = self.service.file_cacher.put_file_content(
-                statement["body"],
-                "Statement for task %s (lang: %s)" % (task_name, language))
-        except Exception as error:
-            self.service.add_notification(
-                make_datetime(),
-                "Task statement storage failed",
-                repr(error))
-            self.redirect(fallback_page)
+        stored = self._store_statement_files(task_name, language, fallback_page)
+        if stored is None:
             return
-
-        # Store source file if provided
-        if source_file is not None:
-            try:
-                source_digest = self.service.file_cacher.put_file_content(
-                    source_file["body"],
-                    "Statement source for task %s (lang: %s)" % (task_name, language))
-            except Exception as error:
-                self.service.add_notification(
-                    make_datetime(),
-                    "Source file storage failed",
-                    repr(error))
-                self.redirect(fallback_page)
-                return
-
-        # TODO verify that there's no other Statement with that language
-        # otherwise we'd trigger an IntegrityError for constraint violation
+        digest, source_digest, source_extension = stored
 
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
@@ -468,6 +502,43 @@ class AddStatementHandler(BaseHandler):
         statement = Statement(language, digest, task=task, source_digest=source_digest,
                                source_extension=source_extension)
         self.sql_session.add(statement)
+
+        if self.try_commit():
+            self.redirect(self.url("task", task_id))
+        else:
+            self.redirect(fallback_page)
+
+
+class ReplaceStatementHandler(StatementUploadMixin, BaseHandler):
+    """Replace the files of an existing statement, keeping its language."""
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id, statement_id):
+        fallback_page = self.url("task", task_id)
+
+        statement = self.safe_get_item(Statement, statement_id)
+        task = self.safe_get_item(Task, task_id)
+        if task is not statement.task:
+            raise tornado.web.HTTPError(404)
+
+        if not self._validate_statement_files(fallback_page):
+            return
+
+        task_name = task.name
+        language = statement.language
+        self.sql_session.close()
+
+        stored = self._store_statement_files(task_name, language, fallback_page)
+        if stored is None:
+            return
+        digest, source_digest, source_extension = stored
+
+        self.sql_session = Session()
+        statement = self.safe_get_item(Statement, statement_id)
+        self.contest = statement.task.contest
+
+        statement.digest = digest
+        statement.source_digest = source_digest
+        statement.source_extension = source_extension
 
         if self.try_commit():
             self.redirect(self.url("task", task_id))
