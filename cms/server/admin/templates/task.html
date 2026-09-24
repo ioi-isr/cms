@@ -530,6 +530,9 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                             </td>
                                             <td style="text-align: center;">
                                                 {% if admin.permission_all %}
+                                                <button type="button" class="btn-icon-only" onclick="MicroModal.show('modal-replace-statement-{{ statement.id }}');" title="Replace statement" aria-label="Replace statement">
+                                                    <svg class="icon is-small"><use href="#icon-replace"/></svg>
+                                                </button>
                                                 <button type="button" class="btn-icon-only" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "statement", statement.id) }}');" title="Delete statement" aria-label="Delete statement">
                                                     <svg class="icon is-small"><use href="#icon-trash"/></svg>
                                                 </button>
@@ -1740,6 +1743,37 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <!-- Replace Statement Modal (one per statement) -->
+    {% if admin.permission_all %}
+    {% for statement in task.statements.values() %}
+    <div class="modal" id="modal-replace-statement-{{ statement.id }}" aria-hidden="true">
+        <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+            <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-replace-statement-{{ statement.id }}-title">
+                {{ modal_header("Replace Statement", "modal-replace-statement-" ~ statement.id ~ "-title") }}
+                <form action="{{ url("task", task.id, "statement", statement.id, "replace") }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="_xsrf" value="{{ xsrf_token }}"/>
+                    <main class="modal__content">
+                        <p style="font-size: 0.9rem; color: var(--tp-text-secondary); margin: 0 0 16px 0;">
+                            Upload a new PDF for the <strong>{{ statement.language }}</strong> statement.
+                            The existing source file is replaced by the one selected below (or removed if none is selected).
+                        </p>
+                        <div class="modal__form-group">
+                            <label for="stmt-replace-file-{{ statement.id }}">Statement (PDF) <span style="color: var(--tp-danger);">*</span></label>
+                            {{ bulma_file_input("stmt-replace-file-" ~ statement.id, "statement", ".pdf", required=true, button_text="Choose PDF file…") }}
+                        </div>
+                        <div class="modal__form-group">
+                            <label for="stmt-replace-source-{{ statement.id }}">Source file (optional, DOC/DOCX/TEX)</label>
+                            {{ bulma_file_input("stmt-replace-source-" ~ statement.id, "source", ".doc,.docx,.tex", button_text="Choose source file…") }}
+                        </div>
+                    </main>
+                    {{ modal_footer("Replace") }}
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
     {% endif %}
 
     <!-- Edit Generator Modal (one per generator) -->
