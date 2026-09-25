@@ -1119,7 +1119,7 @@ class GenerateTestcasesHandler(BaseHandler):
                 sandbox.wallclock_timeout = generator_time_limit * 2
             elif task_time_limit is not None:
                 effective_timeout = max(
-                    sandbox.timeout, task_time_limit)
+                    sandbox.timeout, task_time_limit, 30.0)
                 sandbox.timeout = effective_timeout
                 sandbox.wallclock_timeout = effective_timeout * 2
 
