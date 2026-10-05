@@ -37,7 +37,7 @@ from . import Base
 # Pattern for valid model solution names: word characters (letters, digits, underscore),
 # spaces, hyphens, parentheses, and caret. This is a whitelist approach - safer than
 # blacklisting bad chars. Allows names like "O(N^2)" or "slow (TLE)".
-VALID_NAME_PATTERN = re.compile(r'^[\w\-\s()^]+$')
+VALID_NAME_PATTERN = re.compile(r"^[\w \-().^[\]{}@!#&+,;=~'`$%]+$")
 
 
 def validate_model_solution_name(name: str) -> None:
