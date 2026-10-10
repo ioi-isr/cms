@@ -17,13 +17,13 @@
     {% for msg in visible_announcements|reverse %}
     <div class="announcement">
         {% if msg.subject|length > 0 %}
-        <h4 class="subject">{{ msg.subject }}</h4>
+        <h4 class="subject communication-text" dir="auto">{{ msg.subject }}</h4>
         {% else %}
         <h4 class="subject empty">{% trans %}(no subject){% endtrans %}</h4>
         {% endif %}
         <span class="timestamp">{{ msg.timestamp|format_datetime_smart }}</span>
         {% if msg.text|length > 0 %}
-        <div class="body">{{ msg.text | markdown }}</div>
+        <div class="body communication-text" dir="auto">{{ msg.text | markdown }}</div>
         {% endif %}
     </div>
     {% endfor %}
@@ -36,13 +36,13 @@
     {% for msg in participation.messages|reverse %}
     <div class="message">
         {% if msg.subject|length > 0 %}
-        <h4 class="subject">{{ msg.subject }}</h4>
+        <h4 class="subject communication-text" dir="auto">{{ msg.subject }}</h4>
         {% else %}
         <h4 class="subject empty">{% trans %}(no subject){% endtrans %}</h4>
         {% endif %}
         <span class="timestamp">{{ msg.timestamp|format_datetime_smart }}</span>
         {% if msg.text|length > 0 %}
-        <div class="body">{{ msg.text | markdown }}</div>
+        <div class="body communication-text" dir="auto">{{ msg.text | markdown }}</div>
         {% endif %}
     </div>
     {% endfor %}
@@ -60,7 +60,7 @@
             <div class="control-group">
                 <label class="control-label" for="input_subject">{% trans %}Subject{% endtrans %}</label>
                 <div class="controls">
-                    <input type="text" name="question_subject" id="input_subject" class="input-xlarge" maxlength="50" list="task_names_list" autocomplete="off">
+                    <input type="text" name="question_subject" id="input_subject" class="input-xlarge communication-text" dir="auto" maxlength="50" list="task_names_list" autocomplete="off">
                     <datalist id="task_names_list">
                         {% if actual_phase >= 0 %}
                             {% for task in visible_tasks %}
@@ -73,7 +73,7 @@
             <div class="control-group">
                 <label class="control-label" for="input_text">{% trans %}Text{% endtrans %}</label>
                 <div class="controls">
-                    <textarea id="input_text" class="input-xlarge" name="question_text" rows="5" maxlength="2000"></textarea>
+                    <textarea id="input_text" class="input-xlarge communication-text" dir="auto" name="question_text" rows="5" maxlength="2000"></textarea>
                 </div>
             </div>
             <div class="control-group">
@@ -92,25 +92,25 @@
     {% for msg in participation.questions|reverse %}
     <div class="question">
         {% if msg.subject|length > 0 %}
-        <h4 class="subject">{{ msg.subject }}</h4>
+        <h4 class="subject communication-text" dir="auto">{{ msg.subject }}</h4>
         {% else %}
         <h4 class="subject empty">{% trans %}(no subject){% endtrans %}</h4>
         {% endif %}
         <span class="timestamp">{{ msg.question_timestamp|format_datetime_smart }}</span>
         {% if msg.text|length > 0 %}
-        <div class="body">{{ msg.text }}</div>
+        <div class="body communication-text" dir="auto">{{ msg.text }}</div>
         {% endif %}
     </div>
         {% if msg.reply_timestamp is not none %}
     <div class="answer">
             {% if msg.reply_subject|length > 0 %}
-        <h4 class="subject">{{ msg.reply_subject }}</h4>
+        <h4 class="subject communication-text" dir="auto">{{ msg.reply_subject }}</h4>
             {% else %}
         <h4 class="subject empty">{% trans %}(no subject){% endtrans %}</h4>
             {% endif %}
         <span class="timestamp">{{ msg.reply_timestamp|format_datetime_smart }}</span>
             {% if msg.reply_text|length > 0 %}
-        <div class="body">{{ msg.reply_text | markdown }}</div>
+        <div class="body communication-text" dir="auto">{{ msg.reply_text | markdown }}</div>
             {% endif %}
     </div>
         {% else %}

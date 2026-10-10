@@ -1988,3 +1988,33 @@ table.diff-open th.diff-only, table.diff-open td.diff-only {
     border-color: var(--bulma-link) !important;
     background-color: var(--bulma-link-light) !important;
 }
+
+/* User-authored communication supports mixed RTL/LTR independently of UI. */
+.communication-text,
+.communication-text [dir="auto"] {
+    text-align: start;
+}
+
+/* Plain questions and editors may contain differently directed lines. */
+textarea.communication-text,
+.communication-text.preserve_line_breaks {
+    unicode-bidi: plaintext;
+}
+
+/* Code remains LTR and isolated from the surrounding Hebrew prose. */
+.communication-text pre,
+.communication-text code {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+}
+
+/* Indent each list item on its own start side, including mixed-language lists. */
+.communication-text ul,
+.communication-text ol {
+    padding-inline-start: 0;
+}
+
+.communication-text li {
+    margin-inline-start: 2em;
+}

@@ -97,6 +97,7 @@ div.message_list div.message div.body {
 /* admin-sent messages have markdown formatting and thus don't need
  * mucking with whitespace, but user questions are plaintext */
 div.question_list div.question div.body {
+    unicode-bidi: plaintext;
     white-space: pre-line;
 }
 
@@ -1071,3 +1072,33 @@ td.token_rules p:last-child {
 .progress-fill.high { background-color: #28a745; }
 .progress-fill.med  { background-color: #ffc107; }
 .progress-fill.low  { background-color: #ff6b6b; }
+
+/* User-authored communication supports mixed RTL/LTR independently of UI. */
+.communication-text,
+.communication-text [dir="auto"] {
+    text-align: start;
+}
+
+/* Plain questions and editors may contain differently directed lines. */
+textarea.communication-text,
+.communication-text.preserve_line_breaks {
+    unicode-bidi: plaintext;
+}
+
+/* Code remains LTR and isolated from the surrounding Hebrew prose. */
+.communication-text pre,
+.communication-text code {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+}
+
+/* Indent each list item on its own start side, including mixed-language lists. */
+.communication-text ul,
+.communication-text ol {
+    padding-inline-start: 0;
+}
+
+.communication-text li {
+    margin-inline-start: 2em;
+}

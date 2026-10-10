@@ -100,8 +100,9 @@ CMS.CWSUtils.prototype.display_notification = function(type, timestamp,
     } else if (type == "question") {
         alert.children("h4").text($("#translation_new_answer").text());
     } else if (type == "notification") {
-        alert.children("h4").text(subject);
-        alert.append($("<span>" + text + "</span>"));
+        alert.children("h4").attr("dir", "auto")
+            .addClass("communication-text").text(subject);
+        alert.append($("<span dir=\"auto\" class=\"communication-text\">" + text + "</span>"));
     }
 
     // The "warning" level is the default, so no check needed.

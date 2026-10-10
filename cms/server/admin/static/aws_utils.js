@@ -274,7 +274,7 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
 
     var title_container = $("<strong>")
         .append(subject_element)
-        .append($("<span>").text(" " + subject));
+        .append($("<bdi>").attr("dir", "auto").text(" " + subject));
 
     var timestamp_str = timestamp_int != 0 ? this.format_time_or_date(timestamp_int) : "";
     var timestamp_span = $("<span>")
@@ -284,7 +284,8 @@ CMS.AWSUtils.prototype.display_notification = function(type, timestamp,
 
     header_div.append(title_container).append(timestamp_span);
 
-    var text_div = $("<div>");
+    var text_div = $("<div>").attr("dir", "auto")
+        .addClass("communication-text").css("unicode-bidi", "plaintext");
     if (subject === "Manager compilation failed") {
         text_div.addClass("content is-small").append(
             $('<pre>').text(text).css({ 'margin': 0 })

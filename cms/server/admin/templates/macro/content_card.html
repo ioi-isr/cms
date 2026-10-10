@@ -30,7 +30,7 @@ extra_fields_html (str): optional extra visible fields HTML (inserted after text
       {{ xsrf_form_html|safe }}
       {{ extra_hidden_html|safe }}
       <label class="question-form-label">SUBJECT</label>
-      <input type="text" name="{{ subject_name }}" class="question-form-select"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
+      <input type="text" name="{{ subject_name }}" class="question-form-select communication-text" dir="auto"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
       <label class="question-form-label">TEXT</label>
       {{ macro_markdown.markdown_input(text_name) }}
       {{ extra_fields_html|safe }}
@@ -79,7 +79,7 @@ Render the header of a display card (subject + timestamp + optional delete butto
 #}
 <div class="question-card-header">
   <div class="question-card-title-row">
-    <h3 class="question-subject">{{ subject }}</h3>
+    <h3 class="question-subject communication-text" dir="auto">{{ subject }}</h3>
   </div>
   <div class="is-flex is-align-items-center is-flex-wrap-wrap is-gap-3 is-size-s">
     <span class="is-flex is-align-items-center icon-text has-text-grey">
@@ -142,7 +142,7 @@ cancel_function (str): JavaScript function called when the Cancel button is clic
         {{ xsrf_form_html|safe }}
         {{ extra_hidden_html|safe }}
         <label class="question-form-label">SUBJECT</label>
-        <input type="text" name="{{ subject_name }}" class="question-form-select"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
+        <input type="text" name="{{ subject_name }}" class="question-form-select communication-text" dir="auto"{% if datalist_id %} list="{{ datalist_id }}"{% endif %} autocomplete="off">
         <label class="question-form-label">TEXT</label>
         {{ macro_markdown.markdown_input(text_name) }}
         {{ extra_fields_html|safe }}

@@ -24,7 +24,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
 <div class="question-card question-{{ status }}" data-status="{{ status }}">
   <div class="question-card-header">
     <div class="question-card-title-row">
-      <h3 class="question-subject">{{ msg.subject }}</h3>
+      <h3 class="question-subject communication-text" dir="auto">{{ msg.subject }}</h3>
       {% if status == "unanswered" %}
         <span class="question-status-badge question-badge-unanswered">UNANSWERED</span>
       {% elif status == "ignored" %}
@@ -86,7 +86,7 @@ user_id (int|None): if we are rendering one of the questions on a single user's
 
   <div class="question-card-body">
     {% if msg.text %}
-      <div class="question-text preserve_line_breaks">{{ msg.text }}</div>
+      <div class="question-text preserve_line_breaks communication-text" dir="auto">{{ msg.text }}</div>
     {% else %}
       <div class="question-text question-text-empty">No content provided.</div>
     {% endif %}
@@ -100,8 +100,8 @@ user_id (int|None): if we are rendering one of the questions on a single user's
     </div>
     <div class="question-reply-content-row">
       <div class="question-reply-accent"></div>
-      <div class="question-reply-text">
-        {% if msg.reply_subject %}<strong>{{ msg.reply_subject }}</strong><br/>{% endif %}
+      <div class="question-reply-text communication-text" dir="auto">
+        {% if msg.reply_subject %}<strong class="communication-text" dir="auto">{{ msg.reply_subject }}</strong><br/>{% endif %}
         {{ msg.reply_text | markdown }}
       </div>
     </div>
