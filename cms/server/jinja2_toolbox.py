@@ -148,7 +148,16 @@ def markdown_filter(text: str) -> markupsafe.Markup:
     return: rendered HTML wrapped in the Markup class.
     """
     md = markdown_it.MarkdownIt('js-default')
-    html = md.render(text)
+    # Each text block chooses its own base direction, so Hebrew and English
+    # paragraphs (and list items) can coexist in the same message.
+    tokens = md.parse(text)
+    for token in tokens:
+        if token.type in {
+                "paragraph_open", "heading_open", "blockquote_open",
+                "bullet_list_open", "ordered_list_open", "list_item_open",
+                "th_open", "td_open"}:
+            token.attrSet("dir", "auto")
+    html = md.renderer.render(tokens, md.options, {})
     return markupsafe.Markup(html)
 
 
