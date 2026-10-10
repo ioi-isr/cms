@@ -2009,10 +2009,12 @@ textarea.communication-text,
     text-align: left;
 }
 
-/* Indent each list item on its own start side, including mixed-language lists. */
+/* Replace framework list spacing before indenting each item on its own start
+ * side. This also handles lists whose items use different text directions. */
 .communication-text ul,
 .communication-text ol {
-    padding-inline-start: 0;
+    margin-inline: 0;
+    padding-inline: 0;
 }
 
 .communication-text li {

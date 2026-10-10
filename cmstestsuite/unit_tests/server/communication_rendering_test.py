@@ -15,6 +15,7 @@ TEXT = 'שלום, בדקו את **Task A** (test.cpp)!\n\nEnglish paragraph (123
 
 
 def template_environment(interface):
+    """Build a minimal template environment with communication dependencies."""
     env = Environment(
         loader=ChoiceLoader([
             DictLoader({'contest.html': '{% block core %}{% endblock %}'}),
@@ -32,6 +33,7 @@ def template_environment(interface):
 
 
 def assert_auto(elements):
+    """Require every selected content element to detect its own direction."""
     assert elements
     assert all(element.get('dir') == 'auto' for element in elements)
 
@@ -45,11 +47,13 @@ def assert_auto(elements):
     ('| שלום | English |\n| --- | --- |\n| Task A | בדיקה |', 'th, td'),
 ])
 def test_markdown_blocks_choose_direction_independently(text, selector):
+    """Check direction detection for each kind of Markdown text block."""
     html = BeautifulSoup(markdown_filter(text), 'html.parser')
     assert_auto(html.select(selector))
 
 
 def test_markdown_preserves_formatting_and_escapes_html():
+    """Keep emphasis while preventing authored HTML from becoming markup."""
     html = BeautifulSoup(markdown_filter(TEXT + '\n\n<script>alert(1)</script>'),
                          'html.parser')
     assert html.strong.text == 'Task A'
@@ -58,6 +62,7 @@ def test_markdown_preserves_formatting_and_escapes_html():
 
 
 def test_markdown_preserves_code_and_links():
+    """Preserve code and link content without adding direction to code blocks."""
     html = BeautifulSoup(markdown_filter(
         'שלום `a < b` [Task A](https://example.org)\n\n'
         '```cpp\nint main() { return 0; }\n```'), 'html.parser')
@@ -68,6 +73,7 @@ def test_markdown_preserves_code_and_links():
 
 
 def test_admin_composition_editing_and_preview():
+    """Cover direction detection in admin subjects, editors, and previews."""
     env = template_environment('admin')
     cards = env.get_template('macro/content_card.html').make_module()
     html = BeautifulSoup(
@@ -80,6 +86,7 @@ def test_admin_composition_editing_and_preview():
 
 
 def test_contest_communications_and_question_editor():
+    """Cover announcement, message, question, reply, and editor rendering."""
     env = template_environment('contest')
     message = SimpleNamespace(subject='שלום Task A', text=TEXT,
                               timestamp=None, question_timestamp=None,

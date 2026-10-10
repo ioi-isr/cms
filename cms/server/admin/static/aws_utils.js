@@ -1036,7 +1036,9 @@ CMS.AWSUtils.prototype.do_diff = function() {
 if ("Notification" in window && Notification.permission === "default") {
     var cmsRequestNotificationPermissionOnFirstClick = function() {
         if (Notification.permission === "default") {
-            Notification.requestPermission();
+            Notification.requestPermission().catch(function(error) {
+                console.warn("Unable to request notification permission:", error);
+            });
         }
         document.removeEventListener("click", cmsRequestNotificationPermissionOnFirstClick);
     };
