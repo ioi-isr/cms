@@ -22,6 +22,7 @@ including the overview page and training days page.
 """
 
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 
 import tornado.web
 from sqlalchemy.orm import joinedload
@@ -34,6 +35,7 @@ from cms.server.util import (
     check_training_day_eligibility,
     get_student_for_user_in_program,
     get_submission_counts_by_task,
+    get_training_program_group_tags,
 )
 from .contest import ContestHandler
 
@@ -47,6 +49,7 @@ def get_training_day_timing_info(
     user,
     training_day,
     timestamp: datetime,
+    view_as_tag: str | None = None,
 ) -> dict | None:
     """Get participation and timing info for a user in a training day contest."""
     from cms.server.contest.phase_management import (
@@ -65,7 +68,7 @@ def get_training_day_timing_info(
         return None
 
     is_eligible, main_group, _ = check_training_day_eligibility(
-        sql_session, td_participation, training_day
+        sql_session, td_participation, training_day, view_as_tag=view_as_tag
     )
     if not is_eligible:
         return None
@@ -140,6 +143,8 @@ class TrainingProgramOverviewHandler(ContestHandler):
         if student is None:
             raise tornado.web.HTTPError(403)
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
+
         # Calculate task archive progress using shared utility
         # Get submission counts for each task (batch query for efficiency)
         student_task_ids = [st.task_id for st in student.student_tasks]
@@ -173,7 +178,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
 
             timing_info = get_training_day_timing_info(
                 self.sql_session, td_contest, participation.user,
-                training_day, self.timestamp
+                training_day, self.timestamp, view_as_tag=view_as_tag
             )
             if timing_info is None:
                 continue
@@ -240,6 +245,8 @@ class TrainingDaysHandler(ContestHandler):
         if student is None:
             raise tornado.web.HTTPError(403)
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
+
         ongoing_upcoming_trainings = []
         past_trainings = []
 
@@ -281,7 +288,7 @@ class TrainingDaysHandler(ContestHandler):
 
             timing_info = get_training_day_timing_info(
                 self.sql_session, td_contest, participation.user,
-                training_day, self.timestamp
+                training_day, self.timestamp, view_as_tag=view_as_tag
             )
             if timing_info is None:
                 continue
@@ -682,3 +689,39 @@ class ScoreboardDataHandler(ContestHandler):
                 "current_student_id": student.id,
             }
         )
+
+
+class ViewAsGroupHandler(ContestHandler):
+    """Let a coach view the training program as a member of a group.
+
+    The selected group is stored in a cookie scoped to the training
+    program; an empty tag resets the view to the coach's own view.
+
+    """
+
+    @tornado.web.authenticated
+    @multi_contest
+    def post(self):
+        training_program = self.get_related_training_program()
+        if training_program is None:
+            raise tornado.web.HTTPError(404)
+        coach, _view_as_tag = self.get_coach_and_view_as_tag()
+        if coach is None:
+            raise tornado.web.HTTPError(403)
+
+        cookie_name = self.view_as_cookie_name(training_program)
+        tag = self.get_argument("tag", "").strip()
+        if tag == "":
+            self.clear_cookie(cookie_name)
+        elif tag in get_training_program_group_tags(
+                self.sql_session, training_program):
+            self.set_secure_cookie(cookie_name, tag, expires_days=None)
+        else:
+            raise tornado.web.HTTPError(400)
+
+        next_url = self.get_argument("next", "")
+        parts = urlsplit(next_url)
+        if (not next_url.startswith("/") or next_url.startswith("//")
+                or parts.scheme or parts.netloc):
+            next_url = self.contest_url()
+        self.redirect(next_url)

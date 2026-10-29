@@ -168,6 +168,8 @@ class TestTrainingProgramTransfer(DatabaseMixin, unittest.TestCase):
         self.assertEqual(config["managing_contest"], "tp_contest")
         self.assertEqual([s["username"] for s in config["students"]],
                          ["alice", "bob"])
+        self.assertEqual([s["is_coach"] for s in config["students"]],
+                         [False, False])
         self.assertEqual(len(config["training_days"]), 1)
         day = config["training_days"][0]
         self.assertEqual(day["name"], "day_one")
@@ -298,6 +300,24 @@ class TestTrainingProgramTransfer(DatabaseMixin, unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ImportDataError):
                 load_training_program_yaml(tmp)
+
+    def test_import_coach(self):
+        config = self._prepare_import_config()
+        config["students"][1]["is_coach"] = True
+        importer = TrainingProgramImporter(
+            self.session,
+            FakeContestImporter(self, "tp_contest_copy", ["task_a", "task_b"]),
+            config, self.notify)
+        program = importer.do_import()
+        self.session.flush()
+
+        students = {s.participation.user.username: s for s in program.students}
+        self.assertFalse(students["alice"].is_coach)
+        bob = students["bob"]
+        self.assertTrue(bob.is_coach)
+        self.assertEqual(bob.student_tags, [])
+        self.assertTrue(bob.participation.hidden)
+        self.assertTrue(bob.participation.unrestricted)
 
 
 if __name__ == "__main__":

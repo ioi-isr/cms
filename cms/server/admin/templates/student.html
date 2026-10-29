@@ -7,6 +7,7 @@
 {% import 'macro/user_avatar.html' as macro_user_avatar with context %}
 
 {% block js_init %}
+{% if not student.is_coach %}
 CMS.AWSFormUtils.initTagify({
     inputSelector: 'input[name="student_tags"]',
     whitelist: {{ all_student_tags | tojson }},
@@ -19,6 +20,7 @@ CMS.AWSFormUtils.initTagify({
     pattern: /^[^,]+$/,
     invalidMessage: 'Tags cannot contain commas.'
 });
+{% endif %}
 {% endblock js_init %}
 
 {% block core %}
@@ -28,7 +30,7 @@ CMS.AWSFormUtils.initTagify({
   </figure>
   <div class="media-content">
     <h1 class="title is-spaced mb-2">
-      Student: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
+      {{ "Coach" if student.is_coach else "Student" }}: <a href="{{ url("user", selected_user.id) }}">{{ selected_user.username }}</a>
     </h1>
     <p class="subtitle has-text-grey is-6 mb-0">
       {{ selected_user.first_name }} {{ selected_user.last_name }}
@@ -47,6 +49,20 @@ CMS.AWSFormUtils.initTagify({
     {{ xsrf_form_html|safe }}
 
     <div class="columns is-multiline">
+      <div class="column is-full">
+        <div class="field">
+          <label class="label">
+            Coach
+            <span class="info" title="Coaches are hidden from scoreboards and attendance, cannot have tags, can access all training days and see the tasks of all groups, and are unrestricted in all their participations."></span>
+          </label>
+          <div class="control">
+            <label class="checkbox">
+              <input type="checkbox" name="is_coach" {% if student.is_coach %}checked{% endif %}/>
+              This user is a coach (forces hidden and unrestricted participation in the program and all its training days, and removes all tags)
+            </label>
+          </div>
+        </div>
+      </div>
       <div class="column is-half">
         <div class="field">
           <label class="label" for="student_tags">
@@ -54,7 +70,11 @@ CMS.AWSFormUtils.initTagify({
             <span class="info" title="Tags for this student (e.g., beginner, advanced). Used to control which training questions they see. Double-click a tag to edit it."></span>
           </label>
           <div class="control">
+            {% if student.is_coach %}
+            <input class="input" type="text" id="student_tags" value="" placeholder="Coaches cannot have tags" disabled/>
+            {% else %}
             <input class="input" type="text" id="student_tags" name="student_tags" value="{{ student.student_tags|join(", ") }}"/>
+            {% endif %}
           </div>
         </div>
       </div>

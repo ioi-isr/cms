@@ -27,7 +27,8 @@ import typing
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column, ForeignKey, Index
-from sqlalchemy.types import Integer, Unicode
+from sqlalchemy.sql import text
+from sqlalchemy.types import Boolean, Integer, Unicode
 
 from . import Base
 
@@ -69,6 +70,15 @@ class Student(Base):
         ARRAY(Unicode),
         nullable=False,
         default=list,
+    )
+
+    # Coaches are hidden from rankings and attendance, have no tags, can see
+    # all tasks of all groups and are unrestricted in training days.
+    is_coach: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
     )
 
     training_program: "TrainingProgram" = relationship(
