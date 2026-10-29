@@ -721,7 +721,7 @@ class ViewAsGroupHandler(ContestHandler):
 
         next_url = self.get_argument("next", "")
         parts = urlsplit(next_url)
-        if (not next_url.startswith("/") or next_url.startswith("//")
-                or parts.scheme or parts.netloc):
+        if (not next_url.startswith("/") or "\\" in next_url
+                or next_url.startswith("//") or parts.scheme or parts.netloc):
             next_url = self.contest_url()
         self.redirect(next_url)
