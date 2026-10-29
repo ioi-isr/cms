@@ -20,6 +20,7 @@ training programs to zip files in YamlLoader format.
 
 """
 
+import json
 import logging
 import os
 import shutil
@@ -88,19 +89,42 @@ def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str)
     handler.finish()
 
 
-def _export_task_statements(task, file_cacher, statements_dir):
-    """Write every statement language and its optional source file."""
+def _export_task_statements(task, file_cacher, statements_dir,
+                            missing_files=None):
+    """Write statements and sources, optionally recording missing storage files.
+
+    Task packages remain strict; the statements-only download can recover the
+    available files and include an explicit report of what could not be read.
+    """
+    def export_file(digest, path, language, kind):
+        try:
+            file_cacher.get_file_to_path(digest, path)
+        except KeyError as error:
+            details = {
+                "task_id": task.id, "task_name": task.name,
+                "language": language, "kind": kind, "digest": digest,
+            }
+            if missing_files is None:
+                raise ValueError(
+                    f"Missing {kind} for task {task.name} (ID {task.id}), "
+                    f"language {language}, digest {digest}.") from error
+            missing_files.append(details)
+            logger.warning("Missing statement export file: %s", details)
+            if os.path.exists(path):
+                os.remove(path)
+
     os.makedirs(statements_dir, exist_ok=True)
     for lang_code, statement in task.statements.items():
         lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
         statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
-        file_cacher.get_file_to_path(statement.digest, statement_path)
+        export_file(statement.digest, statement_path, lang_code, "statement PDF")
         if statement.source_digest:
             if statement.source_extension:
                 source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
             else:
                 source_path = os.path.join(statements_dir, f"{lang_name}_source")
-            file_cacher.get_file_to_path(statement.source_digest, source_path)
+            export_file(statement.source_digest, source_path, lang_code,
+                        "statement source")
 
 
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
@@ -545,6 +569,7 @@ class ExportTasksHandler(ExcelExportMixin, BaseHandler):
             with tempfile.TemporaryDirectory(prefix="cms_export_tasks_") as temp_dir:
                 tasks_dir = os.path.join(temp_dir, "tasks")
                 os.makedirs(tasks_dir)
+                missing_files = []
                 for task in tasks:
                     # IDs keep identically named tasks from different contests
                     # separate; sanitize names for safe archive paths.
@@ -553,11 +578,23 @@ class ExportTasksHandler(ExcelExportMixin, BaseHandler):
                     os.makedirs(task_dir)
                     if export_type == "statements":
                         _export_task_statements(
-                            task, self.service.file_cacher, task_dir)
+                            task, self.service.file_cacher, task_dir,
+                            missing_files=missing_files)
                     else:
                         _export_task_to_yaml_format(
                             task, task.active_dataset,
                             self.service.file_cacher, task_dir)
+
+                if missing_files:
+                    report_path = os.path.join(tasks_dir, "missing_statements.json")
+                    with open(report_path, "w", encoding="utf-8") as report:
+                        json.dump(missing_files, report, ensure_ascii=False, indent=2)
+                    self.service.add_notification(
+                        make_datetime(), "Some statement files are missing",
+                        f"Exported available statements; {len(missing_files)} "
+                        "file(s) were missing from storage. See "
+                        "tasks/missing_statements.json in the ZIP for task IDs, "
+                        "languages and file digests.")
 
                 zip_path = os.path.join(temp_dir, "tasks.zip")
                 _zip_directory(tasks_dir, zip_path, temp_dir)
