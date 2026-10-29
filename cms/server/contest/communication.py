@@ -188,6 +188,7 @@ def get_communications(
     participation: Participation,
     timestamp: datetime,
     after: datetime | None = None,
+    view_as_tag: str | None = None,
 ) -> list[dict]:
     """Retrieve some contestant's communications at some given time.
 
@@ -207,6 +208,7 @@ def get_communications(
         are to be ignored).
     after: if not none, ignore also the communications
         that were received at or before this moment in time.
+    view_as_tag: for coaches, the group tag they are currently viewing as.
 
     return: for each communication a dictionary with 4 keys:
         type (either "announcement", "message" or "question"), subject,
@@ -226,7 +228,8 @@ def get_communications(
     for announcement in query.all():
         announcement: Announcement
         # Filter announcements based on student tags
-        if not can_see_announcement(sql_session, announcement, participation):
+        if not can_see_announcement(
+                sql_session, announcement, participation, view_as_tag):
             continue
         res.append({"type": "announcement",
                     "timestamp": make_timestamp(announcement.timestamp),

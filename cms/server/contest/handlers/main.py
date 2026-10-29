@@ -533,8 +533,10 @@ class NotificationsHandler(ContestHandler):
         if last_notification is not None:
             last_notification = make_datetime(float(last_notification))
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         res = get_communications(self.sql_session, participation,
-                                 self.timestamp, after=last_notification)
+                                 self.timestamp, after=last_notification,
+                                 view_as_tag=view_as_tag)
 
         # Simple notifications
         notifications = self.service.notifications
