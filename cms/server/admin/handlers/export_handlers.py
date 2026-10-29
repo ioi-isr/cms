@@ -32,6 +32,7 @@ from openpyxl import Workbook
 from werkzeug.utils import secure_filename
 
 from cms.db import Contest, Task, TrainingProgram
+from cms.db.filecacher import TombstoneError
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
 from cmscommon.datetime import make_datetime
@@ -89,51 +90,73 @@ def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str)
     handler.finish()
 
 
-def _export_task_statements(task, file_cacher, statements_dir,
-                            missing_files=None):
-    """Write statements and sources, optionally recording missing storage files.
+class _TaskFileExporter:
+    """Copy stored task files, optionally recording missing blobs for recovery."""
 
-    Task packages remain strict; the statements-only download can recover the
-    available files and include an explicit report of what could not be read.
-    """
-    def export_file(digest, path, language, kind):
+    def __init__(self, task, file_cacher, missing_files=None):
+        self.task = task
+        self.file_cacher = file_cacher
+        self.missing_files = missing_files
+
+    def _missing(self, digest, kind, error, details):
+        record = {
+            "task_id": self.task.id, "task_name": self.task.name,
+            "kind": kind, "digest": digest, **details,
+        }
+        if self.missing_files is None:
+            raise ValueError(f"Missing task export file: {record}") from error
+        self.missing_files.append(record)
+        logger.warning("Missing task export file: %s", record)
+
+    def to_path(self, digest, path, kind, **details):
         try:
-            file_cacher.get_file_to_path(digest, path)
-        except KeyError as error:
-            details = {
-                "task_id": task.id, "task_name": task.name,
-                "language": language, "kind": kind, "digest": digest,
-            }
-            if missing_files is None:
-                raise ValueError(
-                    f"Missing {kind} for task {task.name} (ID {task.id}), "
-                    f"language {language}, digest {digest}.") from error
-            missing_files.append(details)
-            logger.warning("Missing statement export file: %s", details)
+            self.file_cacher.get_file_to_path(digest, path)
+        except (KeyError, TombstoneError) as error:
+            self._missing(digest, kind, error, details)
             if os.path.exists(path):
                 os.remove(path)
 
+    def to_zip(self, digest, archive, filename, kind, **details):
+        # Retrieve first: opening a ZIP entry before retrieval leaves a bogus
+        # empty testcase in the archive when the blob is missing.
+        try:
+            source = self.file_cacher.get_file(digest)
+        except (KeyError, TombstoneError) as error:
+            self._missing(digest, kind, error, details)
+            return
+        with source, archive.open(filename, 'w') as destination:
+            shutil.copyfileobj(source, destination)
+
+
+def _export_task_statements(task, file_cacher, statements_dir,
+                            missing_files=None):
+    """Write statements and sources, optionally recording missing files."""
+    files = _TaskFileExporter(task, file_cacher, missing_files)
     os.makedirs(statements_dir, exist_ok=True)
     for lang_code, statement in task.statements.items():
         lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
         statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
-        export_file(statement.digest, statement_path, lang_code, "statement PDF")
+        files.to_path(statement.digest, statement_path, "statement PDF",
+                      language=lang_code)
         if statement.source_digest:
             if statement.source_extension:
                 source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
             else:
                 source_path = os.path.join(statements_dir, f"{lang_name}_source")
-            export_file(statement.source_digest, source_path, lang_code,
-                        "statement source")
+            files.to_path(statement.source_digest, source_path,
+                          "statement source", language=lang_code)
 
 
-def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
+def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir,
+                                missing_files=None):
     """Export a task to YamlLoader (Italian YAML) format.
 
     task: Task object to export
     dataset: Dataset object to export (typically active_dataset)
     file_cacher: FileCacher instance for retrieving files
     export_dir: Directory to export to
+    missing_files: Optional list to record unavailable files for bulk recovery.
+        When omitted, missing files abort the export.
 
     Creates the following structure:
     - task.yaml: Task configuration (including model_solutions section)
@@ -145,6 +168,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     - generators/: Generator source files (if any)
     """
 
+    files = _TaskFileExporter(task, file_cacher, missing_files)
     statements_dir = os.path.join(export_dir, "statements")
     attachments_dir = os.path.join(export_dir, "attachments")
     managers_dir = os.path.join(export_dir, "managers")
@@ -154,11 +178,12 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     os.makedirs(attachments_dir, exist_ok=True)
     os.makedirs(managers_dir, exist_ok=True)
 
-    _export_task_statements(task, file_cacher, statements_dir)
+    _export_task_statements(task, file_cacher, statements_dir, missing_files)
 
     for filename, attachment in task.attachments.items():
         attachment_path = os.path.join(attachments_dir, filename)
-        file_cacher.get_file_to_path(attachment.digest, attachment_path)
+        files.to_path(attachment.digest, attachment_path, "attachment",
+                      filename=filename)
 
     input_template = "input_*.txt"
     output_template = "output_*.txt"
@@ -169,10 +194,12 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     testcases = sorted(dataset.testcases.values(), key=lambda tc: tc.codename)
     with zipfile.ZipFile(tests_zip_path, 'w', zipfile.ZIP_DEFLATED) as tests_zip:
         for testcase in testcases:
-            with tests_zip.open(input_template_py % testcase.codename, 'w') as fout:
-                file_cacher.get_file_to_fobj(testcase.input, fout)
-            with tests_zip.open(output_template_py % testcase.codename, 'w') as fout:
-                file_cacher.get_file_to_fobj(testcase.output, fout)
+            files.to_zip(testcase.input, tests_zip,
+                         input_template_py % testcase.codename,
+                         "testcase input", testcase=testcase.codename)
+            files.to_zip(testcase.output, tests_zip,
+                         output_template_py % testcase.codename,
+                         "testcase output", testcase=testcase.codename)
 
     allowed_basenames = get_allowed_manager_basenames(dataset.task_type)
     manager_filenames = set(dataset.managers.keys())
@@ -188,7 +215,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
             if ext not in SOURCE_EXTS:
                 continue
         manager_path = os.path.join(managers_dir, filename)
-        file_cacher.get_file_to_path(manager.digest, manager_path)
+        files.to_path(manager.digest, manager_path, "manager", filename=filename)
 
     if task.primary_statements:
         primary_language = task.primary_statements[0]
@@ -331,7 +358,8 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
                     file_obj.filename, submission.language)
 
                 file_path = os.path.join(solution_subdir, filename)
-                file_cacher.get_file_to_path(file_obj.digest, file_path)
+                files.to_path(file_obj.digest, file_path, "model solution",
+                              solution=meta.name, filename=filename)
                 files_list.append(filename)
 
             solution_config['files'] = files_list
@@ -349,7 +377,8 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
         for filename, generator in dataset.generators.items():
             # Export generator source file
             generator_path = os.path.join(generators_dir, filename)
-            file_cacher.get_file_to_path(generator.digest, generator_path)
+            files.to_path(generator.digest, generator_path, "generator",
+                          filename=filename)
 
             # Add generator metadata to config
             generator_config = {
@@ -409,7 +438,8 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
 
             # Export validator source file with the (possibly renamed) filename
             validator_path = os.path.join(validators_dir, export_filename)
-            file_cacher.get_file_to_path(validator.digest, validator_path)
+            files.to_path(validator.digest, validator_path, "subtask validator",
+                          subtask_index=subtask_index, filename=export_filename)
 
             # Add validator metadata to config (use export filename, not original)
             validator_config = {
@@ -583,18 +613,31 @@ class ExportTasksHandler(ExcelExportMixin, BaseHandler):
                     else:
                         _export_task_to_yaml_format(
                             task, task.active_dataset,
-                            self.service.file_cacher, task_dir)
+                            self.service.file_cacher, task_dir,
+                            missing_files=missing_files)
 
                 if missing_files:
-                    report_path = os.path.join(tasks_dir, "missing_statements.json")
+                    report_name = ("missing_statements.json"
+                                   if export_type == "statements"
+                                   else "missing_files.json")
+                    report_path = os.path.join(tasks_dir, report_name)
                     with open(report_path, "w", encoding="utf-8") as report:
                         json.dump(missing_files, report, ensure_ascii=False, indent=2)
+                    if export_type == "backup":
+                        with open(os.path.join(tasks_dir, "INCOMPLETE_BACKUP.txt"),
+                                  "w", encoding="utf-8") as warning:
+                            warning.write(
+                                "This backup is incomplete because some files "
+                                "are missing from storage. Available files and "
+                                "task configuration have been exported.\n"
+                                "See missing_files.json for task IDs, file "
+                                "types, testcase names and digests. Restore "
+                                "missing files before importing or grading.\n")
                     self.service.add_notification(
-                        make_datetime(), "Some statement files are missing",
-                        f"Exported available statements; {len(missing_files)} "
+                        make_datetime(), "Some task files are missing",
+                        f"Exported available files; {len(missing_files)} "
                         "file(s) were missing from storage. See "
-                        "tasks/missing_statements.json in the ZIP for task IDs, "
-                        "languages and file digests.")
+                        f"tasks/{report_name} in the ZIP for details.")
 
                 zip_path = os.path.join(temp_dir, "tasks.zip")
                 _zip_directory(tasks_dir, zip_path, temp_dir)
