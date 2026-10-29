@@ -51,13 +51,13 @@ CMS.AWSFormUtils.initTagify({
     <div class="columns is-multiline">
       <div class="column is-full">
         <div class="field">
-          <label class="label">
+          <label class="label" for="is_coach">
             Coach
             <span class="info" title="Coaches are hidden from scoreboards and attendance, cannot have tags, can access all training days and see the tasks of all groups, and are unrestricted in all their participations."></span>
           </label>
           <div class="control">
             <label class="checkbox">
-              <input type="checkbox" name="is_coach" {% if student.is_coach %}checked{% endif %}/>
+              <input type="checkbox" id="is_coach" name="is_coach" {% if student.is_coach %}checked{% endif %}/>
               This user is a coach (forces hidden and unrestricted participation in the program and all its training days, and removes all tags)
             </label>
           </div>
