@@ -226,7 +226,7 @@ $(document).ready(function () {
     {% if is_coach %}
                     <div class="well" id="view_as_box" style="padding: 8px 12px;">
                         <form action="{{ contest_url("view_as") }}" method="POST" style="margin: 0;">
-                            {{ xsrf_form_html|safe }}
+                            <input type="hidden" name="_xsrf" value="{{ handler.xsrf_token.decode() }}"/>
                             <input type="hidden" name="next" value="{{ view_as_next }}"/>
                             <label for="view_as_tag"><strong>{% trans %}View as{% endtrans %}</strong></label>
                             <select name="tag" id="view_as_tag" style="width: 100%;" onchange="this.form.submit();">
