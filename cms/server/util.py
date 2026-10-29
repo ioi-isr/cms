@@ -283,7 +283,7 @@ def get_student_archive_scores(
     scores = {}
 
     for task in contest.get_tasks():
-        if task.id not in student_task_ids:
+        if not student.is_coach and task.id not in student_task_ids:
             continue
         cache_entry = get_cached_score_entry(sql_session, participation, task)
         scores[task.id] = cache_entry.score
@@ -334,9 +334,15 @@ def calculate_task_archive_progress(
     task_scores = [] if include_task_details else None
 
     contest_tasks = contest.get_tasks()
-    # Iterate only over tasks in the student's archive (StudentTask entries)
-    for student_task in student_tasks:
-        task = student_task.task
+    # Coaches have access to every task of the program.
+    if student.is_coach:
+        archive = [(task, None, None) for task in contest_tasks]
+    else:
+        archive = [
+            (st.task, st.source_training_day, st.assigned_at)
+            for st in student_tasks
+        ]
+    for task, source_training_day, assigned_at in archive:
         if task is None or task not in contest_tasks:
             continue
         task_count += 1
@@ -351,8 +357,8 @@ def calculate_task_archive_progress(
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
-                "source_training_day": student_task.source_training_day,
-                "assigned_at": student_task.assigned_at,
+                "source_training_day": source_training_day,
+                "assigned_at": assigned_at,
             }
             if submission_counts is not None:
                 task_info["submission_count"] = submission_counts.get(task.id, 0)

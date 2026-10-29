@@ -147,7 +147,10 @@ class TrainingProgramOverviewHandler(ContestHandler):
 
         # Calculate task archive progress using shared utility
         # Get submission counts for each task (batch query for efficiency)
-        student_task_ids = [st.task_id for st in student.student_tasks]
+        if student.is_coach:
+            student_task_ids = [t.id for t in contest.get_tasks()]
+        else:
+            student_task_ids = [st.task_id for st in student.student_tasks]
         submission_counts = get_submission_counts_by_task(
             self.sql_session, participation.id, student_task_ids
         )
