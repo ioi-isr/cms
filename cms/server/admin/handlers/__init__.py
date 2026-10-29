@@ -185,6 +185,7 @@ from .folder import \
     RemoveFolderHandler
 from .export_handlers import \
     ExportTaskHandler, \
+    ExportTasksHandler, \
     ExportContestHandler
 from .trainingprogram import \
     TrainingProgramListHandler, \
@@ -334,6 +335,7 @@ HANDLERS = [
     (r"/tasks/([0-9]+)/remove", RemoveTaskHandler),
     (r"/tasks/add", AddTaskHandler),
     (r"/tasks/import", ImportTaskHandler),
+    (r"/tasks/export/(metadata|statements|backup)", ExportTasksHandler),
     (r"/task/([0-9]+)", TaskHandler),
     (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),

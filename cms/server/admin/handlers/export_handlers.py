@@ -27,6 +27,8 @@ import tempfile
 import zipfile
 
 import yaml
+from openpyxl import Workbook
+from werkzeug.utils import secure_filename
 
 from cms.db import Contest, Task, TrainingProgram
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
@@ -35,6 +37,7 @@ from cmscommon.datetime import make_datetime
 from cmscontrib.loaders.base_loader import LANGUAGE_MAP
 
 from .base import BaseHandler, require_permission
+from .excel import ExcelExportMixin
 from .trainingprogram_transfer import build_training_program_config, \
     write_training_program_yaml
 
@@ -85,6 +88,21 @@ def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str)
     handler.finish()
 
 
+def _export_task_statements(task, file_cacher, statements_dir):
+    """Write every statement language and its optional source file."""
+    os.makedirs(statements_dir, exist_ok=True)
+    for lang_code, statement in task.statements.items():
+        lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
+        statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
+        file_cacher.get_file_to_path(statement.digest, statement_path)
+        if statement.source_digest:
+            if statement.source_extension:
+                source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
+            else:
+                source_path = os.path.join(statements_dir, f"{lang_name}_source")
+            file_cacher.get_file_to_path(statement.source_digest, source_path)
+
+
 def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     """Export a task to YamlLoader (Italian YAML) format.
 
@@ -112,16 +130,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir):
     os.makedirs(attachments_dir, exist_ok=True)
     os.makedirs(managers_dir, exist_ok=True)
 
-    for lang_code, statement in task.statements.items():
-        lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
-        statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
-        file_cacher.get_file_to_path(statement.digest, statement_path)
-        if statement.source_digest:
-            if statement.source_extension:
-                source_path = os.path.join(statements_dir, f"{lang_name}{statement.source_extension}")
-            else:
-                source_path = os.path.join(statements_dir, f"{lang_name}_source")
-            file_cacher.get_file_to_path(statement.source_digest, source_path)
+    _export_task_statements(task, file_cacher, statements_dir)
 
     for filename, attachment in task.attachments.items():
         attachment_path = os.path.join(attachments_dir, filename)
@@ -498,6 +507,66 @@ def _export_contest_to_yaml_format(contest, file_cacher, export_dir):
             continue
 
         _export_task_to_yaml_format(task, dataset, file_cacher, task_dir)
+
+
+class ExportTasksHandler(ExcelExportMixin, BaseHandler):
+    """Export the system-wide task catalogue, statements or task packages."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, export_type):
+        tasks = self.sql_session.query(Task).order_by(Task.name, Task.id).all()
+        if export_type == "metadata":
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "Tasks"
+            sheet.append(["Task name", "Title", "ID"])
+            for row, task in enumerate(tasks, start=2):
+                sheet.append([task.name, task.title, task.id])
+                # Names and titles are text, even if they start with '='.
+                for column in (1, 2):
+                    sheet.cell(row, column).data_type = "s"
+            sheet.freeze_panes = "A2"
+            sheet.auto_filter.ref = sheet.dimensions
+            sheet.column_dimensions["A"].width = 30
+            sheet.column_dimensions["B"].width = 60
+            sheet.column_dimensions["C"].width = 12
+            self._serve_excel(workbook, "tasks.xlsx")
+            return
+
+        try:
+            if export_type == "backup":
+                missing = [task.name for task in tasks
+                           if task.active_dataset is None]
+                if missing:
+                    raise ValueError(
+                        "Tasks without an active dataset cannot be exported: "
+                        + ", ".join(missing))
+
+            with tempfile.TemporaryDirectory(prefix="cms_export_tasks_") as temp_dir:
+                tasks_dir = os.path.join(temp_dir, "tasks")
+                os.makedirs(tasks_dir)
+                for task in tasks:
+                    # IDs keep identically named tasks from different contests
+                    # separate; sanitize names for safe archive paths.
+                    folder = f"{task.id}_{secure_filename(task.name) or 'task'}"
+                    task_dir = os.path.join(tasks_dir, folder)
+                    os.makedirs(task_dir)
+                    if export_type == "statements":
+                        _export_task_statements(
+                            task, self.service.file_cacher, task_dir)
+                    else:
+                        _export_task_to_yaml_format(
+                            task, task.active_dataset,
+                            self.service.file_cacher, task_dir)
+
+                zip_path = os.path.join(temp_dir, "tasks.zip")
+                _zip_directory(tasks_dir, zip_path, temp_dir)
+                _write_zip_response(self, zip_path, f"tasks_{export_type}.zip")
+        except Exception as error:
+            logger.error("Tasks export failed: %s", error, exc_info=True)
+            self.service.add_notification(
+                make_datetime(), "Tasks export failed", str(error))
+            self.redirect(self.url("tasks"))
 
 
 class ExportTaskHandler(BaseHandler):
