@@ -102,11 +102,13 @@ class ApiTaskListHandler(ApiContestHandler):
     @multi_contest
     def get(self):
         contest = self.contest
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         tasks = []
         for task in contest.get_tasks():
             # Check task visibility for training day contests
             if not can_access_task(
-                self.sql_session, task, self.current_user, contest.training_day
+                self.sql_session, task, self.current_user, contest.training_day,
+                view_as_tag=view_as_tag,
             ):
                 continue
 
@@ -133,8 +135,10 @@ class ApiSubmitHandler(ApiContestHandler):
             return
 
         # Check task visibility for training day contests
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
+            self.sql_session, task, self.current_user, self.contest.training_day,
+            view_as_tag=view_as_tag,
         ):
             self.json({"error": "Task not found"}, 404)
             return
@@ -192,8 +196,10 @@ class ApiSubmissionListHandler(ApiContestHandler):
             return
 
         # Check task visibility for training day contests
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         if not can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
+            self.sql_session, task, self.current_user, self.contest.training_day,
+            view_as_tag=view_as_tag,
         ):
             self.json({"error": "Not found"}, 404)
             return
