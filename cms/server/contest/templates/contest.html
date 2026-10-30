@@ -223,6 +223,25 @@ $(document).ready(function () {
     {% endif %}
                         </ul>
                     </div>
+    {% if is_coach %}
+                    <div class="well" id="view_as_box" style="padding: 8px 12px;">
+                        <form action="{{ contest_url("view_as") }}" method="POST" style="margin: 0;">
+                            <input type="hidden" name="_xsrf" value="{{ handler.xsrf_token.decode() }}"/>
+                            <input type="hidden" name="next" value="{{ view_as_next }}"/>
+                            <label for="view_as_tag"><strong>{% trans %}View as{% endtrans %}</strong></label>
+                            <select name="tag" id="view_as_tag" style="width: 100%;" onchange="this.form.submit();">
+                                <option value=""{% if view_as_tag is none %} selected{% endif %}>{% trans %}Coach (all groups){% endtrans %}</option>
+        {% for tag in view_as_options %}
+                                <option value="{{ tag }}"{% if view_as_tag == tag %} selected{% endif %}>{{ tag }}</option>
+        {% endfor %}
+                            </select>
+                            <noscript><button type="submit" class="btn btn-small">{% trans %}Apply{% endtrans %}</button></noscript>
+                        </form>
+        {% if view_as_tag is not none %}
+                        <p class="text-warning" style="margin: 4px 0 0 0;">{% trans tag=view_as_tag %}Viewing as group "{{ tag }}".{% endtrans %}</p>
+        {% endif %}
+                    </div>
+    {% endif %}
                     <span class="license_notice">
                     <a href="https://github.com/cms-dev/cms" rel="author noreferrer" target="_blank">{% trans %}Contest Management System{% endtrans %}</a>
                     {% trans %}is released under the{% endtrans %}

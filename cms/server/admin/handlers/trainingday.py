@@ -428,8 +428,11 @@ class AddTrainingDayHandler(BaseHandler):
             # Pass the hidden property from the managing contest participation
             for student in training_program.students:
                 user = student.participation.user
-                hidden = student.participation.hidden
-                participation = Participation(contest=contest, user=user, hidden=hidden)
+                hidden = student.participation.hidden or student.is_coach
+                participation = Participation(
+                    contest=contest, user=user, hidden=hidden,
+                    unrestricted=student.is_coach,
+                )
                 self.sql_session.add(participation)
 
         except Exception as error:

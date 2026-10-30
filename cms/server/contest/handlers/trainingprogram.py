@@ -22,6 +22,7 @@ including the overview page and training days page.
 """
 
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 
 import tornado.web
 from sqlalchemy.orm import joinedload
@@ -34,11 +35,33 @@ from cms.server.util import (
     check_training_day_eligibility,
     get_student_for_user_in_program,
     get_submission_counts_by_task,
+    get_training_program_group_tags,
 )
 from .contest import ContestHandler
 
 # Constant for universal scoreboard access
 EVERYONE_TAG = "__everyone__"
+
+
+def get_coach_visible_archived_task_ids(
+    training_day: TrainingDay,
+    rankings: list[ArchivedStudentRanking],
+    view_as_tag: str | None,
+) -> set[str]:
+    """Return the archived task ids a coach can see for a training day.
+
+    A coach sees every task; when viewing as a group, only the tasks that
+    students of that group could see during the training.
+
+    """
+    if view_as_tag is None:
+        return set((training_day.archived_tasks_data or {}).keys())
+    return {
+        task_id
+        for ranking in rankings
+        if view_as_tag in (ranking.student_tags or [])
+        for task_id in (ranking.task_scores or {})
+    }
 
 
 def get_training_day_timing_info(
@@ -47,6 +70,7 @@ def get_training_day_timing_info(
     user,
     training_day,
     timestamp: datetime,
+    view_as_tag: str | None = None,
 ) -> dict | None:
     """Get participation and timing info for a user in a training day contest."""
     from cms.server.contest.phase_management import (
@@ -65,7 +89,7 @@ def get_training_day_timing_info(
         return None
 
     is_eligible, main_group, _ = check_training_day_eligibility(
-        sql_session, td_participation, training_day
+        sql_session, td_participation, training_day, view_as_tag=view_as_tag
     )
     if not is_eligible:
         return None
@@ -140,9 +164,14 @@ class TrainingProgramOverviewHandler(ContestHandler):
         if student is None:
             raise tornado.web.HTTPError(403)
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
+
         # Calculate task archive progress using shared utility
         # Get submission counts for each task (batch query for efficiency)
-        student_task_ids = [st.task_id for st in student.student_tasks]
+        if student.is_coach:
+            student_task_ids = [t.id for t in contest.get_tasks()]
+        else:
+            student_task_ids = [st.task_id for st in student.student_tasks]
         submission_counts = get_submission_counts_by_task(
             self.sql_session, participation.id, student_task_ids
         )
@@ -173,7 +202,7 @@ class TrainingProgramOverviewHandler(ContestHandler):
 
             timing_info = get_training_day_timing_info(
                 self.sql_session, td_contest, participation.user,
-                training_day, self.timestamp
+                training_day, self.timestamp, view_as_tag=view_as_tag
             )
             if timing_info is None:
                 continue
@@ -240,6 +269,8 @@ class TrainingDaysHandler(ContestHandler):
         if student is None:
             raise tornado.web.HTTPError(403)
 
+        coach, view_as_tag = self.get_coach_and_view_as_tag()
+
         ongoing_upcoming_trainings = []
         past_trainings = []
 
@@ -259,6 +290,18 @@ class TrainingDaysHandler(ContestHandler):
             )
             archived_rankings_map = {r.training_day_id: r for r in archived_rankings}
 
+        # Coaches have no rankings of their own; use everyone's instead.
+        coach_rankings_map: dict[int, list[ArchivedStudentRanking]] = {}
+        if coach is not None and past_training_day_ids:
+            for ranking in (
+                self.sql_session.query(ArchivedStudentRanking)
+                .filter(ArchivedStudentRanking.training_day_id.in_(
+                    past_training_day_ids))
+                .all()
+            ):
+                coach_rankings_map.setdefault(
+                    ranking.training_day_id, []).append(ranking)
+
         # Build task_by_id mapping for get_cached_score_entry in _build_past_training_info
         managing_contest = training_program.managing_contest
         task_by_id = {task.id: task for task in managing_contest.get_tasks()}
@@ -267,8 +310,24 @@ class TrainingDaysHandler(ContestHandler):
             td_contest = training_day.contest
 
             if td_contest is None:
+                if coach is not None:
+                    rankings = coach_rankings_map.get(training_day.id, [])
+                    if view_as_tag is None or any(
+                        view_as_tag in (r.student_tags or [])
+                        for r in rankings
+                    ):
+                        past_trainings.append(
+                            self._build_past_training_info(
+                                training_day,
+                                participation,
+                                archived_rankings_map,
+                                task_by_id,
+                                coach_rankings=rankings,
+                                view_as_tag=view_as_tag,
+                            )
+                        )
                 # Only show archived training days if the student participated in them
-                if training_day.id in archived_rankings_map:
+                elif training_day.id in archived_rankings_map:
                     past_trainings.append(
                         self._build_past_training_info(
                             training_day,
@@ -281,7 +340,7 @@ class TrainingDaysHandler(ContestHandler):
 
             timing_info = get_training_day_timing_info(
                 self.sql_session, td_contest, participation.user,
-                training_day, self.timestamp
+                training_day, self.timestamp, view_as_tag=view_as_tag
             )
             if timing_info is None:
                 continue
@@ -327,11 +386,15 @@ class TrainingDaysHandler(ContestHandler):
         participation: Participation,
         archived_rankings_map: dict,
         task_by_id: dict[int, Task],
+        coach_rankings: list[ArchivedStudentRanking] | None = None,
+        view_as_tag: str | None = None,
     ) -> dict:
         """Build info dict for a past (archived) training day.
 
         task_by_id: mapping of task_id -> Task for tasks in the managing contest.
                     Used to get fresh home scores via get_cached_score_entry.
+        coach_rankings: for coaches, all rankings of the training day.
+        view_as_tag: for coaches, the group tag they are viewing as.
         """
         training_score = 0.0
         home_score = 0.0
@@ -345,9 +408,15 @@ class TrainingDaysHandler(ContestHandler):
         if archived_ranking and archived_ranking.task_scores:
             archived_task_scores = archived_ranking.task_scores
 
+        if coach_rankings is not None:
+            visible_task_ids = get_coach_visible_archived_task_ids(
+                training_day, coach_rankings, view_as_tag)
+        else:
+            visible_task_ids = set(archived_task_scores.keys())
+
         for task_id_str, task_data in archived_tasks_data.items():
             # Only show tasks that were visible to this student
-            if task_id_str not in archived_task_scores:
+            if task_id_str not in visible_task_ids:
                 continue
 
             task_max_score = task_data.get("max_score", 100.0)
@@ -380,7 +449,21 @@ class TrainingDaysHandler(ContestHandler):
         # Determine eligible scoreboards based on student's tags during training
         eligible_scoreboards = []
         scoreboard_sharing = training_day.scoreboard_sharing or {}
-        if scoreboard_sharing:
+        if coach_rankings is not None:
+            for tag, settings in scoreboard_sharing.items():
+                if view_as_tag is not None and tag not in (
+                        EVERYONE_TAG, view_as_tag):
+                    continue
+                eligible_scoreboards.append(
+                    {
+                        "tag": tag,
+                        "display_name": (
+                            "Everyone" if tag == EVERYONE_TAG else tag),
+                        "top_names": settings.get("top_names", 5),
+                        "top_to_show": settings.get("top_to_show", "all"),
+                    }
+                )
+        elif scoreboard_sharing:
             # Check for universal access first - available to all students with ranking
             if EVERYONE_TAG in scoreboard_sharing and archived_ranking:
                 settings = scoreboard_sharing[EVERYONE_TAG]
@@ -527,8 +610,21 @@ class ScoreboardDataHandler(ContestHandler):
 
         # Check eligibility based on tag
         is_everyone = tag == EVERYONE_TAG
+        coach, view_as_tag = self.get_coach_and_view_as_tag()
 
-        if is_everyone:
+        if coach is not None:
+            if view_as_tag is not None and tag not in (
+                    EVERYONE_TAG, view_as_tag):
+                self.set_status(403)
+                self.write({"error": "Not eligible to view this scoreboard"})
+                return
+            tag_rankings = [
+                r for r in all_rankings
+                if is_everyone or (r.student_tags and tag in r.student_tags)
+            ]
+            student_visible_task_ids = get_coach_visible_archived_task_ids(
+                training_day, all_rankings, view_as_tag)
+        elif is_everyone:
             # For universal access, any student with a ranking can view
             student_archived_ranking = next(
                 (r for r in all_rankings if r.student_id == student.id), None
@@ -564,10 +660,11 @@ class ScoreboardDataHandler(ContestHandler):
         # Get archived tasks data
         archived_tasks_data = training_day.archived_tasks_data or {}
 
-        # Filter tasks to those visible to the current student during training
-        student_visible_task_ids = set(
-            (student_archived_ranking.task_scores or {}).keys()
-        )
+        if coach is None:
+            # Filter tasks to those visible to the current student during training
+            student_visible_task_ids = set(
+                (student_archived_ranking.task_scores or {}).keys()
+            )
         accessible_tasks = {
             task_id_str: task_data
             for task_id_str, task_data in archived_tasks_data.items()
@@ -682,3 +779,39 @@ class ScoreboardDataHandler(ContestHandler):
                 "current_student_id": student.id,
             }
         )
+
+
+class ViewAsGroupHandler(ContestHandler):
+    """Let a coach view the training program as a member of a group.
+
+    The selected group is stored in a cookie scoped to the training
+    program; an empty tag resets the view to the coach's own view.
+
+    """
+
+    @tornado.web.authenticated
+    @multi_contest
+    def post(self):
+        training_program = self.get_related_training_program()
+        if training_program is None:
+            raise tornado.web.HTTPError(404)
+        coach, _view_as_tag = self.get_coach_and_view_as_tag()
+        if coach is None:
+            raise tornado.web.HTTPError(403)
+
+        cookie_name = self.view_as_cookie_name(training_program)
+        tag = self.get_argument("tag", "").strip()
+        if tag == "":
+            self.clear_cookie(cookie_name)
+        elif tag in get_training_program_group_tags(
+                self.sql_session, training_program):
+            self.set_secure_cookie(cookie_name, tag, expires_days=None)
+        else:
+            raise tornado.web.HTTPError(400)
+
+        next_url = self.get_argument("next", "")
+        parts = urlsplit(next_url)
+        if (not next_url.startswith("/") or "\\" in next_url
+                or next_url.startswith("//") or parts.scheme or parts.netloc):
+            next_url = self.contest_url()
+        self.redirect(next_url)

@@ -55,6 +55,10 @@
                 <option value="{{ u.id }}">{{ u.username }} - {{ u.first_name }} {{ u.last_name }}</option>
                 {% endfor %}
             </select>
+            <label class="checkbox mt-3">
+                <input type="checkbox" name="is_coach"/>
+                Add as a coach (hidden, unrestricted, no tags, sees all groups)
+            </label>
         </div>
         <div class="tp-dialog-footer">
             <button type="button" class="button" onclick="document.getElementById('add-student-dialog').close()"><span>Cancel</span></button>
@@ -103,16 +107,18 @@
 </div>
 {% endif %}
 
-<!-- Students Table -->
+<!-- Students and Coaches Tables -->
+{% for section_title, section_students, table_id in [("All Students", regular_students, "students-table"), ("Coaches", coaches, "coaches-table")] %}
+{% if table_id == "students-table" or section_students %}
 <div class="level" style="max-width: 900px;">
   <div class="level-left">
-    <h2 class="title is-5">All Students ({{ training_program.students|length }})</h2>
+    <h2 class="title is-5{% if table_id == "coaches-table" %} mt-5{% endif %}">{{ section_title }} ({{ section_students|length }})</h2>
   </div>
   <div class="level-right">
     <div class="level-item">
       <div class="control has-icons-left">
         <input type="text" class="input" placeholder="Search name, username, tag..." aria-label="Search students"
-               oninput="CMS.AWSTableUtils.filterTable('students-table', this.value)" style="max-width: 280px;">
+               oninput="CMS.AWSTableUtils.filterTable('{{ table_id }}', this.value)" style="max-width: 280px;">
         <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
       </div>
     </div>
@@ -120,16 +126,16 @@
 </div>
 
 <div class="table-container" style="width: 100%; max-width: 900px;">
-    <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="students-table">
+    <table class="table is-hoverable is-striped is-bordered is-fullwidth" id="{{ table_id }}">
         <thead class="is-uppercase is-3">
             <tr>
-                <th class="has-text-left has-text-grey">Student</th>
+                <th class="has-text-left has-text-grey">{{ "Coach" if table_id == "coaches-table" else "Student" }}</th>
                 <th class="has-text-left has-text-grey" data-sort-settings="numeric reversed" style="width: 30%;">Task Archive Progress</th>
                 <th class="has-text-centered no-sort has-text-grey" style="width: 20%;">Actions</th>
             </tr>
         </thead>
         <tbody class="p-0">
-            {% for student in training_program.students|sort(attribute="participation.user.username") %}
+            {% for student in section_students %}
             {% set u = student.participation.user %}
             {% set progress = student_progress.get(student.id, {}) %}
             <tr>
@@ -195,19 +201,24 @@
         </tbody>
     </table>
 </div>
-
-{% if not training_program.students %}
+{% if table_id == "students-table" and not regular_students %}
 <div style="text-align: center; padding: 80px 20px; color: var(--tp-text-muted);">
     <div style="font-size: 3em; margin-bottom: 10px; opacity: 0.15; filter: grayscale(1);">👥</div>
     <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No students in this program yet</p>
     <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.7;">Use the "Add Student" button above to add students.</p>
 </div>
 {% endif %}
+{% endif %}
+{% endfor %}
+
 
 <script>
 // Table sorting using CMS.AWSUtils
 $(document).ready(function() {
     CMS.AWSUtils.init_table_sort($("#students-table"), false, 1, true);
+    if ($("#coaches-table").length) {
+        CMS.AWSUtils.init_table_sort($("#coaches-table"), false, 1, true);
+    }
 });
 
 // Bulk Assign Task Modal using MicroModal

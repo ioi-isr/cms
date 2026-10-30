@@ -39,6 +39,7 @@ from cms.server.admin.handlers.utils import (
     parse_tags,
     parse_usernames_from_file,
 )
+from cms.server.util import apply_coach_status
 from cmscommon.datetime import make_datetime
 
 from .base import BaseHandler, StudentBaseHandler, require_permission
@@ -128,6 +129,7 @@ class AddTrainingProgramStudentHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
+        is_coach = self.get_argument("is_coach", None) is not None
         user = self.safe_get_item(User, user_id)
 
         # Set starting_time to now so the student can see everything immediately
@@ -166,6 +168,10 @@ class AddTrainingProgramStudentHandler(BaseHandler):
                     contest=training_day.contest, user=user
                 )
                 self.sql_session.add(td_participation)
+
+        if is_coach:
+            self.sql_session.flush()
+            apply_coach_status(self.sql_session, student, True)
 
         if self.try_commit():
             self.service.proxy_service.reinitialize()
@@ -367,6 +373,11 @@ class StudentHandler(StudentBaseHandler):
         self.setup_student_context(training_program_id, user_id)
 
         try:
+            is_coach = self.get_argument("is_coach", None) is not None
+            # Done first so that resetting a former coach's flags can be
+            # overridden by the submitted hidden/unrestricted values.
+            apply_coach_status(self.sql_session, self.student, is_coach)
+
             attrs = self.participation.get_attrs()
             self.get_password(attrs, self.participation.password, True)
             self.get_ip_networks(attrs, "ip")
@@ -420,8 +431,13 @@ class StudentHandler(StudentBaseHandler):
             else:
                 self.participation.team = None
 
-            tags_str = self.get_argument("student_tags", "")
-            self.student.student_tags = parse_tags(tags_str)
+            if is_coach:
+                # Coaches cannot have tags and are always hidden and
+                # unrestricted, whatever was submitted.
+                apply_coach_status(self.sql_session, self.student, True)
+            else:
+                tags_str = self.get_argument("student_tags", "")
+                self.student.student_tags = parse_tags(tags_str)
 
         except Exception as error:
             self.service.add_notification(
@@ -448,6 +464,11 @@ class StudentTagsHandler(StudentBaseHandler):
         except tornado.web.HTTPError:
             self.set_status(404)
             self.write({"error": "Student not found"})
+            return
+
+        if self.student.is_coach:
+            self.set_status(400)
+            self.write({"error": "Coaches cannot have tags"})
             return
 
         try:

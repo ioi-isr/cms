@@ -33,7 +33,7 @@ import logging
 from cms.db import Question, Announcement, Message
 from cms.db.session import Session
 from cms.db.user import Participation
-from cms.server.util import get_student_for_training_day
+from cms.server.util import get_effective_student_tags, get_student_for_training_day
 from cmscommon.datetime import make_timestamp
 
 
@@ -44,6 +44,7 @@ def can_see_announcement(
     sql_session: Session,
     announcement: Announcement,
     participation: Participation,
+    view_as_tag: str | None = None,
 ) -> bool:
     """Check if a participation can see the given announcement.
 
@@ -57,6 +58,7 @@ def can_see_announcement(
     sql_session: the SQLAlchemy database session to use.
     announcement: the announcement to check visibility for.
     participation: the participation to check visibility for.
+    view_as_tag: for coaches, the group tag they are currently viewing as.
 
     return: True if the participation can see the announcement.
 
@@ -77,7 +79,9 @@ def can_see_announcement(
             return False
 
         # Check if student has any matching tag (case-insensitive)
-        student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+        student_tags_set = get_effective_student_tags(student, view_as_tag)
+        if student_tags_set is None:
+            return True
         announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
         return bool(student_tags_set & announcement_tags_set)
 
@@ -95,7 +99,9 @@ def can_see_announcement(
             return False
 
         # Check if student has any matching tag (case-insensitive)
-        student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+        student_tags_set = get_effective_student_tags(student, view_as_tag)
+        if student_tags_set is None:
+            return True
         announcement_tags_set = {tag.lower() for tag in announcement.visible_to_tags}
         return bool(student_tags_set & announcement_tags_set)
 
@@ -182,6 +188,7 @@ def get_communications(
     participation: Participation,
     timestamp: datetime,
     after: datetime | None = None,
+    view_as_tag: str | None = None,
 ) -> list[dict]:
     """Retrieve some contestant's communications at some given time.
 
@@ -201,6 +208,7 @@ def get_communications(
         are to be ignored).
     after: if not none, ignore also the communications
         that were received at or before this moment in time.
+    view_as_tag: for coaches, the group tag they are currently viewing as.
 
     return: for each communication a dictionary with 4 keys:
         type (either "announcement", "message" or "question"), subject,
@@ -220,7 +228,8 @@ def get_communications(
     for announcement in query.all():
         announcement: Announcement
         # Filter announcements based on student tags
-        if not can_see_announcement(sql_session, announcement, participation):
+        if not can_see_announcement(
+                sql_session, announcement, participation, view_as_tag):
             continue
         res.append({"type": "announcement",
                     "timestamp": make_timestamp(announcement.timestamp),

@@ -125,6 +125,7 @@ def check_training_day_eligibility(
     participation: "Participation",
     training_day: "TrainingDay | None",
     student: "Student | None" = None,
+    view_as_tag: str | None = None,
 ) -> tuple[bool, "TrainingDayGroup | None", list[str]]:
     """Check if a participation is eligible for a training day.
 
@@ -136,6 +137,10 @@ def check_training_day_eligibility(
     participation: the participation to check.
     training_day: the training day to check, or None for non-training-day contests.
     student: the Student object if already available (optimization).
+    view_as_tag: for coaches, the group tag they are currently viewing as.
+
+    Coaches are always eligible; when viewing as a group, they are
+    treated as a student having only that tag.
 
     return: tuple of (is_eligible, main_group, matching_tags)
         - is_eligible: True if the student can participate
@@ -158,11 +163,14 @@ def check_training_day_eligibility(
         # No student record means they're not in the training program
         return False, None, []
 
+    student_tags = get_effective_student_tags(student, view_as_tag)
+    if student_tags is None:
+        return True, None, []
+
     # Build dict for O(1) lookup of groups by tag name
     groups_by_tag = {g.tag_name.lower(): g for g in training_day.groups}
 
     # Find which main group tags the student has
-    student_tags = {tag.lower() for tag in (student.student_tags or [])}
     matching_tags = sorted(student_tags & groups_by_tag.keys())
 
     # Eligible only if exactly one main group tag
@@ -174,7 +182,8 @@ def check_training_day_eligibility(
 
 
 def can_access_task(sql_session: Session, task: "Task", participation: "Participation",
-                    training_day: "TrainingDay | None") -> bool:
+                    training_day: "TrainingDay | None",
+                    view_as_tag: str | None = None) -> bool:
     """Check if a participation can access the given task.
 
     For training day contests, tasks may have visibility restrictions
@@ -188,6 +197,7 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
     task: the task to check access for.
     participation: the participation to check access for.
     training_day: the training day if this is a training day contest, else None.
+    view_as_tag: for coaches, the group tag they are currently viewing as.
 
     return: True if the participation can access the task.
 
@@ -207,9 +217,46 @@ def can_access_task(sql_session: Session, task: "Task", participation: "Particip
         return False
 
     # Check if student has any matching tag
-    student_tags_set = {tag.lower() for tag in (student.student_tags or [])}
+    student_tags_set = get_effective_student_tags(student, view_as_tag)
+    if student_tags_set is None:
+        return True
     task_tags_set = {tag.lower() for tag in task.visible_to_tags}
     return bool(student_tags_set & task_tags_set)
+
+
+def get_effective_student_tags(
+    student: "Student", view_as_tag: str | None = None
+) -> set[str] | None:
+    """Return the lowercased tags used for tag-based visibility checks.
+
+    Coaches have no tags of their own: they see everything (None is
+    returned) unless they are viewing as a group, in which case they are
+    treated as having only that group's tag.
+
+    """
+    if student.is_coach:
+        if view_as_tag is None:
+            return None
+        return {view_as_tag.lower()}
+    return {tag.lower() for tag in (student.student_tags or [])}
+
+
+def get_training_program_group_tags(
+    sql_session: Session, training_program: "TrainingProgram"
+) -> list[str]:
+    """Return the sorted tags of the (non-coach) students of a program,
+    together with the main group tags of its training days."""
+    rows = (
+        sql_session.query(func.unnest(Student.student_tags).label("tag"))
+        .filter(Student.training_program_id == training_program.id)
+        .filter(Student.is_coach.is_(False))
+        .distinct()
+        .all()
+    )
+    tags = {row.tag for row in rows if row.tag}
+    for training_day in training_program.training_days:
+        tags.update(g.tag_name for g in training_day.groups)
+    return sorted(tags)
 
 
 def get_student_archive_scores(
@@ -236,7 +283,7 @@ def get_student_archive_scores(
     scores = {}
 
     for task in contest.get_tasks():
-        if task.id not in student_task_ids:
+        if not student.is_coach and task.id not in student_task_ids:
             continue
         cache_entry = get_cached_score_entry(sql_session, participation, task)
         scores[task.id] = cache_entry.score
@@ -287,9 +334,15 @@ def calculate_task_archive_progress(
     task_scores = [] if include_task_details else None
 
     contest_tasks = contest.get_tasks()
-    # Iterate only over tasks in the student's archive (StudentTask entries)
-    for student_task in student_tasks:
-        task = student_task.task
+    # Coaches have access to every task of the program.
+    if student.is_coach:
+        archive = [(task, None, None) for task in contest_tasks]
+    else:
+        archive = [
+            (st.task, st.source_training_day, st.assigned_at)
+            for st in student_tasks
+        ]
+    for task, source_training_day, assigned_at in archive:
         if task is None or task not in contest_tasks:
             continue
         task_count += 1
@@ -304,8 +357,8 @@ def calculate_task_archive_progress(
                 "task": task,
                 "score": best_score,
                 "max_score": max_task_score,
-                "source_training_day": student_task.source_training_day,
-                "assigned_at": student_task.assigned_at,
+                "source_training_day": source_training_day,
+                "assigned_at": assigned_at,
             }
             if submission_counts is not None:
                 task_info["submission_count"] = submission_counts.get(task.id, 0)
@@ -324,6 +377,26 @@ def calculate_task_archive_progress(
         result["task_scores"] = task_scores
 
     return result
+
+
+def is_coach_participation(
+    sql_session: Session, participation: "Participation"
+) -> bool:
+    """Return whether the participation belongs to a training program coach.
+
+    Works for participations in both managing contests and training day
+    contests.
+
+    """
+    contest = participation.contest
+    training_program = contest.training_program
+    if training_program is None and contest.training_day is not None:
+        training_program = contest.training_day.training_program
+    if training_program is None:
+        return False
+    student = get_student_for_user_in_program(
+        sql_session, training_program, participation.user_id)
+    return student is not None and student.is_coach
 
 
 def get_student_for_user_in_program(
@@ -588,3 +661,38 @@ class CommonRequestHandler(RequestHandler):
     @property
     def service(self):
         return self.application.service
+
+
+def apply_coach_status(
+    sql_session: Session, student: "Student", is_coach: bool
+) -> None:
+    """Mark a student as a coach (or back as a regular student).
+
+    Coaches have no tags, and all their participations (in the managing
+    contest and in every training day) are hidden and unrestricted. When a
+    coach becomes a regular student, these flags are reset.
+
+    """
+    was_coach = student.is_coach
+    student.is_coach = is_coach
+    if is_coach:
+        student.student_tags = []
+    elif not was_coach:
+        return
+
+    participations = [student.participation]
+    contest_ids = [
+        td.contest_id
+        for td in student.training_program.training_days
+        if td.contest_id is not None
+    ]
+    if contest_ids:
+        participations.extend(
+            sql_session.query(Participation)
+            .filter(Participation.contest_id.in_(contest_ids))
+            .filter(Participation.user_id == student.participation.user_id)
+            .all()
+        )
+    for participation in participations:
+        participation.hidden = is_coach
+        participation.unrestricted = is_coach

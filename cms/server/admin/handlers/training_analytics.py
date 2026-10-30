@@ -218,7 +218,7 @@ def get_student_detail_data(
 
     users_data = {}
     for s in training_program.students:
-        if not s.participation or s.participation.hidden:
+        if not s.participation or s.participation.hidden or s.is_coach:
             continue
 
         if ctx.student_tags:
