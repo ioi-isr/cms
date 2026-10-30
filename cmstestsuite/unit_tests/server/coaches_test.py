@@ -30,6 +30,8 @@ from cms.db import (
 )
 from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import can_see_announcement
+from cms.server.contest.handlers.trainingprogram import \
+    get_coach_visible_archived_task_ids
 from cms.server.util import (
     apply_coach_status,
     can_access_task,
@@ -124,6 +126,22 @@ class TestCoaches(DatabaseMixin, unittest.TestCase):
                       self.coach.participation)
         self.assertIs(login(self.td_contest, "coach"), self.coach_td)
         self.assertIsNone(login(self.td_contest, "student"))
+
+    def test_coach_visible_archived_tasks(self):
+        class Ranking:
+            def __init__(self, tags, task_ids):
+                self.student_tags = tags
+                self.task_scores = {t: 0.0 for t in task_ids}
+
+        day = TrainingDay(archived_tasks_data={"1": {}, "2": {}, "3": {}})
+        rankings = [Ranking(["beginners"], ["1"]),
+                    Ranking(["advanced"], ["2", "3"])]
+        self.assertEqual(
+            get_coach_visible_archived_task_ids(day, rankings, None),
+            {"1", "2", "3"})
+        self.assertEqual(
+            get_coach_visible_archived_task_ids(day, rankings, "advanced"),
+            {"2", "3"})
 
     def test_regular_student_unaffected(self):
         self.student_td.hidden = True
