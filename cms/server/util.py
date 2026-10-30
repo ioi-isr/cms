@@ -379,6 +379,26 @@ def calculate_task_archive_progress(
     return result
 
 
+def is_coach_participation(
+    sql_session: Session, participation: "Participation"
+) -> bool:
+    """Return whether the participation belongs to a training program coach.
+
+    Works for participations in both managing contests and training day
+    contests.
+
+    """
+    contest = participation.contest
+    training_program = contest.training_program
+    if training_program is None and contest.training_day is not None:
+        training_program = contest.training_day.training_program
+    if training_program is None:
+        return False
+    student = get_student_for_user_in_program(
+        sql_session, training_program, participation.user_id)
+    return student is not None and student.is_coach
+
+
 def get_student_for_user_in_program(
     sql_session: Session,
     training_program: "TrainingProgram",

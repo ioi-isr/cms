@@ -17,6 +17,7 @@
 
 """Tests for training program coaches."""
 
+import ipaddress
 import unittest
 from datetime import datetime
 
@@ -27,6 +28,7 @@ from cms.db import (
     TrainingDayGroup,
     TrainingProgram,
 )
+from cms.server.contest.authentication import validate_login
 from cms.server.contest.communication import can_see_announcement
 from cms.server.util import (
     apply_coach_status,
@@ -34,6 +36,8 @@ from cms.server.util import (
     check_training_day_eligibility,
     get_training_program_group_tags,
 )
+from cmscommon.crypto import build_password
+from cmscommon.datetime import make_datetime
 from cmstestsuite.unit_tests.databasemixin import DatabaseMixin
 
 
@@ -78,7 +82,8 @@ class TestCoaches(DatabaseMixin, unittest.TestCase):
         super().tearDown()
 
     def _add_student(self, username, tags):
-        user = self.add_user(username=username)
+        user = self.add_user(username=username,
+                             password=build_password("pass"))
         participation = self.add_participation(
             user=user, contest=self.managing_contest)
         student = Student(training_program=self.program,
@@ -101,6 +106,24 @@ class TestCoaches(DatabaseMixin, unittest.TestCase):
         for p in (self.coach.participation, self.coach_td):
             self.assertFalse(p.hidden)
             self.assertFalse(p.unrestricted)
+
+    def test_coach_login_with_blocked_hidden_participations(self):
+        for contest in (self.managing_contest, self.td_contest):
+            contest.allow_password_authentication = True
+            contest.block_hidden_participations = True
+        self.student_td.hidden = True
+        self.session.flush()
+
+        def login(contest, username):
+            participation, _cookie = validate_login(
+                self.session, contest, make_datetime(), username, "pass",
+                ipaddress.ip_address("127.0.0.1"))
+            return participation
+
+        self.assertIs(login(self.managing_contest, "coach"),
+                      self.coach.participation)
+        self.assertIs(login(self.td_contest, "coach"), self.coach_td)
+        self.assertIsNone(login(self.td_contest, "student"))
 
     def test_regular_student_unaffected(self):
         self.student_td.hidden = True
