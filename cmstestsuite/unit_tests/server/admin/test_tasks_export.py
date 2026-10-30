@@ -16,6 +16,7 @@ from cms.db import (Attachment, Dataset, File, Generator, Manager,
 from cms.server.admin.handlers import HANDLERS
 from cms.server.admin.handlers.excel import ExcelExportMixin
 from cms.server.admin.handlers.export_handlers import ExportTasksHandler
+from cms.server.file_middleware import FileServerMiddleware
 import tornado.testing
 from tornado.web import Application, RequestHandler
 
@@ -70,9 +71,13 @@ class TestTasksExport(tornado.testing.AsyncHTTPTestCase):
         response = self.fetch('/tasks/export/' + kind)
         self.assertEqual(response.code, 200)
         self.assertEqual(response.headers['Content-Type'], 'application/zip')
-        self.assertIn('tasks_' + kind + '.zip',
-                      response.headers['Content-Disposition'])
-        return zipfile.ZipFile(io.BytesIO(response.body))
+        self.assertEqual(response.headers[FileServerMiddleware.FILENAME_HEADER],
+                         'tasks_' + kind + '.zip')
+        # FileServerMiddleware streams and deletes this file in production.
+        path = Path(response.headers[FileServerMiddleware.TEMP_PATH_HEADER])
+        data = path.read_bytes()
+        path.unlink()
+        return zipfile.ZipFile(io.BytesIO(data))
 
     def test_metadata_uses_admin_id_and_literal_text(self):
         task = self.task(name='=1+1')

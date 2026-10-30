@@ -35,6 +35,8 @@ from cms.db import Contest, Task, TrainingProgram
 from cms.db.filecacher import TombstoneError
 from cms.grading.languagemanager import SOURCE_EXTS, get_language
 from cms.grading.tasktypes.util import get_allowed_manager_basenames
+from cms.server.file_middleware import (FileServerMiddleware,
+                                        make_temp_download_path)
 from cmscommon.datetime import make_datetime
 from cmscontrib.loaders.base_loader import LANGUAGE_MAP
 
@@ -80,13 +82,21 @@ def _zip_directory(src_dir: str, zip_path: str, base_dir: str) -> None:
 
 
 def _write_zip_response(handler: BaseHandler, zip_path: str, download_name: str) -> None:
+    """Serve zip_path without buffering it in memory.
+
+    The archive is moved out of its (soon deleted) working directory;
+    FileServerMiddleware streams it in chunks and then removes it.
+
+    """
+    download_path = make_temp_download_path(suffix=".zip")
+    try:
+        shutil.move(zip_path, download_path)
+    except Exception:
+        os.unlink(download_path)
+        raise
+    handler.set_header(FileServerMiddleware.TEMP_PATH_HEADER, download_path)
+    handler.set_header(FileServerMiddleware.FILENAME_HEADER, download_name)
     handler.set_header('Content-Type', 'application/zip')
-    handler.set_header('Content-Disposition',
-                      f'attachment; filename="{download_name}"')
-
-    with open(zip_path, 'rb') as f:
-        handler.write(f.read())
-
     handler.finish()
 
 

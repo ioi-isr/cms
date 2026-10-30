@@ -246,6 +246,19 @@ class TestFileCacherBase:
         with self.assertRaises(Exception):
             self.file_cacher.get_file(self.digest)
 
+    def test_fetch_missing_file_leaves_no_temporary_file(self):
+        """A failed backend fetch must not leak a temporary cache file.
+
+        """
+        missing = "0" * 40
+        before = set(os.listdir(self.file_cacher.temp_dir))
+        for _ in range(3):
+            with self.assertRaises(KeyError):
+                self.file_cacher.get_file(missing)
+            with self.assertRaises(KeyError):
+                self.file_cacher.cache_file(missing)
+        self.assertEqual(set(os.listdir(self.file_cacher.temp_dir)), before)
+
     def test_file_as_content(self):
         """Send a ~100B random binary file to the storage through
         FileCacher as a string. FC should cache the content locally.
