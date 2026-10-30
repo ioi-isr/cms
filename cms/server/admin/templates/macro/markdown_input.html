@@ -1,7 +1,7 @@
 {% macro markdown_input(name) %}
-<textarea name="{{ name }}" class="markdown_input textarea"></textarea><br/>
+<textarea name="{{ name }}" class="markdown_input textarea communication-text" dir="auto"></textarea><br/>
 You can use Markdown here. URLs are not automatically linked, surround them with &lt;&gt; like &lt;http://example.org&gt;.
-<div class="markdown_preview"></div>
+<div class="markdown_preview communication-text" dir="auto"></div>
 {% endmacro %}
 
 {% macro markdown_preview() %}

@@ -38,7 +38,7 @@ redirect_url (str): optional URL to redirect to after editing (passed as hidden 
   {{ card.card_header(msg.subject, msg.timestamp, delete_button_html=delete_btn) }}
 
   <div class="question-card-body">
-    <div class="question-text">{{ msg.text | markdown }}</div>
+    <div class="question-text communication-text" dir="auto">{{ msg.text | markdown }}</div>
   </div>
 
   <input type="hidden" class="announcement_raw_subject" value="{{ msg.subject|e }}">
