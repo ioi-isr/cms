@@ -100,6 +100,21 @@ class TestTasksExport(tornado.testing.AsyncHTTPTestCase):
                 for filename in ('hebrew.pdf', 'hebrew.docx', 'english.pdf')})
             self.assertEqual(archive.read('tasks/7_example/hebrew.docx'), b'source')
 
+    def test_statement_filenames_are_safe_and_distinct(self):
+        task = self.task(dataset=False)
+        task.statements.clear()
+        for language in ('en', 'english', '../../evil', 'a/b', 'a_b', '///'):
+            Statement(task=task, language=language, digest=language)
+        with self.archive('statements') as archive:
+            names = archive.namelist()
+            self.assertEqual(sorted(names), sorted(
+                f'tasks/7_example/{filename}' for filename in (
+                    'english.pdf', 'english_2.pdf', 'evil.pdf', 'a_b.pdf',
+                    'a_b_2.pdf', 'language.pdf')))
+            self.assertEqual(
+                {archive.read(name) for name in names},
+                {b'en', b'english', b'../../evil', b'a/b', b'a_b', b'///'})
+
     def test_backup_reuses_task_package_export(self):
         self.task()
         self.task(task_id=8)

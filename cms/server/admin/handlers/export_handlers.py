@@ -143,8 +143,17 @@ def _export_task_statements(task, file_cacher, statements_dir,
     """Write statements and sources, optionally recording missing files."""
     files = _TaskFileExporter(task, file_cacher, missing_files)
     os.makedirs(statements_dir, exist_ok=True)
+    used_names = set()
     for lang_code, statement in task.statements.items():
-        lang_name = LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)
+        # Language codes are free text; keep them inside statements_dir and
+        # give each statement a distinct filename.
+        base_name = secure_filename(
+            LANGUAGE_CODE_TO_NAME.get(lang_code, lang_code)) or "language"
+        lang_name, suffix = base_name, 1
+        while lang_name.lower() in used_names:
+            suffix += 1
+            lang_name = f"{base_name}_{suffix}"
+        used_names.add(lang_name.lower())
         statement_path = os.path.join(statements_dir, f"{lang_name}.pdf")
         files.to_path(statement.digest, statement_path, "statement PDF",
                       language=lang_code)
