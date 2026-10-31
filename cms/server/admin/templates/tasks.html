@@ -7,6 +7,23 @@
             <h1 class="title is-spaced">Tasks</h1>
         </div>
         <div class="level-right">
+            <div class="dropdown is-right" id="export-dropdown">
+                <div class="dropdown-trigger">
+                    <button type="button" class="button" id="export-dropdown-trigger"
+                            aria-haspopup="true" aria-controls="export-dropdown-menu" aria-expanded="false">
+                        <svg class="icon is-small"><use href="#icon-download"/></svg>
+                        <span>Export tasks</span>
+                        <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                    </button>
+                </div>
+                <div class="dropdown-menu" id="export-dropdown-menu" role="menu">
+                    <div class="dropdown-content">
+                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'metadata') }}">Task metadata only</a>
+                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'statements') }}">Task statements</a>
+                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'backup') }}">Full backup</a>
+                    </div>
+                </div>
+            </div>
             {% if admin.permission_all %}
             <button type="button" class="button" onclick="MicroModal.show('modal-import-task')">
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
@@ -71,4 +88,26 @@
     </div>
     {% endif %}
 {% include "fragments/modal_import_task.html" %}
+<script>
+(function() {
+    var dropdown = document.getElementById('export-dropdown');
+    var trigger = document.getElementById('export-dropdown-trigger');
+    function closeDropdown() {
+        dropdown.classList.remove('is-active');
+        trigger.setAttribute('aria-expanded', 'false');
+    }
+    trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var expanded = dropdown.classList.toggle('is-active');
+        trigger.setAttribute('aria-expanded', String(expanded));
+    });
+    document.addEventListener('click', closeDropdown);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && dropdown.classList.contains('is-active')) {
+            closeDropdown();
+            trigger.focus();
+        }
+    });
+})();
+</script>
 {% endblock core %}

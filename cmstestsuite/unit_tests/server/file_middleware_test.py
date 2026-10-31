@@ -17,7 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import io
+import os
 import random
+import tempfile
 import unittest
 from unittest.mock import Mock
 
@@ -27,7 +29,8 @@ from werkzeug.wrappers import Response
 from werkzeug.wsgi import responder
 
 from cms.db.filecacher import FileCacher, TombstoneError
-from cms.server.file_middleware import FileServerMiddleware
+from cms.server.file_middleware import FileServerMiddleware, \
+    make_temp_download_path
 from cmscommon.digest import bytes_digest
 
 
@@ -161,6 +164,65 @@ class TestFileByDigestMiddleware(unittest.TestCase):
         response = self.request(
             headers=[("Range", f"bytes={len(self.content) + 1}-")])
         self.assertEqual(response.status_code, 416)
+
+
+class TestTempFileMiddleware(unittest.TestCase):
+
+    def setUp(self):
+        self.content = random.randbytes(TESTFILE_LEN)
+        self.path = make_temp_download_path(suffix=".zip")
+        with open(self.path, "wb") as f:
+            f.write(self.content)
+        self.addCleanup(self.remove_path, self.path)
+        self.file_cacher = Mock()
+        self.client = Client(
+            FileServerMiddleware(self.file_cacher, self.wrapped_wsgi_app),
+            Response)
+
+    @staticmethod
+    def remove_path(path):
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+
+    @responder
+    def wrapped_wsgi_app(self, environ, start_response):
+        return Response(headers={
+            FileServerMiddleware.TEMP_PATH_HEADER: self.path,
+            FileServerMiddleware.FILENAME_HEADER: "tasks.zip",
+        }, mimetype="application/zip")
+
+    def test_streams_and_deletes_file(self):
+        response = self.client.get("/some/url")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        self.assertEqual(response.headers.get("content-disposition"),
+                         "attachment; filename=tasks.zip")
+        self.assertEqual(response.content_length, len(self.content))
+        self.assertNotIn(FileServerMiddleware.TEMP_PATH_HEADER,
+                         response.headers)
+        self.assertEqual(response.get_data(), self.content)
+        self.assertFalse(os.path.exists(self.path))
+        self.file_cacher.get_file.assert_not_called()
+
+    def test_missing_file(self):
+        os.unlink(self.path)
+
+        response = self.client.get("/some/url")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_rejects_other_files(self):
+        fd, self.path = tempfile.mkstemp(prefix="other_")
+        os.close(fd)
+        self.addCleanup(self.remove_path, self.path)
+
+        response = self.client.get("/some/url")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(os.path.exists(self.path))
 
 
 if __name__ == "__main__":
