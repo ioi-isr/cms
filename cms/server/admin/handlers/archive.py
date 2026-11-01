@@ -130,7 +130,7 @@ def compute_archive_modal_data(
         if participation.hidden:
             continue
         student = user_to_student.get(participation.user_id)
-        if student is None:
+        if student is None or student.is_coach:
             continue
         is_eligible, main_group, _ = check_training_day_eligibility(
             sql_session, participation, training_day, student=student
@@ -342,6 +342,10 @@ class ArchiveTrainingDayHandler(BaseHandler):
                     participation.user_id,
                     training_program.id,
                 )
+                continue
+
+            # Coaches are not part of attendance or rankings
+            if student.is_coach:
                 continue
 
             # Skip ineligible students (not in any main group)

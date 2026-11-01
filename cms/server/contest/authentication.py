@@ -37,6 +37,7 @@ from cms import config
 from cms.db import Participation, User
 from cms.db.contest import Contest
 from cms.db.session import Session
+from cms.server.util import is_coach_participation
 from cmscommon.crypto import validate_password
 from cmscommon.datetime import make_datetime, make_timestamp
 
@@ -48,6 +49,19 @@ logger = logging.getLogger(__name__)
 
 
 AnyIPAddress: typing.TypeAlias = ipaddress.IPv4Address | ipaddress.IPv6Address
+
+
+def is_blocked_hidden_participation(
+    sql_session: Session, contest: Contest, participation: Participation
+) -> bool:
+    """Return whether the contest blocks this hidden participation.
+
+    Coaches are hidden to keep them off rankings, but must still be able
+    to log in.
+
+    """
+    return (contest.block_hidden_participations and participation.hidden
+            and not is_coach_participation(sql_session, participation))
 
 
 def get_password(participation: Participation) -> str:
@@ -156,7 +170,7 @@ def validate_login(
         log_failed_attempt("unauthorized IP address")
         return None, None
 
-    if contest.block_hidden_participations and participation.hidden:
+    if is_blocked_hidden_participation(sql_session, contest, participation):
         log_failed_attempt("participation is hidden and unauthorized")
         return None, None
 
@@ -258,8 +272,8 @@ def authenticate_request(
         return None, None, False
 
     # Check that the user is not hidden if hidden users are blocked.
-    if (contest.block_hidden_participations and participation.hidden
-            and not impersonated):
+    if (not impersonated and is_blocked_hidden_participation(
+            sql_session, contest, participation)):
         logger.info(
             "Unsuccessful authentication from IP address %s, on contest %s, "
             "as %s, at %s: participation is hidden and unauthorized",
@@ -299,12 +313,10 @@ def _authenticate_request_by_ip_address(
     )
 
     # If hidden users are blocked we ignore them completely.
-    if contest.block_hidden_participations:
-        participations_query = participations_query.filter(
-            Participation.hidden.is_(False)
-        )
-
-    participations: list[Participation] = participations_query.all()
+    participations: list[Participation] = [
+        p for p in participations_query.all()
+        if not is_blocked_hidden_participation(sql_session, contest, p)
+    ]
 
     if len(participations) == 0:
         logger.info(

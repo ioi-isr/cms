@@ -377,7 +377,8 @@ class ImportTrainingDayFromCsvHandler(BaseHandler):
         # Build username -> student lookup
         username_to_student: dict[str, Student] = {}
         for student in training_program.students:
-            if student.participation and not student.participation.hidden:
+            if (student.participation and not student.participation.hidden
+                    and not student.is_coach):
                 username_to_student[
                     student.participation.user.username
                 ] = student

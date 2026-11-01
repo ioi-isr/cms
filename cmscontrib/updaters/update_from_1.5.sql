@@ -450,7 +450,8 @@ CREATE TABLE public.students (
     id integer NOT NULL,
     training_program_id integer NOT NULL,
     participation_id integer NOT NULL,
-    student_tags character varying[] NOT NULL DEFAULT '{}'
+    student_tags character varying[] NOT NULL DEFAULT '{}',
+    is_coach boolean NOT NULL DEFAULT false
 );
 
 CREATE SEQUENCE public.students_id_seq

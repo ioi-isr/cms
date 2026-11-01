@@ -245,6 +245,8 @@ class DelaysAndExtraTimesHandler(BaseHandler):
             # Find students with 0 or >1 main group tags
             ineligible = []
             for student in training_program.students:
+                if student.is_coach:
+                    continue
                 student_tags = set(student.student_tags or [])
                 matching_tags = student_tags & main_group_tags
                 if len(matching_tags) != 1:

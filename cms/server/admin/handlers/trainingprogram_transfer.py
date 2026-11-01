@@ -102,6 +102,7 @@ def _export_student(student: Student, task_names: dict[int, str],
         "username": participation.user.username,
         "tags": list(student.student_tags or []),
         "hidden": participation.hidden,
+        "is_coach": student.is_coach,
     }
     student_tasks = []
     for student_task in sorted(student.student_tasks,
@@ -361,12 +362,18 @@ class TrainingProgramImporter:
                     starting_time=make_datetime(),
                 )
                 self.session.add(participation)
-            participation.hidden = bool(student_config.get("hidden", False))
+            is_coach = bool(student_config.get("is_coach", False))
+            participation.hidden = (
+                is_coach or bool(student_config.get("hidden", False)))
+            if is_coach:
+                participation.unrestricted = True
 
             student = Student(
                 training_program=training_program,
                 participation=participation,
-                student_tags=list(student_config.get("tags") or []),
+                student_tags=(
+                    [] if is_coach else list(student_config.get("tags") or [])),
+                is_coach=is_coach,
             )
             self.session.add(student)
             students_by_username[username] = student

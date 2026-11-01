@@ -60,7 +60,8 @@ from .delayrequest import \
 from .trainingprogram import \
     TrainingProgramOverviewHandler, \
     TrainingDaysHandler, \
-    ScoreboardDataHandler
+    ScoreboardDataHandler, \
+    ViewAsGroupHandler
 from .api import \
     ApiLoginHandler, \
     ApiSubmissionListHandler, \
@@ -120,6 +121,7 @@ HANDLERS = [
     (r"/training_overview", TrainingProgramOverviewHandler),
     (r"/training_days", TrainingDaysHandler),
     (r"/training_days/scoreboard/([0-9]+)/([^/]+)", ScoreboardDataHandler),
+    (r"/view_as", ViewAsGroupHandler),
 
     # API
     (r"/api/login", ApiLoginHandler),

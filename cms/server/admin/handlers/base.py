@@ -722,6 +722,14 @@ class BaseHandler(CommonRequestHandler):
         self.sql_session.commit()
 
         self.r_params["student_progress"] = student_progress
+        sorted_students = sorted(
+            training_program.students,
+            key=lambda s: s.participation.user.username,
+        )
+        self.r_params["regular_students"] = [
+            s for s in sorted_students if not s.is_coach
+        ]
+        self.r_params["coaches"] = [s for s in sorted_students if s.is_coach]
 
         # For bulk assign task modal
         self.r_params["all_tasks"] = managing_contest.get_tasks()

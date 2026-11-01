@@ -39,7 +39,14 @@ import typing
 import collections
 
 from cms.db.user import Participation
-from cms.server.util import Url, can_access_task, check_training_day_eligibility
+from cms.server.util import (
+    Url,
+    can_access_task,
+    check_training_day_eligibility,
+    get_student_for_training_day,
+    get_student_for_user_in_program,
+    get_training_program_group_tags,
+)
 from cms.server.contest.communication import can_see_announcement
 
 try:
@@ -94,6 +101,7 @@ class ContestHandler(BaseHandler):
         self.impersonated_by_admin = False
         # Cached eligibility check result to avoid duplicate queries
         self._eligibility_cache: tuple[bool, "TrainingDayGroup | None", list[str]] | None = None
+        self._coach_cache: tuple[Student | None, str | None] | None = None
 
     def prepare(self):
         self.choose_contest()
@@ -305,6 +313,8 @@ class ContestHandler(BaseHandler):
         ret["printing_enabled"] = (config.printing.printer is not None)
         ret["questions_enabled"] = self.contest.allow_questions
         ret["testing_enabled"] = self.contest.allow_user_tests
+        ret["is_coach"] = False
+        ret["view_as_tag"] = None
 
         if self.current_user is not None:
             participation = self.current_user
@@ -374,6 +384,15 @@ class ContestHandler(BaseHandler):
         else:
             ret["tokens_tasks"] = TOKEN_MODE_MIXED
 
+        coach, view_as_tag = self.get_coach_and_view_as_tag()
+        ret["is_coach"] = coach is not None
+        ret["view_as_tag"] = view_as_tag
+        if coach is not None:
+            ret["view_as_options"] = get_training_program_group_tags(
+                self.sql_session, self.get_related_training_program()
+            )
+            ret["view_as_next"] = self.request.uri
+
         # For training day contests, filter tasks based on visibility tags
         ret["visible_tasks"] = self.get_visible_tasks()
 
@@ -395,10 +414,59 @@ class ContestHandler(BaseHandler):
             return self._eligibility_cache
 
         training_day = self.contest.training_day
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         self._eligibility_cache = check_training_day_eligibility(
-            self.sql_session, self.current_user, training_day
+            self.sql_session, self.current_user, training_day,
+            view_as_tag=view_as_tag,
         )
         return self._eligibility_cache
+
+    def get_related_training_program(self) -> TrainingProgram | None:
+        """Return the training program of this contest (managing contest
+        or training day contest), if any."""
+        if self.training_program is not None:
+            return self.training_program
+        if self.contest.training_day is not None:
+            return self.contest.training_day.training_program
+        return None
+
+    @staticmethod
+    def view_as_cookie_name(training_program: TrainingProgram) -> str:
+        return training_program.name + "_view_as"
+
+    def get_coach_and_view_as_tag(self) -> tuple[Student | None, str | None]:
+        """Return the coach Student record of the current user (None if
+        the user is not a coach) and the group tag the coach is currently
+        viewing as (None when viewing as a coach).
+
+        """
+        if self._coach_cache is not None:
+            return self._coach_cache
+
+        coach: Student | None = None
+        view_as_tag: str | None = None
+        training_program = self.get_related_training_program()
+        if self.current_user is not None and training_program is not None:
+            if self.contest.training_day is not None:
+                student = get_student_for_training_day(
+                    self.sql_session, self.current_user,
+                    self.contest.training_day)
+            else:
+                student = get_student_for_user_in_program(
+                    self.sql_session, training_program,
+                    self.current_user.user_id)
+            if student is not None and student.is_coach:
+                coach = student
+                raw = self.get_secure_cookie(
+                    self.view_as_cookie_name(training_program))
+                if raw:
+                    tag = raw.decode("utf-8")
+                    if tag in get_training_program_group_tags(
+                            self.sql_session, training_program):
+                        view_as_tag = tag
+
+        self._coach_cache = (coach, view_as_tag)
+        return self._coach_cache
 
     def get_login_url(self):
         """The login url depends on the contest name, so we can't just
@@ -446,6 +514,15 @@ class ContestHandler(BaseHandler):
 
         # For training programs, check if student has a StudentTask record
         if self.training_program is not None:
+            coach, view_as_tag = self.get_coach_and_view_as_tag()
+            if coach is not None:
+                # Coaches can access all the tasks of the program; when
+                # viewing as a group, only the tasks visible to that group.
+                if view_as_tag is None or not task.visible_to_tags:
+                    return True
+                return view_as_tag.lower() in {
+                    t.lower() for t in task.visible_to_tags}
+
             task_access_exists = self.sql_session.query(
                 exists().where(
                     and_(
@@ -461,8 +538,10 @@ class ContestHandler(BaseHandler):
 
             return task_access_exists
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         return can_access_task(
-            self.sql_session, task, self.current_user, self.contest.training_day
+            self.sql_session, task, self.current_user, self.contest.training_day,
+            view_as_tag=view_as_tag,
         )
 
     def get_visible_tasks(self) -> list[Task]:
@@ -505,9 +584,11 @@ class ContestHandler(BaseHandler):
                 return list(self.contest.announcements)
             return [a for a in self.contest.announcements if not a.visible_to_tags]
 
+        _coach, view_as_tag = self.get_coach_and_view_as_tag()
         return [
             a for a in self.contest.announcements
-            if can_see_announcement(self.sql_session, a, self.current_user)
+            if can_see_announcement(
+                self.sql_session, a, self.current_user, view_as_tag)
         ]
 
     def get_submission(self, task: Task, opaque_id: str | int) -> Submission | None:
