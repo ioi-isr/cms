@@ -361,7 +361,25 @@ def generate_ranking_sheet(ws: Worksheet, view_data: dict):
 # Handlers
 # ----------------------------------------------------------------------------
 
-class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
+class ExcelExportMixin:
+    """Shared XLSX download response for admin exports."""
+
+    def _serve_excel(self, wb: Workbook, filename: str):
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        self.set_header(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.set_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.write(output.getvalue())
+        self.finish()
+
+
+class ExportAttendanceHandler(
+        ExcelExportMixin, TrainingProgramFilterMixin, BaseHandler):
     """Export attendance data to Excel format."""
 
     @require_permission(BaseHandler.AUTHENTICATED)
@@ -382,19 +400,6 @@ class ExportAttendanceHandler(TrainingProgramFilterMixin, BaseHandler):
         generate_attendance_sheet(ws, view_data, ctx)
 
         self._serve_excel(wb, build_filename(tp.name, "attendance", ctx))
-
-    def _serve_excel(self, wb: Workbook, filename: str):
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        self.set_header(
-            "Content-Type",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        self.set_header("Content-Disposition", f'attachment; filename="{filename}"')
-        self.write(output.getvalue())
-        self.finish()
 
 
 class ExportCombinedRankingHandler(ExportAttendanceHandler):

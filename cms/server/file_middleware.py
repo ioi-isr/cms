@@ -18,6 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections.abc import Callable
+import os
+import tempfile
+
 from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable
 from werkzeug.wrappers import Response, Request
 from werkzeug.wsgi import responder, wrap_file
@@ -47,6 +50,8 @@ class FileServerMiddleware:
     DIGEST_HEADER = "X-CMS-File-Digest"
     FILENAME_HEADER = "X-CMS-File-Filename"
     DISPOSITION_HEADER = "X-CMS-File-Disposition"
+    TEMP_PATH_HEADER = "X-CMS-Temp-File-Path"
+    TEMP_FILE_PREFIX = "cms_download_"
 
     def __init__(self, file_cacher: FileCacher, app: Callable):
         """Create an instance.
@@ -79,6 +84,9 @@ class FileServerMiddleware:
         # We send relative locations to play nice with reverse proxies
         # but Werkzeug by default turns them into absolute ones.
         original_response.autocorrect_location_header = False
+
+        if self.TEMP_PATH_HEADER in original_response.headers:
+            return self._serve_temp_file(environ, original_response)
 
         if self.DIGEST_HEADER not in original_response.headers:
             return original_response
@@ -120,3 +128,60 @@ class FileServerMiddleware:
             return exc
 
         return response
+
+    def _serve_temp_file(self, environ, original_response: Response):
+        """Stream a handler-generated temporary file and delete it.
+
+        Only files created by make_temp_download_path are accepted.
+
+        """
+        path = original_response.headers.pop(self.TEMP_PATH_HEADER)
+        filename = original_response.headers.pop(self.FILENAME_HEADER, None)
+        disposition = original_response.headers.pop(
+            self.DISPOSITION_HEADER, "attachment")
+        mimetype = original_response.mimetype
+
+        path = os.path.realpath(path)
+        temp_dir = os.path.realpath(tempfile.gettempdir())
+        if os.path.dirname(path) != temp_dir \
+                or not os.path.basename(path).startswith(self.TEMP_FILE_PREFIX):
+            return NotFound()
+
+        try:
+            fobj = open(path, "rb")
+        except FileNotFoundError:
+            return NotFound()
+        # The open descriptor keeps the data readable until streaming ends.
+        try:
+            os.unlink(path)
+            size = os.fstat(fobj.fileno()).st_size
+        except OSError:
+            fobj.close()
+            raise
+
+        response = Response()
+        response.status_code = 200
+        response.mimetype = mimetype
+        if filename is not None:
+            response.headers.add(
+                "Content-Disposition", disposition, filename=filename)
+        response.cache_control.no_cache = True
+        response.cache_control.private = True
+        response.content_length = size
+        response.response = \
+            wrap_file(environ, fobj, buffer_size=FileCacher.CHUNK_SIZE)
+        response.direct_passthrough = True
+        return response
+
+
+def make_temp_download_path(suffix: str = "") -> str:
+    """Create an empty temporary file servable by FileServerMiddleware.
+
+    return: the path of the new file; the middleware deletes it once
+        the file is opened for streaming.
+
+    """
+    fd, path = tempfile.mkstemp(
+        prefix=FileServerMiddleware.TEMP_FILE_PREFIX, suffix=suffix)
+    os.close(fd)
+    return path

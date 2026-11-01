@@ -610,9 +610,16 @@ class FileCacher:
 
         ftmp_handle, temp_file_path = tempfile.mkstemp(dir=self.temp_dir,
                                                        text=False)
-        with open(ftmp_handle, 'wb') as ftmp, \
-                self.backend.get_file(digest) as fobj:
-            copyfileobj(fobj, ftmp, self.CHUNK_SIZE)
+        try:
+            with open(ftmp_handle, 'wb') as ftmp, \
+                    self.backend.get_file(digest) as fobj:
+                copyfileobj(fobj, ftmp, self.CHUNK_SIZE)
+        except BaseException:
+            try:
+                os.unlink(temp_file_path)
+            except OSError:
+                pass
+            raise
 
         if not cache_only:
             # We allow anyone to delete files from the cache directory
