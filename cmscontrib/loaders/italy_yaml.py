@@ -814,6 +814,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Import allowed_languages if specified (for per-task language restrictions)
         load(conf, args, "allowed_languages")
+        load(conf, args, "tags")
 
         # Use the new token settings format if detected.
         if "token_mode" in conf:

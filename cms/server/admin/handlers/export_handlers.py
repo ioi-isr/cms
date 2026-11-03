@@ -266,6 +266,9 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir,
     if task.allowed_languages is not None:
         task_config['allowed_languages'] = task.allowed_languages
 
+    if task.tags:
+        task_config['tags'] = task.tags
+
     if task.token_mode:
         task_config['token_mode'] = task.token_mode
         if task.token_max_number is not None:

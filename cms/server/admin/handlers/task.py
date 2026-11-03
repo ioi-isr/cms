@@ -45,7 +45,7 @@ from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import parse_tags
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
 
 
@@ -142,6 +142,10 @@ class TaskHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
+        self.r_params["all_task_tags"] = sorted({
+            tag for t in self.r_params["task_list"] for tag in t.tags
+            if tag not in Task.AUTOMATIC_TAG_NAMES
+        })
         self.r_params["primary_statements"] = task.primary_statements
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
@@ -246,6 +250,13 @@ class TaskHandler(BaseHandler):
 
             self.get_string(attrs, "name", empty=None)
             self.get_string(attrs, "title")
+
+            tags_str = self.get_argument("tags", None)
+            if tags_str is not None:
+                attrs["tags"] = [
+                    tag for tag in parse_tags(tags_str)
+                    if tag not in Task.AUTOMATIC_TAG_NAMES
+                ]
 
             assert attrs.get("name") is not None, "No task name specified."
 
@@ -726,10 +737,19 @@ class AddDatasetHandler(BaseHandler):
             self.redirect(fallback_page)
 
 
-class TaskListHandler(SimpleHandler("tasks.html")):
+class TaskListHandler(BaseHandler):
     """Get returns the list of all tasks."""
 
-    pass
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self):
+        self.r_params = self.render_params()
+        self.r_params["task_tags"] = {
+            task.id: task.all_tags for task in self.r_params["task_list"]
+        }
+        self.r_params["all_task_tags"] = sorted({
+            tag for tags in self.r_params["task_tags"].values() for tag in tags
+        })
+        self.render("tasks.html", **self.r_params)
 
 
 class RemoveTaskHandler(BaseHandler):

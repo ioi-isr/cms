@@ -58,6 +58,7 @@ class Task(Base):
 
     """
     __tablename__ = 'tasks'
+    AUTOMATIC_TAG_NAMES = ("batch", "communication", "output only", "checker")
     __table_args__ = (
         UniqueConstraint('contest_id', 'num'),
         UniqueConstraint('contest_id', 'name'),
@@ -124,6 +125,12 @@ class Task(Base):
     # If empty, the task is visible to all students.
     # If set, only students with at least one matching tag can see the task.
     visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=list)
+
+    # Custom labels for organizing tasks, separate from student visibility.
+    tags: list[str] = Column(
         ARRAY(Unicode),
         nullable=False,
         default=list)
@@ -330,6 +337,30 @@ class Task(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="task")
+
+    @property
+    def automatic_tags(self) -> list[str]:
+        """Labels derived from the active dataset's type and judging mode."""
+        dataset = self.active_dataset
+        if dataset is None:
+            return []
+
+        tags = {
+            "Batch": ["batch"],
+            "Communication": ["communication"],
+            "OutputOnly": ["output only"],
+            "BatchAndOutput": ["batch", "output only"],
+        }.get(dataset.task_type, [])
+        task_type = dataset.task_type_object
+        if getattr(task_type, "output_eval", None) == "comparator":
+            tags.append("checker")
+        return tags
+
+    @property
+    def all_tags(self) -> list[str]:
+        """Custom and automatic labels, with automatic labels kept current."""
+        custom_tags = set(self.tags) - set(self.AUTOMATIC_TAG_NAMES)
+        return sorted(custom_tags | set(self.automatic_tags))
 
     def get_allowed_languages(self) -> list[str]:
         """Get the list of allowed languages for this task.

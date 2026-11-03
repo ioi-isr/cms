@@ -787,4 +787,8 @@ ALTER TABLE ONLY public.admins
     ADD CONSTRAINT admins_preferred_theme_check
     CHECK (preferred_theme IN ('original', 'granny-smith', 'pink-lady', 'arkansas-black', 'golden', 'mcintosh'));
 
+-- Add custom task labels independently of visibility tags.
+ALTER TABLE public.tasks ADD COLUMN tags character varying[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.tasks ALTER COLUMN tags DROP DEFAULT;
+
 COMMIT;
