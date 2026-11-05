@@ -1055,6 +1055,13 @@
     padding: 6px 8px;
 }
 
+/* Let task tags wrap beyond Bulma's fixed input height. */
+.tagify.task-tags-input {
+    width: 100%;
+    height: auto;
+    min-height: 2.5em;
+}
+
 /* Tagify inputs inside tables */
 .table .tagify {
     width: 100%;
