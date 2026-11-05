@@ -141,16 +141,28 @@ class TestTasksExport(tornado.testing.AsyncHTTPTestCase):
 
     def test_backup_roundtrips_custom_tags(self):
         task = self.task()
-        task.tags = ['graphs', 'שלום']
-        with self.archive('backup') as archive, tempfile.TemporaryDirectory() as tmp:
-            archive.extractall(tmp)
-            path = Path(tmp) / 'tasks/7_example'
-            config = yaml.safe_load((path / 'task.yaml').read_text())
-            self.assertEqual(config['tags'], task.tags)
-            imported = YamlLoader(str(path), self.service.file_cacher).get_task(
-                get_statement=False)
-            self.assertEqual(imported.tags, task.tags)
-            self.assertEqual(imported.all_tags, ['batch', 'graphs', 'שלום'])
+        for tags, expected in [
+            (['graphs', 'שלום'], ['graphs', 'שלום']),
+            ([], []),
+            ([' Graphs ', 'GRAPHS', '', ' DP ', 'dp', 'Batch', 'CHECKER',
+              ' Output Only ', 'Communication'], ['dp', 'graphs']),
+            ([' Graphs, DP '], ['graphs, dp']),
+        ]:
+            with self.subTest(tags=tags):
+                task.tags = tags
+                with (
+                    self.archive('backup') as archive,
+                    tempfile.TemporaryDirectory() as tmp,
+                ):
+                    archive.extractall(tmp)
+                    path = Path(tmp) / 'tasks/7_example'
+                    config = yaml.safe_load((path / 'task.yaml').read_text())
+                    self.assertEqual(config['tags'], expected)
+                    loader = YamlLoader(str(path), self.service.file_cacher)
+                    imported = loader.get_task(get_statement=False)
+                    self.assertEqual(imported.tags, expected)
+                    self.assertEqual(imported.all_tags,
+                                     sorted(['batch'] + expected))
 
     def test_empty_system_exports(self):
         response = self.fetch('/tasks/export/metadata')

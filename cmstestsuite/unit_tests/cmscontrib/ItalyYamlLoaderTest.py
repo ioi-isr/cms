@@ -63,6 +63,32 @@ class TestYamlTaskTags(unittest.TestCase):
         update_task(existing, Task(name="example", title="New title"))
         self.assertEqual(existing.tags, ["graphs"])
 
+    def test_explicit_empty_tags_from_task_constructor_clear_saved_tags(self):
+        existing = Task(name="example", title="Original task", tags=["graphs"])
+        update_task(existing, Task(name="example", title="New title", tags=[]))
+        self.assertEqual(existing.tags, [])
+
+    def test_tags_assigned_after_construction_still_update_saved_tags(self):
+        existing = Task(name="example", title="Old", tags=["graphs"])
+        imported = Task(name="example", title="New")
+        imported.tags = ["dp"]
+        update_task(existing, imported)
+        self.assertEqual(existing.tags, ["dp"])
+
+    def test_explicit_provided_marker_overrides_constructor(self):
+        for values, provided, expected in [
+            ([], False, ["graphs"]),
+            ([], True, []),
+            (["dp"], False, ["graphs"]),
+            (["dp"], True, ["dp"]),
+        ]:
+            with self.subTest(values=values, provided=provided):
+                existing = Task(name="example", title="Old", tags=["graphs"])
+                imported = Task(name="example", title="New", tags=values)
+                imported._tags_provided = provided
+                update_task(existing, imported)
+                self.assertEqual(existing.tags, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

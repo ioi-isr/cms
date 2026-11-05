@@ -26,6 +26,7 @@
 """
 
 import copy
+import logging
 from datetime import timedelta
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -51,6 +52,9 @@ if typing.TYPE_CHECKING:
     from .scorecache import ParticipationTaskScore
     from .modelsolution import ModelSolutionMeta
     from .student_task import StudentTask
+
+
+logger = logging.getLogger(__name__)
 
 
 class Task(Base):
@@ -338,6 +342,13 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
+    def __init__(self, *args, **kwargs):
+        # Base fills omitted fields with defaults, losing this distinction.
+        if "tags" in kwargs or any(
+                prop.key == "tags" for prop in self._col_props[:len(args)]):
+            self._tags_provided = True
+        super().__init__(*args, **kwargs)
+
     @property
     def automatic_tags(self) -> list[str]:
         """Labels derived from the active dataset's type and judging mode."""
@@ -351,7 +362,12 @@ class Task(Base):
             "OutputOnly": ["output only"],
             "BatchAndOutput": ["batch", "output only"],
         }.get(dataset.task_type, [])
-        task_type = dataset.task_type_object
+        try:
+            task_type = dataset.task_type_object
+        except Exception:
+            logger.warning("Could not determine checker tag for task %s",
+                           self.name, exc_info=True)
+            return tags
         if getattr(task_type, "output_eval", None) == "comparator":
             tags.append("checker")
         return tags

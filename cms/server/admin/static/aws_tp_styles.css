@@ -1069,6 +1069,15 @@
     max-width: calc(100vw - 4rem);
 }
 
+@media screen and (max-width: 768px) {
+    .task-tag-filter-control,
+    .task-tag-dropdown,
+    .task-tag-dropdown > .dropdown-trigger,
+    .task-tag-dropdown > .dropdown-trigger > .button {
+        width: 100%;
+    }
+}
+
 .task-tag-options {
     max-height: 20rem;
     overflow-y: auto;

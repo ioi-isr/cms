@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from bs4 import BeautifulSoup
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader
 
-from cms.db import Task
+from cms.db import Dataset, Task
 from cms.server.admin.handlers.base import BaseHandler
 from cms.server.admin.handlers.task import TaskHandler, TaskListHandler
 import tornado.testing
@@ -39,7 +39,7 @@ class TaskHarness(BaseHandler):
         return self.fixture.service
 
     def render_params(self):
-        return dict(task_list=[self.fixture.task], admin=self.fixture.admin,
+        return dict(task_list=self.fixture.tasks, admin=self.fixture.admin,
                     url=self.url)
 
     def render(self, template_name, **params):
@@ -62,6 +62,7 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
         self.task = Task(name="example", title="Example", tags=["graphs"],
                          visible_to_tags=["advanced"])
         self.task.id = 7
+        self.tasks = [self.task]
         self.service = SimpleNamespace(
             proxy_service=Mock(), add_notification=Mock())
         templates_path = (Path(__file__).resolve().parents[4]
@@ -98,6 +99,31 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
         self.assertEqual(self.post_tags({'tags': ''}).code, 302)
         self.assertEqual(self.task.tags, [])
 
+    def test_json_tag_submission_preserves_commas_and_normalizes_values(self):
+        values = [' Graphs, DP ', 'graphs, dp', 'CHECKER', 'Batch', ' DP ', '']
+        response = self.post_tags({'tags': json.dumps(values)})
+        self.assertEqual(response.code, 302)
+        self.assertEqual(self.task.tags, ['graphs, dp', 'dp'])
+        self.service.add_notification.assert_not_called()
+
+    def test_native_editor_roundtrip_without_tagify_preserves_commas(self):
+        self.task.tags = [' Graphs, DP ', 'שלום']
+        template = self.templates.get_template('fragments/task_tags.html')
+        html = BeautifulSoup(template.render(task=self.task), 'html.parser')
+        native_value = html.select_one('#task-tags')['value']
+        response = self.post_tags({'tags': native_value})
+        self.assertEqual(response.code, 302)
+        self.assertEqual(self.task.tags, ['graphs, dp', 'שלום'])
+        self.service.add_notification.assert_not_called()
+
+    def test_json_tag_submission_rejects_non_string_values(self):
+        for values in [[1], [None], [{'value': 'graphs'}]]:
+            with self.subTest(values=values):
+                self.assertEqual(self.post_tags({'tags': json.dumps(values)}).code,
+                                 302)
+                self.assertEqual(self.task.tags, ['graphs'])
+        self.assertEqual(self.service.add_notification.call_count, 3)
+
     def test_read_only_admin_cannot_edit_tags(self):
         self.admin.permission_all = False
         self.assertEqual(self.post_tags({'tags': 'dp'}).code, 403)
@@ -119,6 +145,30 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
     def test_list_requires_login(self):
         self.admin = None
         self.assertEqual(self.fetch('/tasks', follow_redirects=False).code, 302)
+
+    def test_invalid_task_type_does_not_break_other_task_labels(self):
+        for task_id, name, kind, parameters in [
+            (8, 'broken', 'Batch', []),
+            (9, 'working', 'OutputOnly', ['comparator']),
+        ]:
+            task = Task(name=name, title=name, tags=['dp'])
+            task.id = task_id
+            task.active_dataset = Dataset(
+                task=task, description='Default', task_type=kind,
+                task_type_parameters=parameters, score_type='Sum',
+                score_type_parameters=100)
+            self.tasks.append(task)
+        response = self.fetch('/tasks')
+        self.assertEqual(response.code, 200)
+        html = BeautifulSoup(response.body, 'html.parser')
+        tags = {card.select_one('.task-card-summary a').text:
+                json.loads(card['data-tags'])
+                for card in html.select('#tasks-grid .tp-program-card')}
+        self.assertEqual(tags, {
+            'example': ['graphs'],
+            'broken': ['batch', 'dp'],
+            'working': ['checker', 'dp', 'output only'],
+        })
 
     def test_editor_serializes_tag_names_as_strings_not_tagify_metadata(self):
         self.task.tags = [

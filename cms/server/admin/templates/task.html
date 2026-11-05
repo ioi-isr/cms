@@ -8,17 +8,26 @@
 
 {% block js_init %}
 
-new Tagify(document.getElementById('task-tags'), {
-    whitelist: {{ all_task_tags | tojson }},
-    blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
-    delimiters: ',',
-    editTags: false,
-    readonly: {{ (not admin.permission_all) | tojson }},
-    dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true, escapeHTML: true },
-    originalInputValueFormat: function(tags) {
-        return tags.map(function(tag) { return tag.value; }).join(', ');
-    }
-});
+var taskTagsInput = document.getElementById('task-tags');
+if (typeof Tagify !== 'undefined') {
+    var storedTaskTags = JSON.parse(taskTagsInput.value).map(function(value) {
+        return { value: value };
+    });
+    taskTagsInput.value = '';
+    var taskTagEditor = new Tagify(taskTagsInput, {
+        whitelist: {{ all_task_tags | tojson }},
+        blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
+        // This Tagify version treats null as the literal delimiter "null".
+        delimiters: undefined,
+        editTags: false,
+        readonly: {{ (not admin.permission_all) | tojson }},
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true, escapeHTML: true },
+        originalInputValueFormat: function(tags) {
+            return JSON.stringify(tags.map(function(tag) { return tag.value; }));
+        }
+    });
+    taskTagEditor.addTags(storedTaskTags);
+}
 
 var originalScoreParams = {};
 

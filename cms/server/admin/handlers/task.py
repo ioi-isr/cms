@@ -27,6 +27,7 @@
 
 """
 
+import json
 import logging
 import os.path
 import traceback
@@ -43,7 +44,9 @@ import tornado.web
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
-from cms.server.admin.handlers.utils import parse_tags
+from cms.server.admin.handlers.utils import (
+    deduplicate_preserving_order, parse_tags,
+)
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
@@ -252,8 +255,20 @@ class TaskHandler(BaseHandler):
 
             tags_str = self.get_argument("tags", None)
             if tags_str is not None:
+                try:
+                    tag_values = json.loads(tags_str)
+                except ValueError:
+                    tag_values = None
+                if isinstance(tag_values, list):
+                    if not all(isinstance(tag, str) for tag in tag_values):
+                        raise ValueError("Tags must be a JSON array of strings.")
+                else:
+                    tag_values = parse_tags(tags_str)
+                tags = deduplicate_preserving_order([
+                    tag.strip().lower() for tag in tag_values if tag.strip()
+                ])
                 attrs["tags"] = [
-                    tag for tag in parse_tags(tags_str)
+                    tag for tag in tags
                     if tag not in Task.AUTOMATIC_TAG_NAMES
                 ]
 

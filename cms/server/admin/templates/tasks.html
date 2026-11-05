@@ -81,8 +81,8 @@ if (taskSearch && taskTagDropdown) {
             <input type="search" class="input" id="task-search" placeholder="Search by name or title...">
             <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
         </div>
-        <div class="control">
-            <div class="dropdown task-tag-dropdown" id="task-tag-dropdown" data-task-dropdown>
+        <div class="control task-tag-filter-control">
+            <div class="dropdown task-tag-dropdown is-right" id="task-tag-dropdown" data-task-dropdown>
                 <div class="dropdown-trigger">
                     <button type="button" class="button" id="task-tag-filter-trigger" data-dropdown-trigger
                             aria-controls="task-tag-filter-panel" aria-expanded="false" {% if not all_task_tags %}disabled{% endif %}>

@@ -36,6 +36,17 @@ def test_automatic_tags(task_type, parameters, expected):
     assert task.tags == []
 
 
+@pytest.mark.parametrize("task_type, parameters, expected", [
+    ("Batch", [], ["batch", "graphs"]),
+    ("UnknownTaskType", [], ["graphs"]),
+])
+def test_invalid_task_types_keep_custom_and_known_type_tags(
+        task_type, parameters, expected):
+    task = Task(name="example", title="Example", tags=["graphs"])
+    task.active_dataset = dataset(task, task_type, parameters)
+    assert task.all_tags == expected
+
+
 def test_tags_follow_active_dataset_and_comparator_changes():
     task = Task(name="example", title="Example", tags=["graphs"])
     batch = dataset(task, "Batch", ["alone", ["", ""], "diff"])
