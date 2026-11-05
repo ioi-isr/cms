@@ -2,18 +2,23 @@
 
 {% block js_init %}
 var taskSearch = document.getElementById('task-search');
-var taskTagsInput = document.getElementById('task-tag-filter');
-if (taskSearch && taskTagsInput) {
-    var taskTagFilter = new Tagify(taskTagsInput, {
-        whitelist: {{ all_task_tags | tojson }},
-        enforceWhitelist: true,
-        delimiters: ',',
-        editTags: false,
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: false, escapeHTML: true }
-    });
+var taskTagDropdown = document.getElementById('task-tag-dropdown');
+if (taskSearch && taskTagDropdown) {
+    var taskTagCheckboxes = taskTagDropdown.querySelectorAll('input[type="checkbox"]');
+    var taskTagCount = document.getElementById('task-tag-selection-count');
+    var taskTagTrigger = document.getElementById('task-tag-filter-trigger');
+    var clearTaskTags = document.getElementById('clear-task-tags');
     function filterTasks() {
-        CMS.AWSTableUtils.filterElements('tasks-grid', '.tp-program-card', taskSearch.value);
-        var selected = taskTagFilter.value.map(function(tag) { return tag.value.toLowerCase(); });
+        CMS.AWSTableUtils.filterElements('tasks-grid', '.tp-program-card', taskSearch.value, '.task-card-summary');
+        var selected = Array.from(taskTagCheckboxes).filter(function(checkbox) {
+            return checkbox.checked;
+        }).map(function(checkbox) { return checkbox.value.toLowerCase(); });
+        taskTagCount.textContent = selected.length;
+        taskTagCount.classList.toggle('is-hidden', selected.length === 0);
+        taskTagTrigger.setAttribute('aria-label', 'Filter by tags, ' + selected.length + ' selected');
+        taskTagTrigger.classList.toggle('is-info', selected.length > 0);
+        taskTagTrigger.classList.toggle('is-light', selected.length > 0);
+        clearTaskTags.disabled = selected.length === 0;
         var visible = 0;
         document.querySelectorAll('#tasks-grid .tp-program-card').forEach(function(card) {
             var tags = JSON.parse(card.dataset.tags).map(function(tag) { return tag.toLowerCase(); });
@@ -25,7 +30,15 @@ if (taskSearch && taskTagsInput) {
         document.getElementById('tasks-no-matches').hidden = visible > 0;
     }
     taskSearch.addEventListener('input', filterTasks);
-    taskTagFilter.on('change', filterTasks);
+    taskTagCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', filterTasks);
+    });
+    clearTaskTags.addEventListener('click', function() {
+        taskTagCheckboxes.forEach(function(checkbox) { checkbox.checked = false; });
+        filterTasks();
+        if (taskTagCheckboxes.length) taskTagCheckboxes[0].focus();
+    });
+    filterTasks();
 }
 {% endblock js_init %}
 
@@ -61,19 +74,45 @@ if (taskSearch && taskTagsInput) {
         {% endif %}
     </div>
     {% else %}
-    <!-- Search -->
-    <div class="columns mb-5" style="max-width: 56rem;">
-        <div class="column is-7">
-            <label class="label" for="task-search">Search</label>
-            <div class="control has-icons-left">
-                <input type="search" class="input" id="task-search" placeholder="Search tasks...">
-                <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
-            </div>
+    <!-- Search and tag filters -->
+    <div class="field is-grouped is-grouped-multiline mb-5" style="max-width: 56rem;">
+        <div class="control has-icons-left is-expanded" style="flex-basis: 18rem; min-width: 0;">
+            <label class="is-sr-only" for="task-search">Search by task name or title</label>
+            <input type="search" class="input" id="task-search" placeholder="Search by name or title...">
+            <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
         </div>
-        <div class="column is-5">
-            <label class="label" for="task-tag-filter">Tags</label>
-            <input class="input task-tags-input" id="task-tag-filter" placeholder="Choose existing tags">
-            <p class="help">Tasks must have all selected tags.</p>
+        <div class="control">
+            <div class="dropdown task-tag-dropdown" id="task-tag-dropdown" data-task-dropdown>
+                <div class="dropdown-trigger">
+                    <button type="button" class="button" id="task-tag-filter-trigger" data-dropdown-trigger
+                            aria-controls="task-tag-filter-panel" aria-expanded="false" {% if not all_task_tags %}disabled{% endif %}>
+                        <svg class="icon is-small"><use href="#icon-tag"/></svg>
+                        <span>Filter by tags</span>
+                        <span class="tag is-info is-light is-rounded is-hidden" id="task-tag-selection-count" aria-hidden="true">0</span>
+                        <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                    </button>
+                </div>
+                <div class="dropdown-menu" id="task-tag-filter-panel" role="group" aria-labelledby="task-tag-filter-title">
+                    <div class="dropdown-content">
+                        <div class="dropdown-item is-flex is-align-items-center is-justify-content-space-between">
+                            <p class="has-text-weight-semibold" id="task-tag-filter-title">Filter by tag</p>
+                            <button type="button" class="button is-small is-text" id="clear-task-tags" disabled>Clear</button>
+                        </div>
+                        <hr class="dropdown-divider">
+                        <div class="task-tag-options">
+                            {% for tag in all_task_tags %}
+                            <label class="dropdown-item checkbox task-tag-option">
+                                <input type="checkbox" value="{{ tag }}">
+                                <span class="task-tag-name">{{ tag }}</span>
+                                <span class="has-text-grey is-size-7 task-tag-count" title="{{ task_tag_counts[tag] }} tasks">{{ task_tag_counts[tag] }}<span class="is-sr-only"> tasks</span></span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <hr class="dropdown-divider">
+                        <p class="dropdown-item is-size-7 has-text-grey">Tasks must have all selected tags.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -100,7 +139,7 @@ if (taskSearch && taskTagsInput) {
                 <div class="tp-stat-icon is-opaque-bg has-text-info">
                     <svg class="icon"><use href="#icon-puzzle"/></svg>
                 </div>
-                <div style="min-width: 0;">
+                <div class="task-card-summary" style="min-width: 0;">
                     <a href="{{ url("task", t.id) }}" style="font-weight: 600; color: var(--tp-text-primary); text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ t.title }}">{{ t.name }}</a>
                     <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.title }}</div>
                 </div>
@@ -116,9 +155,9 @@ if (taskSearch && taskTagsInput) {
     <p id="tasks-no-matches" class="has-text-grey" role="status" hidden>No tasks match the selected tags and search.</p>
     {% endif %}
     <div class="is-flex is-justify-content-flex-end mt-5">
-        <div class="dropdown is-right is-up" id="export-dropdown">
+        <div class="dropdown is-right is-up" id="export-dropdown" data-task-dropdown>
             <div class="dropdown-trigger">
-                <button type="button" class="button is-small is-light" id="export-dropdown-trigger"
+                <button type="button" class="button is-small is-light" id="export-dropdown-trigger" data-dropdown-trigger
                         aria-haspopup="true" aria-controls="export-dropdown-menu" aria-expanded="false">
                     <svg class="icon is-small"><use href="#icon-download"/></svg>
                     <span>Export tasks</span>
@@ -137,22 +176,46 @@ if (taskSearch && taskTagsInput) {
 {% include "fragments/modal_import_task.html" %}
 <script>
 (function() {
-    var dropdown = document.getElementById('export-dropdown');
-    var trigger = document.getElementById('export-dropdown-trigger');
-    function closeDropdown() {
+    var dropdowns = document.querySelectorAll('[data-task-dropdown]');
+    function closeDropdown(dropdown) {
         dropdown.classList.remove('is-active');
-        trigger.setAttribute('aria-expanded', 'false');
+        dropdown.querySelector('[data-dropdown-trigger]').setAttribute('aria-expanded', 'false');
     }
-    trigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var expanded = dropdown.classList.toggle('is-active');
-        trigger.setAttribute('aria-expanded', String(expanded));
+    dropdowns.forEach(function(dropdown) {
+        var trigger = dropdown.querySelector('[data-dropdown-trigger]');
+        trigger.addEventListener('click', function() {
+            var expanded = !dropdown.classList.contains('is-active');
+            dropdowns.forEach(closeDropdown);
+            dropdown.classList.toggle('is-active', expanded);
+            trigger.setAttribute('aria-expanded', String(expanded));
+        });
+        trigger.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                dropdowns.forEach(closeDropdown);
+                dropdown.classList.add('is-active');
+                trigger.setAttribute('aria-expanded', 'true');
+                var first = dropdown.querySelector('.dropdown-menu input, .dropdown-menu a');
+                if (first) first.focus();
+            }
+        });
+        dropdown.addEventListener('focusout', function(e) {
+            if (e.relatedTarget && !dropdown.contains(e.relatedTarget)) closeDropdown(dropdown);
+        });
     });
-    document.addEventListener('click', closeDropdown);
+    document.addEventListener('click', function(e) {
+        dropdowns.forEach(function(dropdown) {
+            if (!dropdown.contains(e.target)) closeDropdown(dropdown);
+        });
+    });
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && dropdown.classList.contains('is-active')) {
-            closeDropdown();
-            trigger.focus();
+        if (e.key === 'Escape') {
+            dropdowns.forEach(function(dropdown) {
+                if (dropdown.classList.contains('is-active')) {
+                    closeDropdown(dropdown);
+                    dropdown.querySelector('[data-dropdown-trigger]').focus();
+                }
+            });
         }
     });
 })();

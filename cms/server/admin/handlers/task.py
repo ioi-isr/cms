@@ -745,9 +745,10 @@ class TaskListHandler(BaseHandler):
         self.r_params["task_tags"] = {
             task.id: task.all_tags for task in self.r_params["task_list"]
         }
-        self.r_params["all_task_tags"] = sorted({
+        self.r_params["task_tag_counts"] = collections.Counter(
             tag for tags in self.r_params["task_tags"].values() for tag in tags
-        })
+        )
+        self.r_params["all_task_tags"] = sorted(self.r_params["task_tag_counts"])
         self.render("tasks.html", **self.r_params)
 
 

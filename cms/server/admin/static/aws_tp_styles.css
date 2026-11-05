@@ -1062,6 +1062,40 @@
     min-height: 2.5em;
 }
 
+/* Checkbox tag filter: use Bulma's dropdown and native checkbox controls. */
+.task-tag-dropdown .dropdown-menu {
+    width: 20rem;
+    min-width: 0;
+    max-width: calc(100vw - 4rem);
+}
+
+.task-tag-options {
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.task-tag-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: normal;
+}
+
+.task-tag-option input {
+    flex: none;
+    accent-color: var(--bulma-primary);
+}
+
+.task-tag-name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.task-tag-count {
+    font-variant-numeric: tabular-nums;
+}
+
 /* Tagify inputs inside tables */
 .table .tagify {
     width: 100%;
