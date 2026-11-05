@@ -119,3 +119,18 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
     def test_list_requires_login(self):
         self.admin = None
         self.assertEqual(self.fetch('/tasks', follow_redirects=False).code, 302)
+
+    def test_editor_serializes_tag_names_as_strings_not_tagify_metadata(self):
+        self.task.tags = [
+            '<img src=x onerror=alert(1)>',
+            json.dumps([{
+                'value': 'graphs',
+                'title': '" onmouseover="alert(1)" data-test="',
+            }]),
+        ]
+        template = self.templates.get_template('fragments/task_tags.html')
+        html = BeautifulSoup(template.render(task=self.task), 'html.parser')
+        value = json.loads(html.select_one('#task-tags')['value'])
+        self.assertEqual(value, self.task.custom_tags)
+        self.assertTrue(all(isinstance(tag, str) for tag in value))
+        self.assertIsNone(html.find('img'))

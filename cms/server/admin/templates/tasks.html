@@ -9,7 +9,7 @@ if (taskSearch && taskTagsInput) {
         enforceWhitelist: true,
         delimiters: ',',
         editTags: false,
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: false }
+        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: false, escapeHTML: true }
     });
     function filterTasks() {
         CMS.AWSTableUtils.filterElements('tasks-grid', '.tp-program-card', taskSearch.value);
@@ -36,23 +36,6 @@ if (taskSearch && taskTagsInput) {
             <h1 class="title is-spaced">Tasks</h1>
         </div>
         <div class="level-right">
-            <div class="dropdown is-right" id="export-dropdown">
-                <div class="dropdown-trigger">
-                    <button type="button" class="button" id="export-dropdown-trigger"
-                            aria-haspopup="true" aria-controls="export-dropdown-menu" aria-expanded="false">
-                        <svg class="icon is-small"><use href="#icon-download"/></svg>
-                        <span>Export tasks</span>
-                        <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
-                    </button>
-                </div>
-                <div class="dropdown-menu" id="export-dropdown-menu" role="menu">
-                    <div class="dropdown-content">
-                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'metadata') }}">Task metadata only</a>
-                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'statements') }}">Task statements</a>
-                        <a class="dropdown-item" href="{{ url('tasks', 'export', 'backup') }}">Full backup</a>
-                    </div>
-                </div>
-            </div>
             {% if admin.permission_all %}
             <button type="button" class="button" onclick="MicroModal.show('modal-import-task')">
                 <svg class="icon is-small"><use href="#icon-upload"/></svg>
@@ -79,15 +62,15 @@ if (taskSearch && taskTagsInput) {
     </div>
     {% else %}
     <!-- Search -->
-    <div class="columns mb-4">
-        <div class="column is-one-third">
+    <div class="columns mb-5" style="max-width: 56rem;">
+        <div class="column is-7">
             <label class="label" for="task-search">Search</label>
             <div class="control has-icons-left">
                 <input type="search" class="input" id="task-search" placeholder="Search tasks...">
                 <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
             </div>
         </div>
-        <div class="column">
+        <div class="column is-5">
             <label class="label" for="task-tag-filter">Tags</label>
             <input class="input" id="task-tag-filter" placeholder="Choose existing tags">
             <p class="help">Tasks must have all selected tags.</p>
@@ -132,6 +115,25 @@ if (taskSearch && taskTagsInput) {
     </div>
     <p id="tasks-no-matches" class="has-text-grey" role="status" hidden>No tasks match the selected tags and search.</p>
     {% endif %}
+    <div class="is-flex is-justify-content-flex-end mt-5">
+        <div class="dropdown is-right is-up" id="export-dropdown">
+            <div class="dropdown-trigger">
+                <button type="button" class="button is-small is-light" id="export-dropdown-trigger"
+                        aria-haspopup="true" aria-controls="export-dropdown-menu" aria-expanded="false">
+                    <svg class="icon is-small"><use href="#icon-download"/></svg>
+                    <span>Export tasks</span>
+                    <svg class="icon is-small" style="transform: rotate(180deg);"><use href="#icon-chevron-down"/></svg>
+                </button>
+            </div>
+            <div class="dropdown-menu" id="export-dropdown-menu" role="menu">
+                <div class="dropdown-content">
+                    <a class="dropdown-item" href="{{ url('tasks', 'export', 'metadata') }}">Task metadata only</a>
+                    <a class="dropdown-item" href="{{ url('tasks', 'export', 'statements') }}">Task statements</a>
+                    <a class="dropdown-item" href="{{ url('tasks', 'export', 'backup') }}">Full backup</a>
+                </div>
+            </div>
+        </div>
+    </div>
 {% include "fragments/modal_import_task.html" %}
 <script>
 (function() {

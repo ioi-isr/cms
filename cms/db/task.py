@@ -357,10 +357,15 @@ class Task(Base):
         return tags
 
     @property
+    def custom_tags(self) -> list[str]:
+        """Normalized custom labels, excluding labels managed by the dataset."""
+        tags = {tag.strip().lower() for tag in self.tags if tag.strip()}
+        return sorted(tags - set(self.AUTOMATIC_TAG_NAMES))
+
+    @property
     def all_tags(self) -> list[str]:
         """Custom and automatic labels, with automatic labels kept current."""
-        custom_tags = set(self.tags) - set(self.AUTOMATIC_TAG_NAMES)
-        return sorted(custom_tags | set(self.automatic_tags))
+        return sorted(set(self.custom_tags) | set(self.automatic_tags))
 
     def get_allowed_languages(self) -> list[str]:
         """Get the list of allowed languages for this task.

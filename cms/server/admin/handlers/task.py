@@ -143,8 +143,7 @@ class TaskHandler(BaseHandler):
         self.r_params = self.render_params()
         self.r_params["task"] = task
         self.r_params["all_task_tags"] = sorted({
-            tag for t in self.r_params["task_list"] for tag in t.tags
-            if tag not in Task.AUTOMATIC_TAG_NAMES
+            tag for t in self.r_params["task_list"] for tag in t.custom_tags
         })
         self.r_params["primary_statements"] = task.primary_statements
         self.r_params["submissions"] = \

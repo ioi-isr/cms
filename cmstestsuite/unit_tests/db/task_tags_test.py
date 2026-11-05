@@ -52,10 +52,15 @@ def test_tags_follow_active_dataset_and_comparator_changes():
     assert task.all_tags == ["graphs"]
 
 
-def test_custom_tags_cannot_override_automatic_classification():
+@pytest.mark.parametrize("tags", [
+    ["batch", "checker", "graphs", "graphs"],
+    ["Batch", "CHECKER", "Communication", "GRAPHS", "  graphs  ", ""],
+])
+def test_custom_tags_cannot_override_automatic_classification(tags):
     task = Task(name="example", title="Example",
-                tags=["batch", "checker", "graphs", "graphs"])
+                tags=tags)
     task.active_dataset = dataset(task, "OutputOnly", ["diff"])
+    assert task.custom_tags == ["graphs"]
     assert task.all_tags == ["graphs", "output only"]
 
 

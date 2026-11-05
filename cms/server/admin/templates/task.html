@@ -14,7 +14,7 @@ new Tagify(document.getElementById('task-tags'), {
     delimiters: ',',
     editTags: false,
     readonly: {{ (not admin.permission_all) | tojson }},
-    dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true },
+    dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true, escapeHTML: true },
     originalInputValueFormat: function(tags) {
         return tags.map(function(tag) { return tag.value; }).join(', ');
     }
@@ -484,20 +484,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         <div class="cell is-col-span-1">
                             {{ form_field('title', 'Title', task.title, info_tooltip='The title of the task as seen by the contestants.') }}
                         </div>
-                        <div class="cell is-col-span-2">
-                            <div class="field">
-                                <label class="label" for="task-tags">Custom tags</label>
-                                <div class="control">
-                                    <input class="input" id="task-tags" name="tags" value="{{ task.tags | join(', ') }}" placeholder="Add tags" />
-                                </div>
-                                <p class="help">Saved with the task. Batch, communication, output only, and checker tags are added automatically from the active dataset.</p>
-                            </div>
-                            <div class="tags">
-                                {% for tag in task.automatic_tags %}
-                                <span class="tag is-info is-light">{{ tag }}</span>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% include "fragments/task_tags.html" %}
                         <div class="cell is-col-span-1">
                             <div class="field">
                                 <p class="label">Position</p>
