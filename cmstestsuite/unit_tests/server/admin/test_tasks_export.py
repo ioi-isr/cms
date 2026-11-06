@@ -3,6 +3,7 @@
 import io
 import json
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import zipfile
@@ -17,6 +18,7 @@ from cms.server.admin.handlers import HANDLERS
 from cms.server.admin.handlers.excel import ExcelExportMixin
 from cms.server.admin.handlers.export_handlers import ExportTasksHandler
 from cms.server.file_middleware import FileServerMiddleware
+from cmscontrib.loaders.italy_yaml import YamlLoader
 import tornado.testing
 from tornado.web import Application, RequestHandler
 
@@ -136,6 +138,31 @@ class TestTasksExport(tornado.testing.AsyncHTTPTestCase):
         self.assertEqual(response.code, 302)
         self.assertEqual(response.headers['Location'], '/tasks')
         self.assertIn('example', self.service.add_notification.call_args.args[2])
+
+    def test_backup_roundtrips_custom_tags(self):
+        task = self.task()
+        for tags, expected in [
+            (['graphs', 'שלום'], ['graphs', 'שלום']),
+            ([], []),
+            ([' Graphs ', 'GRAPHS', '', ' DP ', 'dp', 'Batch', 'CHECKER',
+              ' Output Only ', 'Communication'], ['dp', 'graphs']),
+            ([' Graphs, DP '], ['graphs, dp']),
+        ]:
+            with self.subTest(tags=tags):
+                task.tags = tags
+                with (
+                    self.archive('backup') as archive,
+                    tempfile.TemporaryDirectory() as tmp,
+                ):
+                    archive.extractall(tmp)
+                    path = Path(tmp) / 'tasks/7_example'
+                    config = yaml.safe_load((path / 'task.yaml').read_text())
+                    self.assertEqual(config['tags'], expected)
+                    loader = YamlLoader(str(path), self.service.file_cacher)
+                    imported = loader.get_task(get_statement=False)
+                    self.assertEqual(imported.tags, expected)
+                    self.assertEqual(imported.all_tags,
+                                     sorted(['batch'] + expected))
 
     def test_empty_system_exports(self):
         response = self.fetch('/tasks/export/metadata')

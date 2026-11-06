@@ -128,38 +128,54 @@ CMS.AWSFormUtils.initReadOnlyTagify = function(inputSelector) {
  * config (object): Configuration object with the following properties:
  *   - inputSelector (string): CSS selector for the input element(s).
  *   - whitelist (array): Array of existing tags for autocomplete suggestions.
+ *   - blacklist (array): Tags that cannot be added.
  *   - getSaveUrl (function): Function that receives the input element and returns the save URL.
  *   - saveParamName (string): Parameter name for the save request (e.g., 'student_tags').
  *   - xsrfSelector (string): CSS selector for the XSRF token input (default: 'input[name="_xsrf"]').
  *   - placeholder (string): Placeholder text (default: 'Type tags').
  *   - editable (boolean): Whether tags can be edited by double-clicking (default: false).
+ *   - readonly (boolean): Whether tag changes are disabled (default: false).
+ *   - jsonValues (boolean): Read and submit JSON arrays of tag strings (default: false).
  *   - enforceWhitelist (boolean): Whether to only allow tags from whitelist (default: false).
  *   - pattern (RegExp): Pattern for tag validation (default: null).
  *   - invalidMessage (string): Message to show when pattern validation fails.
  */
 CMS.AWSFormUtils.initTagify = function(config) {
+    if (typeof Tagify === 'undefined') return;
     var inputs = document.querySelectorAll(config.inputSelector);
     if (!inputs.length) return;
 
     var xsrfSelector = config.xsrfSelector || 'input[name="_xsrf"]';
 
     inputs.forEach(function(input) {
+        function formatValues(valuesArr) {
+            var values = valuesArr.map(function(item) { return item.value; });
+            return config.jsonValues ? JSON.stringify(values) : values.join(', ');
+        }
+
+        var initialTags = null;
+        if (config.jsonValues) {
+            initialTags = JSON.parse(input.value || '[]').map(function(value) {
+                return { value: value };
+            });
+            input.value = '';
+        }
+
         var tagifyOptions = {
             delimiters: ",",
             maxTags: 20,
             placeholder: config.placeholder || "Type tags",
             whitelist: config.whitelist || [],
+            blacklist: config.blacklist || [],
+            readonly: !!config.readonly,
             dropdown: {
                 maxItems: 20,
                 classname: "tags-look",
                 enabled: 0,
-                closeOnSelect: true
+                closeOnSelect: true,
+                escapeHTML: true
             },
-            originalInputValueFormat: function(valuesArr) {
-                return valuesArr.map(function(item) {
-                    return item.value;
-                }).join(', ');
-            }
+            originalInputValueFormat: formatValues
         };
 
         tagifyOptions.editTags = config.editable ? { clicks: 2, keepInvalid: false } : false;
@@ -176,7 +192,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
         function saveTags(tagifyInstance) {
             // Use tagify.value (canonical state) instead of input.value
             // input.value may be stale if Tagify's debounced update() hasn't run yet
-            var tags = tagifyInstance.value.map(function(t) { return t.value; }).join(', ');
+            var tags = formatValues(tagifyInstance.value);
             var formData = new FormData();
             formData.append(config.saveParamName, tags);
             var xsrfInput = document.querySelector(xsrfSelector);
@@ -233,6 +249,7 @@ CMS.AWSFormUtils.initTagify = function(config) {
         };
 
         var tagify = new Tagify(input, tagifyOptions);
+        if (initialTags) tagify.addTags(initialTags);
 
         // Detect X button clicks
         tagify.DOM.scope.addEventListener('click', function(e) {
@@ -254,7 +271,6 @@ CMS.AWSFormUtils.initTagify = function(config) {
             var tagValue = e.detail.data.value;
             if (confirm('Add tag "' + tagValue + '"?')) {
                 pendingSave = true;
-                tagify.trigger('change');
             } else {
                 isRollback = true;
                 tagify.removeTags(e.detail.tag);
@@ -283,7 +299,6 @@ CMS.AWSFormUtils.initTagify = function(config) {
                 // resolve after Tagify has already applied the edit.
                 if (confirm('Change tag "' + oldVal + '" to "' + newVal + '"?')) {
                     pendingSave = true;
-                    tagify.trigger('change');
                 } else {
                     e.detail.data.value = oldVal;
                 }

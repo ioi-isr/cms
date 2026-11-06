@@ -26,6 +26,7 @@
 """
 
 import copy
+import logging
 from datetime import timedelta
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -53,11 +54,15 @@ if typing.TYPE_CHECKING:
     from .student_task import StudentTask
 
 
+logger = logging.getLogger(__name__)
+
+
 class Task(Base):
     """Class to store a task.
 
     """
     __tablename__ = 'tasks'
+    AUTOMATIC_TAG_NAMES = ("batch", "communication", "output only", "checker")
     __table_args__ = (
         UniqueConstraint('contest_id', 'num'),
         UniqueConstraint('contest_id', 'name'),
@@ -124,6 +129,12 @@ class Task(Base):
     # If empty, the task is visible to all students.
     # If set, only students with at least one matching tag can see the task.
     visible_to_tags: list[str] = Column(
+        ARRAY(Unicode),
+        nullable=False,
+        default=list)
+
+    # Custom labels for organizing tasks, separate from student visibility.
+    tags: list[str] = Column(
         ARRAY(Unicode),
         nullable=False,
         default=list)
@@ -330,6 +341,47 @@ class Task(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="task")
+
+    def __init__(self, *args, **kwargs):
+        # Base fills omitted fields with defaults, losing this distinction.
+        if "tags" in kwargs or any(
+                prop.key == "tags" for prop in self._col_props[:len(args)]):
+            self._tags_provided = True
+        super().__init__(*args, **kwargs)
+
+    @property
+    def automatic_tags(self) -> list[str]:
+        """Labels derived from the active dataset's type and judging mode."""
+        dataset = self.active_dataset
+        if dataset is None:
+            return []
+
+        tags = {
+            "Batch": ["batch"],
+            "Communication": ["communication"],
+            "OutputOnly": ["output only"],
+            "BatchAndOutput": ["batch", "output only"],
+        }.get(dataset.task_type, [])
+        try:
+            task_type = dataset.task_type_object
+        except Exception:
+            logger.warning("Could not determine checker tag for task %s",
+                           self.name, exc_info=True)
+            return tags
+        if getattr(task_type, "output_eval", None) == "comparator":
+            tags.append("checker")
+        return tags
+
+    @property
+    def custom_tags(self) -> list[str]:
+        """Normalized custom labels, excluding labels managed by the dataset."""
+        tags = {tag.strip().lower() for tag in self.tags if tag.strip()}
+        return sorted(tags - set(self.AUTOMATIC_TAG_NAMES))
+
+    @property
+    def all_tags(self) -> list[str]:
+        """Custom and automatic labels, with automatic labels kept current."""
+        return sorted(set(self.custom_tags) | set(self.automatic_tags))
 
     def get_allowed_languages(self) -> list[str]:
         """Get the list of allowed languages for this task.

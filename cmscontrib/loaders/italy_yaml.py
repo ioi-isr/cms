@@ -814,6 +814,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Import allowed_languages if specified (for per-task language restrictions)
         load(conf, args, "allowed_languages")
+        load(conf, args, "tags")
 
         # Use the new token settings format if detected.
         if "token_mode" in conf:
@@ -876,6 +877,10 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         load(conf, args, "score_precision")
 
         task = Task(**args)
+        # An omitted field must not erase labels assigned in the admin UI.
+        # An explicit empty list still clears labels when updating a task.
+        task._tags_provided = "tags" in conf
+        task.tags = task.custom_tags
 
         args = {}
         args["task"] = task

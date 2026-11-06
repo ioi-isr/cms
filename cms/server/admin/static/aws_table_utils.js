@@ -232,8 +232,9 @@ CMS.AWSTableUtils.filterTable = function(table_id, search_text) {
  * container_id (string): The id of the container element.
  * child_selector (string): CSS selector for the children to filter.
  * search_text (string): The text to search for.
+ * text_selector (string): Optional selector for the searchable part of each item.
  */
-CMS.AWSTableUtils.filterElements = function(container_id, child_selector, search_text) {
+CMS.AWSTableUtils.filterElements = function(container_id, child_selector, search_text, text_selector) {
     var container = document.getElementById(container_id);
     if (!container) {
         return;
@@ -246,7 +247,8 @@ CMS.AWSTableUtils.filterElements = function(container_id, child_selector, search
             item.style.display = "";
             return;
         }
-        var text = item.textContent.toLowerCase();
+        var searchable = text_selector ? item.querySelector(text_selector) : item;
+        var text = searchable ? searchable.textContent.toLowerCase() : "";
         if (text.indexOf(search_lower) !== -1) {
             item.style.display = "";
         } else {

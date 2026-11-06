@@ -8,6 +8,20 @@
 
 {% block js_init %}
 
+CMS.AWSFormUtils.initTagify({
+    inputSelector: '#task-tags',
+    whitelist: {{ all_task_tags | tojson }},
+    blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
+    getSaveUrl: function() {
+        return {{ url('task', task.id, 'tags') | tojson }};
+    },
+    saveParamName: 'tags',
+    placeholder: 'Type tags',
+    editable: true,
+    readonly: {{ (not admin.permission_all) | tojson }},
+    jsonValues: true
+});
+
 var originalScoreParams = {};
 
 {% for dataset in task.datasets %}
@@ -472,6 +486,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         <div class="cell is-col-span-1">
                             {{ form_field('title', 'Title', task.title, info_tooltip='The title of the task as seen by the contestants.') }}
                         </div>
+                        {% include "fragments/task_tags.html" %}
                         <div class="cell is-col-span-1">
                             <div class="field">
                                 <p class="label">Position</p>

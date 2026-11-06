@@ -402,6 +402,8 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         # Scalar columns exceptions.
         Task.num: False,
         Task.primary_statements: get_statements,
+        # Older task packages and other loaders may not supply labels.
+        Task.tags: getattr(new_task, "_tags_provided", bool(new_task.tags)),
     }, parent=parent)
 
 

@@ -134,6 +134,7 @@ from .submissiondownload import \
 from .task import (
     AddTaskHandler,
     TaskHandler,
+    TaskTagsHandler,
     AddDatasetHandler,
     AddStatementHandler,
     ReplaceStatementHandler,
@@ -337,6 +338,7 @@ HANDLERS = [
     (r"/tasks/import", ImportTaskHandler),
     (r"/tasks/export/(metadata|statements|backup)", ExportTasksHandler),
     (r"/task/([0-9]+)", TaskHandler),
+    (r"/task/([0-9]+)/tags", TaskTagsHandler),
     (r"/task/([0-9]+)/export", ExportTaskHandler),
     (r"/task/([0-9]+)/submissions/download", DownloadTaskSubmissionsHandler),
     (r"/task/([0-9]+)/add_dataset", AddDatasetHandler),

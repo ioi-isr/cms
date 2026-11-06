@@ -27,6 +27,7 @@
 
 """
 
+import json
 import logging
 import os.path
 import traceback
@@ -43,13 +44,32 @@ import tornado.web
 from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
 from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
-from cms.server.admin.handlers.utils import parse_tags
+from cms.server.admin.handlers.utils import (
+    deduplicate_preserving_order, parse_tags,
+)
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, SimpleHandler, require_permission
+from .base import BaseHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_task_tags(value: str) -> list[str]:
+    """Read the JSON editor value or legacy comma-separated form input."""
+    try:
+        tag_values = json.loads(value)
+    except ValueError:
+        tag_values = None
+    if isinstance(tag_values, list):
+        if not all(isinstance(tag, str) for tag in tag_values):
+            raise ValueError("Tags must be a JSON array of strings.")
+    else:
+        tag_values = parse_tags(value)
+    tags = deduplicate_preserving_order([
+        tag.strip().lower() for tag in tag_values if tag.strip()
+    ])
+    return [tag for tag in tags if tag not in Task.AUTOMATIC_TAG_NAMES]
 
 
 class AddTaskHandler(BaseHandler):
@@ -142,6 +162,9 @@ class TaskHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
+        self.r_params["all_task_tags"] = sorted({
+            tag for t in self.r_params["task_list"] for tag in t.custom_tags
+        })
         self.r_params["primary_statements"] = task.primary_statements
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
@@ -246,6 +269,10 @@ class TaskHandler(BaseHandler):
 
             self.get_string(attrs, "name", empty=None)
             self.get_string(attrs, "title")
+
+            tags_str = self.get_argument("tags", None)
+            if tags_str is not None:
+                attrs["tags"] = _parse_task_tags(tags_str)
 
             assert attrs.get("name") is not None, "No task name specified."
 
@@ -377,6 +404,26 @@ class TaskHandler(BaseHandler):
                         rescore_count)
 
         self.redirect(self.url("task", task_id))
+
+
+class TaskTagsHandler(BaseHandler):
+    """Update task labels without modifying the rest of the task form."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        task = self.safe_get_item(Task, task_id)
+        try:
+            tags = _parse_task_tags(self.get_argument("tags"))
+        except ValueError as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
+            return
+
+        task.tags = tags
+        if self.try_commit():
+            self.write({"success": True, "tags": task.tags})
+        else:
+            self.set_status(500)
 
 
 class StatementUploadMixin:
@@ -726,10 +773,20 @@ class AddDatasetHandler(BaseHandler):
             self.redirect(fallback_page)
 
 
-class TaskListHandler(SimpleHandler("tasks.html")):
+class TaskListHandler(BaseHandler):
     """Get returns the list of all tasks."""
 
-    pass
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self):
+        self.r_params = self.render_params()
+        self.r_params["task_tags"] = {
+            task.id: task.all_tags for task in self.r_params["task_list"]
+        }
+        self.r_params["task_tag_counts"] = collections.Counter(
+            tag for tags in self.r_params["task_tags"].values() for tag in tags
+        )
+        self.r_params["all_task_tags"] = sorted(self.r_params["task_tag_counts"])
+        self.render("tasks.html", **self.r_params)
 
 
 class RemoveTaskHandler(BaseHandler):
