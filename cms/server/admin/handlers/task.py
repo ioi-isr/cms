@@ -55,6 +55,23 @@ from cms.grading.subtask_validation import get_running_validator_ids
 logger = logging.getLogger(__name__)
 
 
+def _parse_task_tags(value: str) -> list[str]:
+    """Read the JSON editor value or legacy comma-separated form input."""
+    try:
+        tag_values = json.loads(value)
+    except ValueError:
+        tag_values = None
+    if isinstance(tag_values, list):
+        if not all(isinstance(tag, str) for tag in tag_values):
+            raise ValueError("Tags must be a JSON array of strings.")
+    else:
+        tag_values = parse_tags(value)
+    tags = deduplicate_preserving_order([
+        tag.strip().lower() for tag in tag_values if tag.strip()
+    ])
+    return [tag for tag in tags if tag not in Task.AUTOMATIC_TAG_NAMES]
+
+
 class AddTaskHandler(BaseHandler):
     @require_permission(BaseHandler.PERMISSION_ALL)
     def post(self):
@@ -255,22 +272,7 @@ class TaskHandler(BaseHandler):
 
             tags_str = self.get_argument("tags", None)
             if tags_str is not None:
-                try:
-                    tag_values = json.loads(tags_str)
-                except ValueError:
-                    tag_values = None
-                if isinstance(tag_values, list):
-                    if not all(isinstance(tag, str) for tag in tag_values):
-                        raise ValueError("Tags must be a JSON array of strings.")
-                else:
-                    tag_values = parse_tags(tags_str)
-                tags = deduplicate_preserving_order([
-                    tag.strip().lower() for tag in tag_values if tag.strip()
-                ])
-                attrs["tags"] = [
-                    tag for tag in tags
-                    if tag not in Task.AUTOMATIC_TAG_NAMES
-                ]
+                attrs["tags"] = _parse_task_tags(tags_str)
 
             assert attrs.get("name") is not None, "No task name specified."
 
@@ -402,6 +404,26 @@ class TaskHandler(BaseHandler):
                         rescore_count)
 
         self.redirect(self.url("task", task_id))
+
+
+class TaskTagsHandler(BaseHandler):
+    """Update task labels without modifying the rest of the task form."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        task = self.safe_get_item(Task, task_id)
+        try:
+            tags = _parse_task_tags(self.get_argument("tags"))
+        except ValueError as error:
+            self.set_status(400)
+            self.write({"error": str(error)})
+            return
+
+        task.tags = tags
+        if self.try_commit():
+            self.write({"success": True, "tags": task.tags})
+        else:
+            self.set_status(500)
 
 
 class StatementUploadMixin:

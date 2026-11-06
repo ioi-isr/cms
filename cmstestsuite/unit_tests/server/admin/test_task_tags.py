@@ -11,7 +11,10 @@ from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader
 
 from cms.db import Dataset, Task
 from cms.server.admin.handlers.base import BaseHandler
-from cms.server.admin.handlers.task import TaskHandler, TaskListHandler
+from cms.server.admin.handlers import HANDLERS
+from cms.server.admin.handlers.task import (
+    TaskHandler, TaskListHandler, TaskTagsHandler,
+)
 import tornado.testing
 from tornado.web import Application
 
@@ -50,7 +53,11 @@ class TaskHarness(BaseHandler):
         return self.fixture.task
 
     def try_commit(self):
-        return True
+        return self.fixture.commit_success
+
+
+class TaskTagUpdateHarness(TaskHarness):
+    post = TaskTagsHandler.post
 
 
 class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
@@ -59,6 +66,7 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
 
     def get_app(self):
         self.admin = SimpleNamespace(permission_all=True)
+        self.commit_success = True
         self.task = Task(name="example", title="Example", tags=["graphs"],
                          visible_to_tags=["advanced"])
         self.task.id = 7
@@ -77,11 +85,58 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
         return Application([
             (r'/tasks', TaskHarness, {'fixture': self}),
             (r'/task/(\d+)', TaskHarness, {'fixture': self}),
+            (next(pattern for pattern, handler, *rest in HANDLERS
+                  if handler is TaskTagsHandler),
+             TaskTagUpdateHarness, {'fixture': self}),
         ], login_url='/login')
 
     def post_tags(self, params):
         return self.fetch('/task/7', method='POST', body=urlencode(params),
                           follow_redirects=False)
+
+    def update_tags(self, params):
+        return self.fetch('/task/7/tags', method='POST', body=urlencode(params),
+                          follow_redirects=False)
+
+    def test_tag_update_endpoint_changes_only_tags(self):
+        self.task.submission_format = ['example.%l']
+        response = self.update_tags({
+            'tags': json.dumps([' DP ', 'Graphs, DP', 'dp', 'CHECKER']),
+            'title': 'Do not save other form fields',
+        })
+        self.assertEqual(response.code, 200)
+        self.assertEqual(json.loads(response.body), {
+            'success': True, 'tags': ['dp', 'graphs, dp'],
+        })
+        self.assertEqual(self.task.title, 'Example')
+        self.assertEqual(self.task.submission_format, ['example.%l'])
+        self.assertEqual(self.task.visible_to_tags, ['advanced'])
+        self.service.proxy_service.dataset_updated.assert_not_called()
+
+    def test_tag_update_endpoint_accepts_legacy_input_and_explicit_clear(self):
+        response = self.update_tags({'tags': ' Graphs, DP, batch '})
+        self.assertEqual(response.code, 200)
+        self.assertEqual(self.task.tags, ['graphs', 'dp'])
+        self.assertEqual(self.update_tags({'tags': '[]'}).code, 200)
+        self.assertEqual(self.task.tags, [])
+
+    def test_tag_update_endpoint_rejects_invalid_or_missing_values(self):
+        for params in [{}, {'tags': '[1]'}, {'tags': '[{"value":"dp"}]'}]:
+            with self.subTest(params=params):
+                self.assertEqual(self.update_tags(params).code, 400)
+                self.assertEqual(self.task.tags, ['graphs'])
+
+    def test_tag_update_endpoint_requires_full_permission(self):
+        self.admin.permission_all = False
+        self.assertEqual(self.update_tags({'tags': '["dp"]'}).code, 403)
+        self.assertEqual(self.task.tags, ['graphs'])
+        self.admin = None
+        self.assertEqual(self.update_tags({'tags': '["dp"]'}).code, 403)
+        self.assertEqual(self.task.tags, ['graphs'])
+
+    def test_tag_update_endpoint_reports_commit_failure(self):
+        self.commit_success = False
+        self.assertEqual(self.update_tags({'tags': '["dp"]'}).code, 500)
 
     def test_save_normalizes_custom_tags_without_changing_visibility(self):
         response = self.post_tags({

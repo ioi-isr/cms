@@ -8,26 +8,19 @@
 
 {% block js_init %}
 
-var taskTagsInput = document.getElementById('task-tags');
-if (typeof Tagify !== 'undefined') {
-    var storedTaskTags = JSON.parse(taskTagsInput.value).map(function(value) {
-        return { value: value };
-    });
-    taskTagsInput.value = '';
-    var taskTagEditor = new Tagify(taskTagsInput, {
-        whitelist: {{ all_task_tags | tojson }},
-        blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
-        // Commit on Enter or suggestion selection, keeping commas in values.
-        delimiters: /(?!)/,
-        editTags: false,
-        readonly: {{ (not admin.permission_all) | tojson }},
-        dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true, escapeHTML: true },
-        originalInputValueFormat: function(tags) {
-            return JSON.stringify(tags.map(function(tag) { return tag.value; }));
-        }
-    });
-    taskTagEditor.addTags(storedTaskTags);
-}
+CMS.AWSFormUtils.initTagify({
+    inputSelector: '#task-tags',
+    whitelist: {{ all_task_tags | tojson }},
+    blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
+    getSaveUrl: function() {
+        return {{ url('task', task.id, 'tags') | tojson }};
+    },
+    saveParamName: 'tags',
+    placeholder: 'Type tags',
+    editable: true,
+    readonly: {{ (not admin.permission_all) | tojson }},
+    jsonValues: true
+});
 
 var originalScoreParams = {};
 

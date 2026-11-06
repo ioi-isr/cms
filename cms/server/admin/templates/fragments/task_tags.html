@@ -3,9 +3,9 @@
         <label class="label" for="task-tags">Custom tags</label>
         <div class="control">
             {# Keep JSON-looking names from becoming Tagify metadata. #}
-            <input class="input task-tags-input" id="task-tags" name="tags" value="{{ task.custom_tags | tojson | forceescape }}" placeholder="Add tags" />
+            <input class="input task-tags-input" id="task-tags" name="tags" value="{{ task.custom_tags | tojson | forceescape }}" placeholder="Type tags" />
         </div>
-        <p class="help">Saved with the task. Batch, communication, output only, and checker tags are added automatically from the active dataset.</p>
+        <p class="help">Changes are saved after confirmation. Batch, communication, output only, and checker tags are added automatically from the active dataset.</p>
     </div>
     <div class="tags">
         {% for tag in task.automatic_tags %}
