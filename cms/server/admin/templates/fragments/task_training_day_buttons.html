@@ -3,6 +3,7 @@
 {% for td_id, program_name, day_name in training_days %}
 {% set label = program_name ~ " / " ~ day_name %}
 <button type="button" class="tag is-bordered has-text-warning"
+        data-program="{{ program_name }}"
         title="{{ label }} - Click for histogram"
         aria-label="Show histogram for {{ label }}"
         onclick='showTaskDayHistogram({{ task_id }}, {{ td_id }}, {{ label | tojson }})'>

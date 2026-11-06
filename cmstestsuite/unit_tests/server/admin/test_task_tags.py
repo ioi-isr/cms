@@ -262,7 +262,19 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
                          'showTaskDayHistogram(7, 3, %s)'
                          % json.dumps(label).replace('<', '\\u003c')
                          .replace('>', '\\u003e'))
+        self.assertEqual(button['data-program'], "Program")
         self.assertIsNone(card.find('b'))
+        self.assertEqual(json.loads(card['data-programs']), ["Program"])
+        self.assertEqual(
+            [checkbox['value'] for checkbox in html.select(
+                '#task-program-dropdown input[type="checkbox"]')],
+            ["Program"])
+        self.assertIsNone(html.select_one('#task-program-filter-trigger')
+                          .get('disabled'))
+        self.assertEqual(
+            [checkbox['value'] for checkbox in html.select(
+                '#task-display-dropdown input[type="checkbox"]')],
+            ["task-card-tags", "task-card-training-days"])
         self.assertIsNotNone(html.select_one('#modal-histogram'))
         self.assertIn('window.showTaskDayHistogram', response.body.decode())
 

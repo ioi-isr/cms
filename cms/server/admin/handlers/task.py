@@ -911,6 +911,17 @@ class TaskListHandler(BaseHandler):
         self.r_params["all_task_tags"] = sorted(self.r_params["task_tag_counts"])
         self.r_params["task_training_days"] = get_task_training_days(
             self.sql_session, [task.id for task in self.r_params["task_list"]])
+        self.r_params["task_programs"] = {
+            task_id: sorted({program for _, program, _ in training_days})
+            for task_id, training_days
+            in self.r_params["task_training_days"].items()
+        }
+        self.r_params["task_program_counts"] = collections.Counter(
+            program for programs in self.r_params["task_programs"].values()
+            for program in programs
+        )
+        self.r_params["all_task_programs"] = sorted(
+            self.r_params["task_program_counts"])
         self.render("tasks.html", **self.r_params)
 
 
