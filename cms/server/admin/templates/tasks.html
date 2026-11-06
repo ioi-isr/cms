@@ -1,12 +1,12 @@
 {% from "fragments/task_training_day_buttons.html" import training_day_buttons %}
 {% extends "base.html" %}
 
-{% macro checkbox_filter(name, label, title, icon, options, counts, hint) %}
+{% macro checkbox_filter(name, label, title, icon, options, counts, hint, none_count=0) %}
 <div class="control task-tag-filter-control">
     <div class="dropdown task-tag-dropdown is-right" id="task-{{ name }}-dropdown" data-task-dropdown>
         <div class="dropdown-trigger">
             <button type="button" class="button" id="task-{{ name }}-filter-trigger" data-dropdown-trigger
-                    aria-controls="task-{{ name }}-filter-panel" aria-expanded="false" {% if not options %}disabled{% endif %}>
+                    aria-controls="task-{{ name }}-filter-panel" aria-expanded="false" {% if not options and not none_count %}disabled{% endif %}>
                 <svg class="icon is-small" aria-hidden="true"><use href="{{ icon }}"/></svg>
                 <span>{{ label }}</span>
                 <span class="tag is-info is-light is-rounded is-hidden" id="task-{{ name }}-selection-count" aria-hidden="true">0</span>
@@ -28,6 +28,13 @@
                         <span class="has-text-grey is-size-7 task-tag-count" title="{{ counts[option] }} tasks">{{ counts[option] }}<span class="is-sr-only"> tasks</span></span>
                     </label>
                     {% endfor %}
+                    {% if none_count %}
+                    <label class="dropdown-item checkbox task-tag-option">
+                        <input type="checkbox" value="">
+                        <span class="task-tag-name is-italic">None</span>
+                        <span class="has-text-grey is-size-7 task-tag-count" title="{{ none_count }} tasks">{{ none_count }}<span class="is-sr-only"> tasks</span></span>
+                    </label>
+                    {% endif %}
                 </div>
                 <hr class="dropdown-divider">
                 <p class="dropdown-item is-size-7 has-text-grey">{{ hint }}</p>
@@ -85,7 +92,8 @@ if (taskSearch && tasksGrid) {
             var cardPrograms = lowerList(card.dataset.programs);
             if (!tags.every(function(tag) { return cardTags.indexOf(tag) !== -1; })
                     || (programs.length && !programs.some(function(program) {
-                        return cardPrograms.indexOf(program) !== -1;
+                        return program === '' ? cardPrograms.length === 0
+                            : cardPrograms.indexOf(program) !== -1;
                     }))) {
                 card.style.display = 'none';
             }
@@ -157,7 +165,7 @@ if (taskSearch && tasksGrid) {
             <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
         </div>
         {{ checkbox_filter("tag", "Filter by tags", "Filter by tag", "#icon-tag", all_task_tags, task_tag_counts, "Tasks must have all selected tags.") }}
-        {{ checkbox_filter("program", "Filter by programs", "Filter by training program", "#icon-graduation-cap", all_task_programs, task_program_counts, "Tasks must appear in an archived training day of any selected program.") }}
+        {{ checkbox_filter("program", "Filter by programs", "Filter by training program", "#icon-graduation-cap", all_task_programs, task_program_counts, "Tasks must appear in an archived training day of any selected program. None matches tasks not in any archived training day.", tasks_without_programs) }}
         <div class="control task-tag-filter-control">
             <div class="dropdown task-tag-dropdown is-right" id="task-display-dropdown" data-task-dropdown>
                 <div class="dropdown-trigger">

@@ -922,6 +922,9 @@ class TaskListHandler(BaseHandler):
         )
         self.r_params["all_task_programs"] = sorted(
             self.r_params["task_program_counts"])
+        self.r_params["tasks_without_programs"] = sum(
+            1 for task in self.r_params["task_list"]
+            if not self.r_params["task_programs"].get(task.id))
         self.render("tasks.html", **self.r_params)
 
 

@@ -278,6 +278,21 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
         self.assertIsNotNone(html.select_one('#modal-histogram'))
         self.assertIn('window.showTaskDayHistogram', response.body.decode())
 
+    def test_list_offers_none_program_for_tasks_without_training_days(self):
+        with patch('cms.server.admin.handlers.task.get_task_training_days',
+                   return_value={7: []}):
+            response = self.fetch('/tasks')
+        self.assertEqual(response.code, 200)
+        html = BeautifulSoup(response.body, 'html.parser')
+        options = html.select('#task-program-dropdown .task-tag-option')
+        self.assertEqual(
+            [(option.input['value'], option.select_one('.task-tag-name').text,
+              option.select_one('.task-tag-count').contents[0].strip())
+             for option in options],
+            [("", "None", "1")])
+        self.assertIsNone(html.select_one('#task-program-filter-trigger')
+                          .get('disabled'))
+
     def test_training_days_endpoint_returns_json_list(self):
         data = [{"training_day_id": 3, "scores": []}]
         with patch(
