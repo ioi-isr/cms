@@ -1,6 +1,9 @@
+{% from "fragments/task_training_day_buttons.html" import training_day_buttons %}
 {% extends "base.html" %}
 
 {% block js_init %}
+{% include "fragments/task_training_day_histogram_js.html" %}
+
 var taskSearch = document.getElementById('task-search');
 var taskTagDropdown = document.getElementById('task-tag-dropdown');
 if (taskSearch && taskTagDropdown) {
@@ -148,6 +151,7 @@ if (taskSearch && taskTagDropdown) {
                 {% for tag in task_tags[t.id] %}
                 <span class="tag is-info is-light">{{ tag }}</span>
                 {% endfor %}
+                {{ training_day_buttons(t.id, task_training_days[t.id]) }}
             </div>
         </div>
         {% endfor %}
@@ -174,6 +178,7 @@ if (taskSearch && taskTagDropdown) {
         </div>
     </div>
 {% include "fragments/modal_import_task.html" %}
+{% include "fragments/histogram_modal.html" %}
 <script>
 (function() {
     var dropdowns = document.querySelectorAll('[data-task-dropdown]');

@@ -1,0 +1,13 @@
+{# Histogram buttons for the archived training days that contained a task. #}
+{% macro training_day_buttons(task_id, training_days) %}
+{% for td_id, program_name, day_name in training_days %}
+{% set label = program_name ~ " / " ~ day_name %}
+<button type="button" class="tag is-bordered has-text-warning"
+        title="{{ label }} - Click for histogram"
+        aria-label="Show histogram for {{ label }}"
+        onclick='showTaskDayHistogram({{ task_id }}, {{ td_id }}, {{ label | tojson }})'>
+    <span>{{ label }}</span>
+    <svg class="icon is-small"><use href="#icon-histogram"/></svg>
+</button>
+{% endfor %}
+{% endmacro %}
