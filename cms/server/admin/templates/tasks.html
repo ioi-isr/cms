@@ -147,11 +147,15 @@ if (taskSearch && taskTagDropdown) {
                     <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.title }}</div>
                 </div>
             </div>
-            <div class="tags mt-3">
-                {% for tag in task_tags[t.id] %}
-                <span class="tag is-info is-light">{{ tag }}</span>
-                {% endfor %}
-                {{ training_day_buttons(t.id, task_training_days[t.id]) }}
+            <div class="mt-3">
+                <div class="tags mb-0">
+                    {% for tag in task_tags[t.id] %}
+                    <span class="tag is-opaque-bg">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                <div class="mt-2">
+                    {{ training_day_buttons(t.id, task_training_days[t.id]) }}
+                </div>
             </div>
         </div>
         {% endfor %}
