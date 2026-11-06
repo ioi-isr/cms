@@ -17,8 +17,8 @@ if (typeof Tagify !== 'undefined') {
     var taskTagEditor = new Tagify(taskTagsInput, {
         whitelist: {{ all_task_tags | tojson }},
         blacklist: {{ task.AUTOMATIC_TAG_NAMES | tojson }},
-        // This Tagify version treats null as the literal delimiter "null".
-        delimiters: undefined,
+        // Commit on Enter or suggestion selection, keeping commas in values.
+        delimiters: /(?!)/,
         editTags: false,
         readonly: {{ (not admin.permission_all) | tojson }},
         dropdown: { enabled: 0, maxItems: 20, closeOnSelect: true, escapeHTML: true },
