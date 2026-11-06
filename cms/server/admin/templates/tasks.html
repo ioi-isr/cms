@@ -7,13 +7,13 @@
         <div class="dropdown-trigger">
             <button type="button" class="button" id="task-{{ name }}-filter-trigger" data-dropdown-trigger
                     aria-controls="task-{{ name }}-filter-panel" aria-expanded="false" {% if not options %}disabled{% endif %}>
-                <svg class="icon is-small"><use href="{{ icon }}"/></svg>
+                <svg class="icon is-small" aria-hidden="true"><use href="{{ icon }}"/></svg>
                 <span>{{ label }}</span>
                 <span class="tag is-info is-light is-rounded is-hidden" id="task-{{ name }}-selection-count" aria-hidden="true">0</span>
-                <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                <svg class="icon is-small" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
             </button>
         </div>
-        <div class="dropdown-menu" id="task-{{ name }}-filter-panel" role="group" aria-labelledby="task-{{ name }}-filter-title">
+        <fieldset class="dropdown-menu" id="task-{{ name }}-filter-panel" aria-labelledby="task-{{ name }}-filter-title">
             <div class="dropdown-content">
                 <div class="dropdown-item is-flex is-align-items-center is-justify-content-space-between">
                     <p class="has-text-weight-semibold" id="task-{{ name }}-filter-title">{{ title }}</p>
@@ -32,7 +32,7 @@
                 <hr class="dropdown-divider">
                 <p class="dropdown-item is-size-7 has-text-grey">{{ hint }}</p>
             </div>
-        </div>
+        </fieldset>
     </div>
 </div>
 {% endmacro %}
@@ -163,12 +163,12 @@ if (taskSearch && tasksGrid) {
                 <div class="dropdown-trigger">
                     <button type="button" class="button" data-dropdown-trigger
                             aria-controls="task-display-panel" aria-expanded="false">
-                        <svg class="icon is-small"><use href="#icon-eye"/></svg>
+                        <svg class="icon is-small" aria-hidden="true"><use href="#icon-eye"/></svg>
                         <span>Show</span>
-                        <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                        <svg class="icon is-small" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
                     </button>
                 </div>
-                <div class="dropdown-menu" id="task-display-panel" role="group" aria-label="Show on task cards">
+                <fieldset class="dropdown-menu" id="task-display-panel" aria-label="Show on task cards">
                     <div class="dropdown-content">
                         <label class="dropdown-item checkbox">
                             <input type="checkbox" value="task-card-tags" checked>
@@ -179,7 +179,7 @@ if (taskSearch && tasksGrid) {
                             <span>Training days</span>
                         </label>
                     </div>
-                </div>
+                </fieldset>
             </div>
         </div>
     </div>
@@ -225,7 +225,7 @@ if (taskSearch && tasksGrid) {
         </div>
         {% endfor %}
     </div>
-    <p id="tasks-no-matches" class="has-text-grey" role="status" hidden>No tasks match the selected filters and search.</p>
+    <output id="tasks-no-matches" class="is-block has-text-grey" hidden>No tasks match the selected filters and search.</output>
     {% endif %}
     <div class="is-flex is-justify-content-flex-end mt-5">
         <div class="dropdown is-right is-up" id="export-dropdown" data-task-dropdown>
