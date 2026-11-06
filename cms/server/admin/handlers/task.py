@@ -99,8 +99,15 @@ def _training_day_label(training_day: TrainingDay) -> tuple[int, str, str]:
 def get_task_training_days(
     sql_session, task_ids: list[int],
 ) -> dict[int, list[tuple[int, str, str]]]:
-    """Map task ids to (training_day_id, program_name, day_name) tuples of
-    the archived training days that contained the task."""
+    """Find the archived training days that contained each task.
+
+    sql_session (Session): the database session.
+    task_ids ([int]): the ids of the tasks to look up.
+
+    return ({int: [(int, str, str)]}): for each task id, the
+        (training_day_id, program_name, day_name) of its archived days.
+
+    """
     wanted = {str(task_id): task_id for task_id in task_ids}
     result: dict[int, list[tuple[int, str, str]]] = {
         task_id: [] for task_id in task_ids}
@@ -122,10 +129,16 @@ def get_task_training_days(
 
 
 def get_task_training_day_scores(sql_session, task_id: int) -> list[dict]:
-    """Histogram data of a task for each archived training day containing it.
+    """Build the histogram data of a task for its archived training days.
 
     Only students who participated in the training day are included in the
     scores, matching the training days page.
+
+    sql_session (Session): the database session.
+    task_id (int): the id of the task.
+
+    return ([dict]): one entry per archived training day containing the task.
+
     """
     key = str(task_id)
     training_days = _archived_training_days_query(sql_session, task_id)\
