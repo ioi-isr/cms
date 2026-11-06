@@ -3,10 +3,12 @@
 {% import "fragments/dataset_form_fields.html" as ds_fields with context %}
 {% from "macro/bulma_file_input.html" import bulma_file_input, form_field %}
 {% from "macro/modal.html" import modal_header, modal_footer %}
+{% from "fragments/task_training_day_buttons.html" import training_day_buttons %}
 
 {% extends "base.html" %}
 
 {% block js_init %}
+{% include "fragments/task_training_day_histogram_js.html" %}
 
 CMS.AWSFormUtils.initTagify({
     inputSelector: '#task-tags',
@@ -487,6 +489,16 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                             {{ form_field('title', 'Title', task.title, info_tooltip='The title of the task as seen by the contestants.') }}
                         </div>
                         {% include "fragments/task_tags.html" %}
+                        {% if task_training_days %}
+                        <div class="cell is-col-span-2">
+                            <div class="field">
+                                <p class="label">Archived training days</p>
+                                <div class="tags">
+                                    {{ training_day_buttons(task.id, task_training_days) }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="cell is-col-span-1">
                             <div class="field">
                                 <p class="label">Position</p>
@@ -2409,4 +2421,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+{% include "fragments/histogram_modal.html" %}
 {% endblock core %}
