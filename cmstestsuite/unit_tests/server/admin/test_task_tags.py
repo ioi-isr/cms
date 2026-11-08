@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, patch
 from urllib.parse import urlencode
 
 from bs4 import BeautifulSoup
@@ -13,7 +13,7 @@ from cms.db import Dataset, Task
 from cms.server.admin.handlers.base import BaseHandler
 from cms.server.admin.handlers import HANDLERS
 from cms.server.admin.handlers.task import (
-    TaskHandler, TaskListHandler, TaskTagsHandler,
+    TaskHandler, TaskListHandler, TaskTagsHandler, TaskTrainingDaysHandler,
 )
 import tornado.testing
 from tornado.web import Application
@@ -28,7 +28,7 @@ class TaskHarness(BaseHandler):
 
     def prepare(self):
         self.sql_session.close()
-        self.sql_session = Mock()
+        self.sql_session = MagicMock()
         self.url = lambda *parts: '/' + '/'.join(map(str, parts))
 
     def on_finish(self):
@@ -60,6 +60,10 @@ class TaskTagUpdateHarness(TaskHarness):
     post = TaskTagsHandler.post
 
 
+class TaskTrainingDaysHarness(TaskHarness):
+    get = TaskTrainingDaysHandler.get
+
+
 class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
     def runTest(self):
         pass
@@ -88,6 +92,9 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
             (next(pattern for pattern, handler, *rest in HANDLERS
                   if handler is TaskTagsHandler),
              TaskTagUpdateHarness, {'fixture': self}),
+            (next(pattern for pattern, handler, *rest in HANDLERS
+                  if handler is TaskTrainingDaysHandler),
+             TaskTrainingDaysHarness, {'fixture': self}),
         ], login_url='/login')
 
     def post_tags(self, params):
@@ -239,3 +246,63 @@ class TestTaskTags(tornado.testing.AsyncHTTPTestCase):
         self.assertEqual(value, self.task.custom_tags)
         self.assertTrue(all(isinstance(tag, str) for tag in value))
         self.assertIsNone(html.find('img'))
+
+    def test_list_renders_training_day_histogram_buttons(self):
+        label = "Program / Day <b>1</b>"
+        with patch('cms.server.admin.handlers.task.get_task_training_days',
+                   return_value={7: [(3, "Program", "Day <b>1</b>")]}):
+            response = self.fetch('/tasks')
+        self.assertEqual(response.code, 200)
+        html = BeautifulSoup(response.body, 'html.parser')
+        card = html.select_one('#tasks-grid .tp-program-card')
+        self.assertEqual(json.loads(card['data-tags']), ['graphs'])
+        button = card.select_one('button.tag')
+        self.assertEqual(button.text.strip(), label)
+        self.assertEqual(button['onclick'],
+                         'showTaskDayHistogram(7, 3, %s)'
+                         % json.dumps(label).replace('<', '\\u003c')
+                         .replace('>', '\\u003e'))
+        self.assertEqual(button['data-program'], "Program")
+        self.assertIsNone(card.find('b'))
+        self.assertEqual(json.loads(card['data-programs']), ["Program"])
+        self.assertEqual(
+            [checkbox['value'] for checkbox in html.select(
+                '#task-program-dropdown input[type="checkbox"]')],
+            ["Program"])
+        self.assertIsNone(html.select_one('#task-program-filter-trigger')
+                          .get('disabled'))
+        self.assertEqual(
+            [checkbox['value'] for checkbox in html.select(
+                '#task-display-dropdown input[type="checkbox"]')],
+            ["task-card-tags", "task-card-training-days"])
+        self.assertIsNotNone(html.select_one('#modal-histogram'))
+        self.assertIn('window.showTaskDayHistogram', response.body.decode())
+
+    def test_list_offers_none_program_for_tasks_without_training_days(self):
+        with patch('cms.server.admin.handlers.task.get_task_training_days',
+                   return_value={7: []}):
+            response = self.fetch('/tasks')
+        self.assertEqual(response.code, 200)
+        html = BeautifulSoup(response.body, 'html.parser')
+        options = html.select('#task-program-dropdown .task-tag-option')
+        self.assertEqual(
+            [(option.input['value'], option.select_one('.task-tag-name').text,
+              option.select_one('.task-tag-count').contents[0].strip())
+             for option in options],
+            [("", "None", "1")])
+        self.assertIsNone(html.select_one('#task-program-filter-trigger')
+                          .get('disabled'))
+
+    def test_training_days_endpoint_returns_json_list(self):
+        data = [{"training_day_id": 3, "scores": []}]
+        with patch(
+                'cms.server.admin.handlers.task.get_task_training_day_scores',
+                return_value=data) as scores:
+            response = self.fetch('/task/7/training_days')
+        self.assertEqual(response.code, 200)
+        self.assertEqual(json.loads(response.body), data)
+        self.assertEqual(scores.call_args.args[1], 7)
+        self.admin = None
+        self.assertEqual(
+            self.fetch('/task/7/training_days', follow_redirects=False).code,
+            302)

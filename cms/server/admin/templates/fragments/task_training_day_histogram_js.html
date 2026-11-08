@@ -1,0 +1,38 @@
+{# Lazily fetches archived training day scores of a task and opens the histogram modal. #}
+var taskTrainingDaysCache = {};
+window.showTaskDayHistogram = function(taskId, tdId, label) {
+    if (!taskTrainingDaysCache[taskId]) {
+        taskTrainingDaysCache[taskId] = fetch(
+            {{ url("task", "") | tojson }} + taskId + '/training_days',
+            {credentials: 'same-origin', headers: {'Accept': 'application/json'}}
+        ).then(function(response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.json();
+        });
+        taskTrainingDaysCache[taskId].catch(function() {
+            delete taskTrainingDaysCache[taskId];
+        });
+    }
+    taskTrainingDaysCache[taskId].then(function(trainingDays) {
+        var day = trainingDays.find(function(entry) {
+            return entry.training_day_id === tdId;
+        });
+        if (!day) {
+            throw new Error('No data for this training day.');
+        }
+        var config = CMS.TrainingProgram._config;
+        config.tagsPerTrainingDay[tdId] = day.tags;
+        config.historicalStudentTags[tdId] = day.student_tags;
+        CMS.TrainingProgram.openHistogramModal(
+            day.scores, label, 'task', tdId, day.max_score);
+    }).catch(function(error) {
+        var message = 'Could not load scores: ' + error.message;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({icon: 'error', title: 'Error', text: message});
+        } else {
+            alert(message);
+        }
+    });
+};

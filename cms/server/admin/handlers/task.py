@@ -40,8 +40,12 @@ except:
     collections.MutableMapping = collections.abc.MutableMapping
 
 import tornado.web
+from sqlalchemy.orm import contains_eager, selectinload
 
-from cms.db import Attachment, Dataset, Session, Statement, Submission, Task
+from cms.db import (
+    Attachment, Dataset, Session, Statement, Submission, Task, TrainingDay,
+    TrainingProgram,
+)
 from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import (
@@ -70,6 +74,112 @@ def _parse_task_tags(value: str) -> list[str]:
         tag.strip().lower() for tag in tag_values if tag.strip()
     ])
     return [tag for tag in tags if tag not in Task.AUTOMATIC_TAG_NAMES]
+
+
+def _archived_training_days_query(sql_session, task_id: int | None = None):
+    """Query archived training days, optionally only those containing a task."""
+    query = sql_session.query(TrainingDay)\
+        .join(TrainingDay.training_program)\
+        .options(contains_eager(TrainingDay.training_program))\
+        .filter(TrainingDay.contest_id.is_(None))
+    if task_id is None:
+        query = query.filter(TrainingDay.archived_tasks_data.isnot(None))
+    else:
+        query = query.filter(
+            TrainingDay.archived_tasks_data.has_key(str(task_id)))
+    return query.order_by(
+        TrainingProgram.name, TrainingDay.start_time, TrainingDay.id)
+
+
+def _training_day_label(training_day: TrainingDay) -> tuple[int, str, str]:
+    return (training_day.id, training_day.training_program.name,
+            training_day.description or training_day.name or "")
+
+
+def get_task_training_days(
+    sql_session, task_ids: list[int],
+) -> dict[int, list[tuple[int, str, str]]]:
+    """Find the archived training days that contained each task.
+
+    sql_session (Session): the database session.
+    task_ids ([int]): the ids of the tasks to look up.
+
+    return ({int: [(int, str, str)]}): for each task id, the
+        (training_day_id, program_name, day_name) of its archived days.
+
+    """
+    wanted = {str(task_id): task_id for task_id in task_ids}
+    result: dict[int, list[tuple[int, str, str]]] = {
+        task_id: [] for task_id in task_ids}
+    if not task_ids:
+        return result
+    if len(task_ids) == 1:
+        training_days = _archived_training_days_query(
+            sql_session, task_ids[0]).all()
+    else:
+        training_days = _archived_training_days_query(sql_session).all()
+    for training_day in training_days:
+        if not isinstance(training_day.archived_tasks_data, dict):
+            continue
+        label = _training_day_label(training_day)
+        for key in training_day.archived_tasks_data:
+            if key in wanted:
+                result[wanted[key]].append(label)
+    return result
+
+
+def get_task_training_day_scores(sql_session, task_id: int) -> list[dict]:
+    """Build the histogram data of a task for its archived training days.
+
+    Only students who participated in the training day are included in the
+    scores, matching the training days page.
+
+    sql_session (Session): the database session.
+    task_id (int): the id of the task.
+
+    return ([dict]): one entry per archived training day containing the task.
+
+    """
+    key = str(task_id)
+    training_days = _archived_training_days_query(sql_session, task_id)\
+        .options(selectinload(TrainingDay.archived_attendances),
+                 selectinload(TrainingDay.archived_student_rankings))\
+        .all()
+
+    result = []
+    for training_day in training_days:
+        participated = {
+            attendance.student_id
+            for attendance in training_day.archived_attendances
+            if attendance.status == "participated"
+        }
+        task_info = training_day.archived_tasks_data.get(key) or {}
+        tags = set()
+        student_tags = {}
+        scores = []
+        for ranking in training_day.archived_student_rankings:
+            ranking_tags = ranking.student_tags or []
+            tags.update(ranking_tags)
+            student_tags[ranking.student_id] = ranking_tags
+            task_scores = ranking.task_scores or {}
+            if ranking.student_id in participated and key in task_scores:
+                score = task_scores[key]
+                scores.append({
+                    "studentId": ranking.student_id,
+                    "score": score if score is not None else 0,
+                })
+        training_day_id, program_name, day_name = \
+            _training_day_label(training_day)
+        result.append({
+            "training_day_id": training_day_id,
+            "program_name": program_name,
+            "day_name": day_name,
+            "max_score": task_info.get("max_score", 100),
+            "tags": sorted(tags),
+            "student_tags": student_tags,
+            "scores": scores,
+        })
+    return result
 
 
 class AddTaskHandler(BaseHandler):
@@ -165,6 +275,8 @@ class TaskHandler(BaseHandler):
         self.r_params["all_task_tags"] = sorted({
             tag for t in self.r_params["task_list"] for tag in t.custom_tags
         })
+        self.r_params["task_training_days"] = get_task_training_days(
+            self.sql_session, [task.id])[task.id]
         self.r_params["primary_statements"] = task.primary_statements
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
@@ -424,6 +536,17 @@ class TaskTagsHandler(BaseHandler):
             self.write({"success": True, "tags": task.tags})
         else:
             self.set_status(500)
+
+
+class TaskTrainingDaysHandler(BaseHandler):
+    """Return score data of the archived training days containing a task."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, task_id):
+        task = self.safe_get_item(Task, task_id)
+        result = get_task_training_day_scores(self.sql_session, task.id)
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps(result))
 
 
 class StatementUploadMixin:
@@ -786,6 +909,22 @@ class TaskListHandler(BaseHandler):
             tag for tags in self.r_params["task_tags"].values() for tag in tags
         )
         self.r_params["all_task_tags"] = sorted(self.r_params["task_tag_counts"])
+        self.r_params["task_training_days"] = get_task_training_days(
+            self.sql_session, [task.id for task in self.r_params["task_list"]])
+        self.r_params["task_programs"] = {
+            task_id: sorted({program for _, program, _ in training_days})
+            for task_id, training_days
+            in self.r_params["task_training_days"].items()
+        }
+        self.r_params["task_program_counts"] = collections.Counter(
+            program for programs in self.r_params["task_programs"].values()
+            for program in programs
+        )
+        self.r_params["all_task_programs"] = sorted(
+            self.r_params["task_program_counts"])
+        self.r_params["tasks_without_programs"] = sum(
+            1 for task in self.r_params["task_list"]
+            if not self.r_params["task_programs"].get(task.id))
         self.render("tasks.html", **self.r_params)
 
 

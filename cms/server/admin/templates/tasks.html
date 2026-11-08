@@ -1,44 +1,127 @@
+{% from "fragments/task_training_day_buttons.html" import training_day_buttons %}
 {% extends "base.html" %}
 
+{% macro checkbox_filter(name, label, title, icon, options, counts, hint, none_count=0) %}
+<div class="control task-tag-filter-control">
+    <div class="dropdown task-tag-dropdown is-right" id="task-{{ name }}-dropdown" data-task-dropdown>
+        <div class="dropdown-trigger">
+            <button type="button" class="button" id="task-{{ name }}-filter-trigger" data-dropdown-trigger
+                    aria-controls="task-{{ name }}-filter-panel" aria-expanded="false" {% if not options and not none_count %}disabled{% endif %}>
+                <svg class="icon is-small" aria-hidden="true"><use href="{{ icon }}"/></svg>
+                <span>{{ label }}</span>
+                <span class="tag is-info is-light is-rounded is-hidden" id="task-{{ name }}-selection-count" aria-hidden="true">0</span>
+                <svg class="icon is-small" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
+            </button>
+        </div>
+        <fieldset class="dropdown-menu" id="task-{{ name }}-filter-panel" aria-labelledby="task-{{ name }}-filter-title">
+            <div class="dropdown-content">
+                <div class="dropdown-item is-flex is-align-items-center is-justify-content-space-between">
+                    <p class="has-text-weight-semibold" id="task-{{ name }}-filter-title">{{ title }}</p>
+                    <button type="button" class="button is-small is-text" id="clear-task-{{ name }}s" disabled>Clear</button>
+                </div>
+                <hr class="dropdown-divider">
+                <div class="task-tag-options">
+                    {% for option in options %}
+                    <label class="dropdown-item checkbox task-tag-option">
+                        <input type="checkbox" value="{{ option }}">
+                        <span class="task-tag-name">{{ option }}</span>
+                        <span class="has-text-grey is-size-7 task-tag-count" title="{{ counts[option] }} tasks">{{ counts[option] }}<span class="is-sr-only"> tasks</span></span>
+                    </label>
+                    {% endfor %}
+                    {% if none_count %}
+                    <label class="dropdown-item checkbox task-tag-option">
+                        <input type="checkbox" value="">
+                        <span class="task-tag-name is-italic">None</span>
+                        <span class="has-text-grey is-size-7 task-tag-count" title="{{ none_count }} tasks">{{ none_count }}<span class="is-sr-only"> tasks</span></span>
+                    </label>
+                    {% endif %}
+                </div>
+                <hr class="dropdown-divider">
+                <p class="dropdown-item is-size-7 has-text-grey">{{ hint }}</p>
+            </div>
+        </fieldset>
+    </div>
+</div>
+{% endmacro %}
+
 {% block js_init %}
+{% include "fragments/task_training_day_histogram_js.html" %}
+
 var taskSearch = document.getElementById('task-search');
-var taskTagDropdown = document.getElementById('task-tag-dropdown');
-if (taskSearch && taskTagDropdown) {
-    var taskTagCheckboxes = taskTagDropdown.querySelectorAll('input[type="checkbox"]');
-    var taskTagCount = document.getElementById('task-tag-selection-count');
-    var taskTagTrigger = document.getElementById('task-tag-filter-trigger');
-    var clearTaskTags = document.getElementById('clear-task-tags');
+var tasksGrid = document.getElementById('tasks-grid');
+if (taskSearch && tasksGrid) {
+    function checkboxFilter(name, label) {
+        var dropdown = document.getElementById('task-' + name + '-dropdown');
+        var checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+        var count = document.getElementById('task-' + name + '-selection-count');
+        var trigger = document.getElementById('task-' + name + '-filter-trigger');
+        var clear = document.getElementById('clear-task-' + name + 's');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', filterTasks);
+        });
+        clear.addEventListener('click', function() {
+            checkboxes.forEach(function(checkbox) { checkbox.checked = false; });
+            filterTasks();
+            if (checkboxes.length) checkboxes[0].focus();
+        });
+        return function() {
+            var selected = Array.from(checkboxes).filter(function(checkbox) {
+                return checkbox.checked;
+            }).map(function(checkbox) { return checkbox.value.toLowerCase(); });
+            count.textContent = selected.length;
+            count.classList.toggle('is-hidden', selected.length === 0);
+            trigger.setAttribute('aria-label', label + ', ' + selected.length + ' selected');
+            trigger.classList.toggle('is-info', selected.length > 0);
+            trigger.classList.toggle('is-light', selected.length > 0);
+            clear.disabled = selected.length === 0;
+            return selected;
+        };
+    }
+    function lowerList(json) {
+        return JSON.parse(json).map(function(value) { return value.toLowerCase(); });
+    }
+    var selectedTags = checkboxFilter('tag', 'Filter by tags');
+    var selectedPrograms = checkboxFilter('program', 'Filter by training programs');
     function filterTasks() {
         CMS.AWSTableUtils.filterElements('tasks-grid', '.tp-program-card', taskSearch.value, '.task-card-summary');
-        var selected = Array.from(taskTagCheckboxes).filter(function(checkbox) {
-            return checkbox.checked;
-        }).map(function(checkbox) { return checkbox.value.toLowerCase(); });
-        taskTagCount.textContent = selected.length;
-        taskTagCount.classList.toggle('is-hidden', selected.length === 0);
-        taskTagTrigger.setAttribute('aria-label', 'Filter by tags, ' + selected.length + ' selected');
-        taskTagTrigger.classList.toggle('is-info', selected.length > 0);
-        taskTagTrigger.classList.toggle('is-light', selected.length > 0);
-        clearTaskTags.disabled = selected.length === 0;
+        var tags = selectedTags();
+        var programs = selectedPrograms();
         var visible = 0;
-        document.querySelectorAll('#tasks-grid .tp-program-card').forEach(function(card) {
-            var tags = JSON.parse(card.dataset.tags).map(function(tag) { return tag.toLowerCase(); });
-            if (!selected.every(function(tag) { return tags.indexOf(tag) !== -1; })) {
+        tasksGrid.querySelectorAll('.tp-program-card').forEach(function(card) {
+            var cardTags = lowerList(card.dataset.tags);
+            var cardPrograms = lowerList(card.dataset.programs);
+            if (!tags.every(function(tag) { return cardTags.indexOf(tag) !== -1; })
+                    || (programs.length && !programs.some(function(program) {
+                        return program === '' ? cardPrograms.length === 0
+                            : cardPrograms.indexOf(program) !== -1;
+                    }))) {
                 card.style.display = 'none';
             }
+            card.querySelectorAll('[data-program]').forEach(function(button) {
+                button.classList.toggle('is-hidden', programs.length > 0
+                    && programs.indexOf(button.dataset.program.toLowerCase()) === -1);
+            });
             if (card.style.display !== 'none') visible++;
         });
         document.getElementById('tasks-no-matches').hidden = visible > 0;
     }
     taskSearch.addEventListener('input', filterTasks);
-    taskTagCheckboxes.forEach(function(checkbox) {
-        checkbox.addEventListener('change', filterTasks);
-    });
-    clearTaskTags.addEventListener('click', function() {
-        taskTagCheckboxes.forEach(function(checkbox) { checkbox.checked = false; });
-        filterTasks();
-        if (taskTagCheckboxes.length) taskTagCheckboxes[0].focus();
-    });
     filterTasks();
+
+    document.querySelectorAll('#task-display-dropdown input[type="checkbox"]').forEach(function(checkbox) {
+        var storageKey = 'cms.tasks.show.' + checkbox.value.replace('task-card-', '');
+        function apply() {
+            tasksGrid.querySelectorAll('.' + checkbox.value).forEach(function(element) {
+                element.classList.toggle('is-hidden', !checkbox.checked);
+            });
+        }
+        checkbox.checked = localStorage.getItem(storageKey) !== 'false';
+        apply();
+        checkbox.addEventListener('change', function() {
+            localStorage.setItem(storageKey, String(checkbox.checked));
+            apply();
+        });
+    });
 }
 {% endblock js_init %}
 
@@ -81,37 +164,30 @@ if (taskSearch && taskTagDropdown) {
             <input type="search" class="input" id="task-search" placeholder="Search by name or title...">
             <span class="icon is-left"><svg width="24" height="24"><use href="#icon-search"/></svg></span>
         </div>
+        {{ checkbox_filter("tag", "Filter by tags", "Filter by tag", "#icon-tag", all_task_tags, task_tag_counts, "Tasks must have all selected tags.") }}
+        {{ checkbox_filter("program", "Filter by programs", "Filter by training program", "#icon-graduation-cap", all_task_programs, task_program_counts, "Tasks must appear in an archived training day of any selected program. None matches tasks not in any archived training day.", tasks_without_programs) }}
         <div class="control task-tag-filter-control">
-            <div class="dropdown task-tag-dropdown is-right" id="task-tag-dropdown" data-task-dropdown>
+            <div class="dropdown task-tag-dropdown is-right" id="task-display-dropdown" data-task-dropdown>
                 <div class="dropdown-trigger">
-                    <button type="button" class="button" id="task-tag-filter-trigger" data-dropdown-trigger
-                            aria-controls="task-tag-filter-panel" aria-expanded="false" {% if not all_task_tags %}disabled{% endif %}>
-                        <svg class="icon is-small"><use href="#icon-tag"/></svg>
-                        <span>Filter by tags</span>
-                        <span class="tag is-info is-light is-rounded is-hidden" id="task-tag-selection-count" aria-hidden="true">0</span>
-                        <svg class="icon is-small"><use href="#icon-chevron-down"/></svg>
+                    <button type="button" class="button" data-dropdown-trigger
+                            aria-controls="task-display-panel" aria-expanded="false">
+                        <svg class="icon is-small" aria-hidden="true"><use href="#icon-eye"/></svg>
+                        <span>Show</span>
+                        <svg class="icon is-small" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
                     </button>
                 </div>
-                <div class="dropdown-menu" id="task-tag-filter-panel" role="group" aria-labelledby="task-tag-filter-title">
+                <fieldset class="dropdown-menu" id="task-display-panel" aria-label="Show on task cards">
                     <div class="dropdown-content">
-                        <div class="dropdown-item is-flex is-align-items-center is-justify-content-space-between">
-                            <p class="has-text-weight-semibold" id="task-tag-filter-title">Filter by tag</p>
-                            <button type="button" class="button is-small is-text" id="clear-task-tags" disabled>Clear</button>
-                        </div>
-                        <hr class="dropdown-divider">
-                        <div class="task-tag-options">
-                            {% for tag in all_task_tags %}
-                            <label class="dropdown-item checkbox task-tag-option">
-                                <input type="checkbox" value="{{ tag }}">
-                                <span class="task-tag-name">{{ tag }}</span>
-                                <span class="has-text-grey is-size-7 task-tag-count" title="{{ task_tag_counts[tag] }} tasks">{{ task_tag_counts[tag] }}<span class="is-sr-only"> tasks</span></span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        <hr class="dropdown-divider">
-                        <p class="dropdown-item is-size-7 has-text-grey">Tasks must have all selected tags.</p>
+                        <label class="dropdown-item checkbox">
+                            <input type="checkbox" value="task-card-tags" checked>
+                            <span>Tags</span>
+                        </label>
+                        <label class="dropdown-item checkbox">
+                            <input type="checkbox" value="task-card-training-days" checked>
+                            <span>Training days</span>
+                        </label>
                     </div>
-                </div>
+                </fieldset>
             </div>
         </div>
     </div>
@@ -119,7 +195,7 @@ if (taskSearch && taskTagDropdown) {
     <!-- Tasks Cards Grid -->
     <div class="grid is-col-min-12 is-gap-3 is-auto-fill" id="tasks-grid">
         {% for t in task_list %}
-        <div class="tp-program-card" data-tags='{{ task_tags[t.id] | tojson }}' style="padding: 20px; position: relative;">
+        <div class="tp-program-card" data-tags='{{ task_tags[t.id] | tojson }}' data-programs='{{ task_programs[t.id] | tojson }}' style="padding: 20px; position: relative;">
             {% if admin.permission_all %}
             <button type="button" class="btn-icon-only" title="Remove task" style="position: absolute; top: 12px; right: 12px;"
                 aria-label="Remove task"
@@ -144,15 +220,20 @@ if (taskSearch && taskTagDropdown) {
                     <div style="font-size: 0.85rem; color: var(--tp-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.title }}</div>
                 </div>
             </div>
-            <div class="tags mt-3">
+            <div class="tags mt-3 mb-0 task-card-tags">
                 {% for tag in task_tags[t.id] %}
-                <span class="tag is-info is-light">{{ tag }}</span>
+                <span class="tag is-opaque-bg">{{ tag }}</span>
                 {% endfor %}
             </div>
+            {% if task_training_days[t.id] %}
+            <div class="mt-2 task-card-training-days">
+                {{ training_day_buttons(t.id, task_training_days[t.id]) }}
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
-    <p id="tasks-no-matches" class="has-text-grey" role="status" hidden>No tasks match the selected tags and search.</p>
+    <output id="tasks-no-matches" class="has-text-grey" hidden>No tasks match the selected filters and search.</output>
     {% endif %}
     <div class="is-flex is-justify-content-flex-end mt-5">
         <div class="dropdown is-right is-up" id="export-dropdown" data-task-dropdown>
@@ -174,6 +255,7 @@ if (taskSearch && taskTagDropdown) {
         </div>
     </div>
 {% include "fragments/modal_import_task.html" %}
+{% include "fragments/histogram_modal.html" %}
 <script>
 (function() {
     var dropdowns = document.querySelectorAll('[data-task-dropdown]');
