@@ -1,0 +1,62 @@
+<div class="task-page-tab-content" id="tab-coach-materials">
+    <p class="mb-4">
+        <svg class="icon is-small" aria-hidden="true"><use href="#icon-lock"/></svg>
+        Available only in the Admin Web Server.
+    </p>
+
+    <div class="fixed-grid has-2-cols has-1-cols-mobile">
+        <div class="grid">
+            {% for kind, (label, extensions) in material_sections.items() %}
+            {% set materials = task.coach_materials|selectattr("kind", "equalto", kind)|list %}
+            {% set upload_form = "coach-material-upload-" ~ kind %}
+            <section class="cell tp-card">
+                <div class="tp-card-header-modern">
+                    <div class="tp-card-header-icon">
+                        <svg class="icon" aria-hidden="true"><use href="#icon-file-text"/></svg>
+                    </div>
+                    <h3 class="tp-card-title-modern">{{ label }}</h3>
+                </div>
+                <div class="tp-card-body">
+                    {% if materials %}
+                    <ul>
+                        {% for material in materials %}
+                        {% set material_url = url("task", task.id, "coach_materials", material.id) %}
+                        <li class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                            <a href="{{ material_url }}" style="overflow-wrap: anywhere;">
+                                <svg class="icon is-small" aria-hidden="true"><use href="#icon-download"/></svg>
+                                <bdi>{{ material.filename }}</bdi>
+                            </a>
+                            {% if admin.permission_all %}
+                            <button type="button" class="btn-icon-only ml-2"
+                                    data-remove-url="{{ material_url }}"
+                                    onclick="AdminModals.confirmThen('Remove this file from the task?', () => CMS.AWSUtils.ajax_delete_reload(this.dataset.removeUrl));"
+                                    title="Remove file" aria-label="Remove {{ material.filename }}">
+                                <svg class="icon is-small" aria-hidden="true"><use href="#icon-trash"/></svg>
+                            </button>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="has-text-grey">No {{ label|lower }} uploaded yet.</p>
+                    {% endif %}
+
+                    {% if admin.permission_all %}
+                    <div class="field mt-4">
+                        <label class="label" for="{{ upload_form }}-files">Add {{ label|lower }}</label>
+                        <div class="control">
+                            <input id="{{ upload_form }}-files" type="file" name="material"
+                                   class="coach-material-file is-size-7"
+                                   form="{{ upload_form }}" required multiple
+                                   accept="{{ extensions|join(',') }}" aria-describedby="{{ upload_form }}-formats">
+                        </div>
+                        <p class="help" id="{{ upload_form }}-formats">{{ extensions|join(', ') }}</p>
+                    </div>
+                    <button type="submit" class="button is-small is-primary" form="{{ upload_form }}">Upload</button>
+                    {% endif %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+</div>

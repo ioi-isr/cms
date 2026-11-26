@@ -107,6 +107,15 @@ $(document).ready(function() {
 
   var tabStorageKey = 'task_tabs_{{ task.id }}';
 
+  function selectTaskTab(tab) {
+    var tabId = tab.data('tab');
+    $('.task-page-tab').removeClass('active');
+    tab.addClass('active');
+    $('.task-page-tab-content').removeClass('active');
+    $('#tab-' + tabId).addClass('active');
+    $('#task-edit-actions, #task-datasets, #task-remove-actions').toggle(tabId !== 'coach-materials');
+  }
+
   function saveTabState() {
     var mainTab = $('.task-page-tab.active').data('tab') || 'task-info';
     var dsBtn = $('.dataset-tab-btn.active');
@@ -133,10 +142,7 @@ $(document).ready(function() {
     if (mainTab) {
       var tab = $('.task-page-tab[data-tab="' + mainTab + '"]');
       if (tab.length) {
-        $('.task-page-tab').removeClass('active');
-        tab.addClass('active');
-        $('.task-page-tab-content').removeClass('active');
-        $('#tab-' + mainTab).addClass('active');
+        selectTaskTab(tab);
       }
     }
     if (dsId) {
@@ -163,10 +169,11 @@ $(document).ready(function() {
   // Main tab switching
   $('.task-page-tab').click(function() {
     var tabId = $(this).data('tab');
-    $('.task-page-tab').removeClass('active');
-    $(this).addClass('active');
-    $('.task-page-tab-content').removeClass('active');
-    $('#tab-' + tabId).addClass('active');
+    selectTaskTab($(this));
+    if (tabId === 'coach-materials' || window.location.hash === '#coach-materials') {
+      var target = window.location.pathname + window.location.search;
+      window.history.replaceState(null, '', target + (tabId === 'coach-materials' ? '#coach-materials' : ''));
+    }
     saveTabState();
   });
 
@@ -193,6 +200,9 @@ $(document).ready(function() {
   });
 
   restoreTabState();
+  if (window.location.hash === '#coach-materials') {
+    selectTaskTab($('.task-page-tab[data-tab="coach-materials"]'));
+  }
 });
 
 window.toggleMultipleDeleteMode = function(dataset_id) {
@@ -442,7 +452,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
         {{ xsrf_form_html|safe }}
 
         <!-- Actions Bar (Floating Card) -->
-        <div class="box is-float mb-6 mt-0">
+        <div id="task-edit-actions" class="box is-float mb-6 mt-0">
             <nav class="level is-mobile">
                 <div class="level-left">
                     <div class="level-item">
@@ -468,6 +478,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
             <button type="button" class="task-page-tab active" data-tab="task-info">Task Information</button>
             <button type="button" class="task-page-tab" data-tab="limits-scoring">Limits & Scoring</button>
             <button type="button" class="task-page-tab" data-tab="tokens">Tokens</button>
+            <button type="button" class="task-page-tab" data-tab="coach-materials">Coach Materials</button>
         </div>
 
         <!-- TAB: Task Information -->
@@ -793,7 +804,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
           </div>
         </div>
 
+        {% include "fragments/task_coach_materials.html" %}
+
         <!-- DATASETS SECTION -->
+        <div id="task-datasets">
         <div class="tp-section-header" style="margin-top: 32px;">
             <h2>Datasets</h2>
         </div>
@@ -1707,10 +1721,17 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
         {% endfor %}
 
         {% endif %}
+        </div>
     </form>
 
     {# File upload forms - placed outside the main task form to avoid nested form issues #}
     {% if admin.permission_all %}
+    {% for kind in material_sections %}
+    <form id="coach-material-upload-{{ kind }}" method="POST"
+          action="{{ url('task', task.id, 'coach_materials', kind, 'upload') }}" enctype="multipart/form-data">
+        {{ xsrf_form_html|safe }}
+    </form>
+    {% endfor %}
     <form id="attachment_form" method="POST" action="{{ url("task", task.id, "attachments", "add") }}" enctype="multipart/form-data" style="display: none;">
         {{ xsrf_form_html|safe }}
         <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
@@ -2259,7 +2280,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
     {% include "fragments/modal_activate_dataset.html" %}
 
     <!-- Remove Task -->
-    <div style="margin-top: 24px; text-align: right;">
+    <div id="task-remove-actions" style="margin-top: 24px; text-align: right;">
         <button type="button" class="button is-small is-danger is-light"
             {% if not admin.permission_all %}disabled{% endif %}
             onclick='AdminModals.deleteResource({

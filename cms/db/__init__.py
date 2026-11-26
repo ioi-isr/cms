@@ -61,7 +61,8 @@ __all__ = [
     # admin
     "Admin",
     # task
-    "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
+    "Task", "Statement", "Attachment", "TaskCoachMaterial",
+    "Dataset", "Manager", "Testcase",
     "Generator", "SubtaskValidator", "SubtaskValidationResult",
     # submission
     "Submission", "File", "Token", "SubmissionResult", "Executable",
@@ -90,7 +91,7 @@ __all__ = [
 
 # Instantiate or import these objects.
 
-version = 51
+version = 52
 
 engine = create_engine(config.database.url, echo=config.database.debug,
                        pool_timeout=60, pool_recycle=120)
@@ -115,8 +116,8 @@ from .student_task import StudentTask
 from .archived_attendance import ArchivedAttendance
 from .archived_student_ranking import ArchivedStudentRanking
 from .user import User, Team, Participation, Message, Question, DelayRequest
-from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
-    Generator, SubtaskValidator, SubtaskValidationResult
+from .task import Task, Statement, Attachment, TaskCoachMaterial, Dataset, \
+    Manager, Testcase, Generator, SubtaskValidator, SubtaskValidationResult
 from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \

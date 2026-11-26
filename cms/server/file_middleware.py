@@ -49,6 +49,7 @@ class FileServerMiddleware:
 
     DIGEST_HEADER = "X-CMS-File-Digest"
     FILENAME_HEADER = "X-CMS-File-Filename"
+    FILENAME_UTF8_HEADER = "X-CMS-File-Filename-UTF8"
     DISPOSITION_HEADER = "X-CMS-File-Disposition"
     TEMP_PATH_HEADER = "X-CMS-Temp-File-Path"
     TEMP_FILE_PREFIX = "cms_download_"
@@ -93,6 +94,7 @@ class FileServerMiddleware:
 
         digest = original_response.headers.pop(self.DIGEST_HEADER)
         filename = original_response.headers.pop(self.FILENAME_HEADER, None)
+        filename_utf8 = original_response.headers.pop(self.FILENAME_UTF8_HEADER, None)
         disposition = original_response.headers.pop(self.DISPOSITION_HEADER, "attachment")
         mimetype = original_response.mimetype
 
@@ -110,7 +112,10 @@ class FileServerMiddleware:
         response = Response()
         response.status_code = 200
         response.mimetype = mimetype
-        if filename is not None:
+        if filename_utf8 is not None:
+            response.headers["Content-Disposition"] = (
+                f"{disposition}; filename*=UTF-8''{filename_utf8}")
+        elif filename is not None:
             response.headers.add(
                 "Content-Disposition", disposition, filename=filename)
         response.set_etag(digest)
