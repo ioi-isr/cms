@@ -604,7 +604,9 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                         <div class="tags has-addons">
                                             <span class="tag is-link is-light is-medium has-text-black">
                                                 <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
-                                                <a href="{{ url("task", task.id, "attachment", attachment.id) }}" {% if attachment_preview_type(attachment.filename) %}target="_blank" rel="noopener"{% endif %} style="color: inherit;">{{ attachment.filename }}</a>
+                                                <a href="{{ url("file", attachment.digest, attachment.filename) }}"
+                                                   {% if can_preview_task_file(attachment.filename) %}onclick='utils.show_file({{ attachment.filename|tojson }}, this.href); return false;'{% endif %}
+                                                   style="color: inherit;">{{ attachment.filename }}</a>
                                             </span>
                                             {% if admin.permission_all %}
                                             <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" aria-label="Delete attachment"></button>
@@ -1008,7 +1010,9 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                             <div class="tags has-addons">
                                                 <span class="tag is-link is-light is-medium has-text-black">
                                                     <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file-code"/></svg>
-                                                    <a href="{{ url("file", manager.digest, manager.filename) }}" style="color: inherit;">{{ manager.filename }}</a>
+                                                    <a href="{{ url("file", manager.digest, manager.filename) }}"
+                                                       {% if can_preview_task_file(manager.filename) %}onclick='utils.show_file({{ manager.filename|tojson }}, this.href); return false;'{% endif %}
+                                                       style="color: inherit;">{{ manager.filename }}</a>
                                                 </span>
                                                 {% if admin.permission_all %}
                                                 <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("dataset", dataset.id, "manager", manager.id, "delete") }}');" title="Delete manager" aria-label="Delete manager"></button>

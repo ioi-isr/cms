@@ -46,6 +46,7 @@ from cms.db import (
     Attachment, Dataset, Session, Statement, Submission, Task, TrainingDay,
     TrainingProgram,
 )
+from cms.grading.languagemanager import HEADER_EXTS, SOURCE_EXTS
 from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import (
@@ -59,26 +60,15 @@ from cms.grading.subtask_validation import get_running_validator_ids
 logger = logging.getLogger(__name__)
 
 
-def _attachment_preview_type(filename: str) -> str | None:
-    """Return the MIME type for an attachment that can be displayed inline."""
-    extension = os.path.splitext(filename)[1].lower()
-    return {
-        ".pdf": "application/pdf",
-        ".gif": "image/gif",
-        ".jpeg": "image/jpeg",
-        ".jpg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".txt": "text/plain",
-        ".c": "text/plain",
-        ".cc": "text/plain",
-        ".cpp": "text/plain",
-        ".cxx": "text/plain",
-        ".h": "text/plain",
-        ".hh": "text/plain",
-        ".hpp": "text/plain",
-        ".hxx": "text/plain",
-    }.get(extension)
+_TEXT_PREVIEW_EXTENSIONS = {ext.lower() for ext in SOURCE_EXTS | HEADER_EXTS} | {
+    ".csv", ".hh", ".hpp", ".hxx", ".in", ".ini", ".json", ".log", ".md",
+    ".out", ".sh", ".toml", ".tsv", ".txt", ".yaml", ".yml",
+}
+
+
+def _can_preview_task_file(filename: str) -> bool:
+    """Return whether the task page can show the file in its text preview."""
+    return os.path.splitext(filename)[1].lower() in _TEXT_PREVIEW_EXTENSIONS
 
 
 def _parse_task_tags(value: str) -> list[str]:
@@ -300,7 +290,7 @@ class TaskHandler(BaseHandler):
         self.r_params["task_training_days"] = get_task_training_days(
             self.sql_session, [task.id])[task.id]
         self.r_params["primary_statements"] = task.primary_statements
-        self.r_params["attachment_preview_type"] = _attachment_preview_type
+        self.r_params["can_preview_task_file"] = _can_preview_task_file
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
@@ -844,18 +834,11 @@ class AddAttachmentHandler(BaseHandler):
             self.redirect(fallback_page)
 
 
-class AttachmentHandler(FileHandler):
-    """View, download, or delete a task attachment."""
+class AttachmentHandler(BaseHandler):
+    """Delete an attachment.
 
-    @require_permission(BaseHandler.AUTHENTICATED)
-    def get(self, task_id, attachment_id):
-        attachment = self.safe_get_item(Attachment, attachment_id)
-        if attachment.task_id != int(task_id):
-            raise tornado.web.HTTPError(404)
-
-        preview_type = _attachment_preview_type(attachment.filename)
-        self.fetch(attachment.digest, preview_type or "application/octet-stream",
-                   attachment.filename, disposition="inline" if preview_type else None)
+    """
+    # No page for single attachments.
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id, attachment_id):
