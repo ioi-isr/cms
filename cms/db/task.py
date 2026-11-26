@@ -303,6 +303,13 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
+    coach_materials: list["TaskCoachMaterial"] = relationship(
+        "TaskCoachMaterial",
+        order_by="TaskCoachMaterial.filename",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
     datasets: list["Dataset"] = relationship(
         "Dataset",
         # Due to active_dataset_id, SQLAlchemy cannot unambiguously
@@ -502,6 +509,28 @@ class Attachment(Base):
     digest: str = Column(
         Digest,
         nullable=False)
+
+
+class TaskCoachMaterial(Base):
+    """An editorial or written solution for the Admin Web Server."""
+
+    __tablename__ = "task_coach_materials"
+    __table_args__ = (
+        UniqueConstraint("task_id", "kind", "filename"),
+        CheckConstraint(
+            "kind IN ('editorial', 'written_solution')",
+            name="task_coach_materials_kind_check"),
+    )
+
+    id: int = Column(Integer, primary_key=True)
+    task_id: int = Column(
+        Integer,
+        ForeignKey(Task.id, onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False)
+    task: Task = relationship(Task, back_populates="coach_materials")
+    kind: str = Column(Unicode, nullable=False)
+    filename: str = Column(Unicode(255), nullable=False)
+    digest: str = Column(Digest, nullable=False)
 
 
 class Dataset(Base):

@@ -53,6 +53,7 @@ from cms.server.admin.handlers.utils import (
 )
 from cmscommon.datetime import make_datetime
 from .base import BaseHandler, require_permission
+from .coach_material import MATERIAL_SECTIONS
 from cms.grading.subtask_validation import get_running_validator_ids
 
 
@@ -272,6 +273,7 @@ class TaskHandler(BaseHandler):
 
         self.r_params = self.render_params()
         self.r_params["task"] = task
+        self.r_params["material_sections"] = MATERIAL_SECTIONS
         self.r_params["all_task_tags"] = sorted({
             tag for t in self.r_params["task_list"] for tag in t.custom_tags
         })

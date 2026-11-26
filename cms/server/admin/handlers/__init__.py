@@ -146,6 +146,7 @@ from .task import (
     RemoveTaskHandler,
     DefaultSubmissionFormatHandler,
 )
+from .coach_material import CoachMaterialHandler, UploadCoachMaterialsHandler
 from .import_handlers import (
     ImportTaskHandler,
     ImportContestHandler,
@@ -349,6 +350,8 @@ HANDLERS = [
     (r"/task/([0-9]+)/statement/([0-9]+)/replace", ReplaceStatementHandler),
     (r"/task/([0-9]+)/attachments/add", AddAttachmentHandler),
     (r"/task/([0-9]+)/attachment/([0-9]+)", AttachmentHandler),
+    (r"/task/([0-9]+)/coach_materials/([a-z_]+)/upload", UploadCoachMaterialsHandler),
+    (r"/task/([0-9]+)/coach_materials/([0-9]+)", CoachMaterialHandler),
     (r"/task/([0-9]+)/default_submission_format", DefaultSubmissionFormatHandler),
     # Datasets
     (r"/dataset/([0-9]+)", DatasetSubmissionsHandler),

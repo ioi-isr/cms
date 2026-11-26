@@ -2394,6 +2394,7 @@
 
 .task-page-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0;
     border-bottom: 2px solid var(--tp-border);
     margin-bottom: 0;
@@ -2437,6 +2438,26 @@
 
 .task-page-tab-content.active {
     display: block;
+}
+
+.coach-material-file {
+    max-width: 100%;
+    color: var(--tp-text-secondary);
+}
+
+.coach-material-file::file-selector-button {
+    margin-inline-end: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--tp-border);
+    border-radius: 6px;
+    background: var(--tp-bg-light);
+    color: var(--tp-text-primary);
+    font: inherit;
+    cursor: pointer;
+}
+
+.coach-material-file::file-selector-button:hover {
+    background: var(--tp-bg-hover);
 }
 
 /* ==========================================================================

@@ -532,7 +532,11 @@ class FileHandlerMixin(RequestHandler):
         """
         self.set_header(FileServerMiddleware.DIGEST_HEADER, digest)
         if filename is not None:
-            self.set_header(FileServerMiddleware.FILENAME_HEADER, filename)
+            if filename.isascii():
+                self.set_header(FileServerMiddleware.FILENAME_HEADER, filename)
+            else:
+                self.set_header(FileServerMiddleware.FILENAME_UTF8_HEADER,
+                                quote(filename, safe=""))
         if disposition is not None:
             self.set_header(FileServerMiddleware.DISPOSITION_HEADER, disposition)
         self.set_header("Content-Type", content_type)
