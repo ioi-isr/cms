@@ -70,6 +70,14 @@ def _attachment_preview_type(filename: str) -> str | None:
         ".png": "image/png",
         ".webp": "image/webp",
         ".txt": "text/plain",
+        ".c": "text/plain",
+        ".cc": "text/plain",
+        ".cpp": "text/plain",
+        ".cxx": "text/plain",
+        ".h": "text/plain",
+        ".hh": "text/plain",
+        ".hpp": "text/plain",
+        ".hxx": "text/plain",
     }.get(extension)
 
 
