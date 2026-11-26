@@ -540,7 +540,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                             <td>
                                                 <div class="list-cell-wrapper" style="gap: 10px;">
                                                     <span style="display: inline-block; padding: 2px 8px; background: var(--tp-bg-light); border: 1px solid var(--tp-border); border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--tp-text-secondary);">{{ statement.language }}</span>
-                                                    <a href="{{ url("file", statement.digest, task.name + "_" + statement.language + ".pdf") }}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                                    <a href="{{ url("task", task.id, "statement", statement.id) }}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px;">
                                                         <svg class="icon is-small"><use href="#icon-pdf-statement"/></svg>
                                                         {{ task.name }}_{{ statement.language }}.pdf
                                                     </a>
@@ -604,7 +604,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                         <div class="tags has-addons">
                                             <span class="tag is-link is-light is-medium has-text-black">
                                                 <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
-                                                <a href="{{ url("file", attachment.digest, attachment.filename) }}" style="color: inherit;">{{ attachment.filename }}</a>
+                                                <a href="{{ url("task", task.id, "attachment", attachment.id) }}" {% if attachment_preview_type(attachment.filename) %}target="_blank" rel="noopener"{% endif %} style="color: inherit;">{{ attachment.filename }}</a>
                                             </span>
                                             {% if admin.permission_all %}
                                             <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "attachment", attachment.id) }}');" title="Delete attachment" aria-label="Delete attachment"></button>

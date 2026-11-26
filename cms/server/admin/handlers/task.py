@@ -52,11 +52,25 @@ from cms.server.admin.handlers.utils import (
     deduplicate_preserving_order, parse_tags,
 )
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, require_permission
+from .base import BaseHandler, FileHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
+
+
+def _attachment_preview_type(filename: str) -> str | None:
+    """Return the MIME type for an attachment that can be displayed inline."""
+    extension = os.path.splitext(filename)[1].lower()
+    return {
+        ".pdf": "application/pdf",
+        ".gif": "image/gif",
+        ".jpeg": "image/jpeg",
+        ".jpg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".txt": "text/plain",
+    }.get(extension)
 
 
 def _parse_task_tags(value: str) -> list[str]:
@@ -278,6 +292,7 @@ class TaskHandler(BaseHandler):
         self.r_params["task_training_days"] = get_task_training_days(
             self.sql_session, [task.id])[task.id]
         self.r_params["primary_statements"] = task.primary_statements
+        self.r_params["attachment_preview_type"] = _attachment_preview_type
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
@@ -716,11 +731,17 @@ class ReplaceStatementHandler(StatementUploadMixin, BaseHandler):
             self.redirect(fallback_page)
 
 
-class StatementHandler(BaseHandler):
-    """Delete a statement.
+class StatementHandler(FileHandler):
+    """View or delete a task statement."""
 
-    """
-    # No page for single statements.
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, task_id, statement_id):
+        statement = self.safe_get_item(Statement, statement_id)
+        if statement.task_id != int(task_id):
+            raise tornado.web.HTTPError(404)
+
+        filename = f"{statement.task.name}_{statement.language}.pdf"
+        self.fetch(statement.digest, "application/pdf", filename, disposition="inline")
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id, statement_id):
@@ -815,11 +836,18 @@ class AddAttachmentHandler(BaseHandler):
             self.redirect(fallback_page)
 
 
-class AttachmentHandler(BaseHandler):
-    """Delete an attachment.
+class AttachmentHandler(FileHandler):
+    """View, download, or delete a task attachment."""
 
-    """
-    # No page for single attachments.
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, task_id, attachment_id):
+        attachment = self.safe_get_item(Attachment, attachment_id)
+        if attachment.task_id != int(task_id):
+            raise tornado.web.HTTPError(404)
+
+        preview_type = _attachment_preview_type(attachment.filename)
+        self.fetch(attachment.digest, preview_type or "application/octet-stream",
+                   attachment.filename, disposition="inline" if preview_type else None)
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id, attachment_id):
