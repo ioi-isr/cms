@@ -144,7 +144,7 @@ class TestYamlTaskEditorials(unittest.TestCase):
         self.assertEqual(Editorial.sanitize_filename("C:\\x\\slides.pptx"),
                          "slides.pptx")
         self.assertEqual(Editorial.sanitize_filename("../../a b.md"), "a b.md")
-        for bad in ("", "..", "dir/", "  "):
+        for bad in ("", "..", "dir/", "  ", ".notes.md", "x/.hidden"):
             self.assertIsNone(Editorial.sanitize_filename(bad))
 
 

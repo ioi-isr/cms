@@ -548,9 +548,12 @@ class Editorial(Base):
 
     @staticmethod
     def sanitize_filename(filename: str) -> str | None:
-        """Return the base name of an uploaded file, or None if unusable."""
+        """Return the base name of an uploaded file, or None if unusable
+        (empty or hidden)."""
         name = filename.replace("\\", "/").rsplit("/", 1)[-1].strip()
-        if name in ("", ".", ".."):
+        # Hidden files are skipped by the YAML loader, so they would be
+        # lost on an export/import round trip.
+        if name == "" or name.startswith("."):
             return None
         return name
 
