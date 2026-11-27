@@ -43,8 +43,8 @@ import tornado.web
 from sqlalchemy.orm import contains_eager, selectinload
 
 from cms.db import (
-    Attachment, Dataset, Session, Statement, Submission, Task, TrainingDay,
-    TrainingProgram,
+    Attachment, Dataset, Editorial, Session, Statement, Submission, Task,
+    TrainingDay, TrainingProgram,
 )
 from cms.grading.languagemanager import HEADER_EXTS, SOURCE_EXTS
 from cms.grading.scoring import compute_changes_for_dataset
@@ -759,28 +759,40 @@ class StatementHandler(FileHandler):
         self.write("%s" % task.id)
 
 
-class AddAttachmentHandler(BaseHandler):
-    """Add an attachment to a task."""
-    @require_permission(BaseHandler.PERMISSION_ALL)
-    def post(self, task_id):
+class TaskFilesMixin:
+    """Shared upload/delete logic for files owned directly by a task
+    (contestant attachments and coach-only editorials).
+
+    Subclasses set:
+    - FIELD: the multipart field name of the uploaded files;
+    - MODEL: the model class, built as MODEL(filename, digest, task=task);
+    - COLLECTION: the name of the Task relationship keyed by filename;
+    - LABEL: a human readable name used in notifications.
+
+    """
+    FIELD: str
+    MODEL: type
+    COLLECTION: str
+    LABEL: str
+
+    def _filename(self, uploaded_name: str) -> str | None:
+        return uploaded_name
+
+    def _add_task_files(self, task_id):
         fallback_page = self.url("task", task_id)
 
         task = self.safe_get_item(Task, task_id)
 
-        # Check if any files were uploaded
-        if "attachment" not in self.request.files:
+        uploaded = [f for f in self.request.files.get(self.FIELD, [])
+                    if len(f["body"]) > 0]
+        if self.FIELD not in self.request.files:
             self.service.add_notification(
                 make_datetime(),
                 "No file selected",
                 "Please select at least one file to upload.")
             self.redirect(fallback_page)
             return
-
-        attachments = self.request.files["attachment"]
-
-        # Filter out empty files
-        non_empty_attachments = [a for a in attachments if len(a["body"]) > 0]
-        if not non_empty_attachments:
+        if not uploaded:
             self.service.add_notification(
                 make_datetime(),
                 "Empty file(s)",
@@ -788,16 +800,28 @@ class AddAttachmentHandler(BaseHandler):
             self.redirect(fallback_page)
             return
 
-        attachments = non_empty_attachments
+        named_files = []
+        for uploaded_file in uploaded:
+            filename = self._filename(uploaded_file["filename"])
+            if filename is None:
+                self.service.add_notification(
+                    make_datetime(),
+                    "Invalid filename",
+                    "Cannot store a file named '%s'." % uploaded_file["filename"])
+                self.redirect(fallback_page)
+                return
+            named_files.append((filename, uploaded_file["body"]))
 
-        # Check for conflicts with existing attachments before storing files
-        filenames_in_batch = [a["filename"] for a in attachments]
-        existing_filenames = set(task.attachments.keys())
-        conflicts = [f for f in filenames_in_batch if f in existing_filenames]
+        # Check for conflicts before storing files
+        filenames_in_batch = [filename for filename, _ in named_files]
+        existing_filenames = set(getattr(task, self.COLLECTION).keys())
+        conflicts = sorted(
+            {f for f in filenames_in_batch if f in existing_filenames}
+            | {f for f in filenames_in_batch if filenames_in_batch.count(f) > 1})
         if conflicts:
             self.service.add_notification(
                 make_datetime(),
-                "Attachment filename conflict",
+                "%s filename conflict" % self.LABEL.capitalize(),
                 "The following files already exist: %s" % ", ".join(conflicts))
             self.redirect(fallback_page)
             return
@@ -805,18 +829,16 @@ class AddAttachmentHandler(BaseHandler):
         task_name = task.name
         self.sql_session.close()
 
-        # Store all attachments in file cacher
-        stored_attachments = []
-        for attachment in attachments:
+        stored_files = []
+        for filename, body in named_files:
             try:
                 digest = self.service.file_cacher.put_file_content(
-                    attachment["body"],
-                    "Task attachment for %s" % task_name)
-                stored_attachments.append((attachment["filename"], digest))
+                    body, "Task %s for %s" % (self.LABEL, task_name))
+                stored_files.append((filename, digest))
             except Exception as error:
                 self.service.add_notification(
                     make_datetime(),
-                    "Attachment storage failed",
+                    "%s storage failed" % self.LABEL.capitalize(),
                     repr(error))
                 self.redirect(fallback_page)
                 return
@@ -824,17 +846,56 @@ class AddAttachmentHandler(BaseHandler):
         self.sql_session = Session()
         task = self.safe_get_item(Task, task_id)
 
-        for filename, digest in stored_attachments:
-            attachment = Attachment(filename, digest, task=task)
-            self.sql_session.add(attachment)
+        for filename, digest in stored_files:
+            self.sql_session.add(self.MODEL(filename, digest, task=task))
 
         if self.try_commit():
             self.redirect(self.url("task", task_id))
         else:
             self.redirect(fallback_page)
 
+    def _delete_task_file(self, task_id, file_id):
+        task_file = self.safe_get_item(self.MODEL, file_id)
+        task = self.safe_get_item(Task, task_id)
 
-class AttachmentHandler(BaseHandler):
+        # Protect against URLs providing incompatible parameters.
+        if task_file.task is not task:
+            raise tornado.web.HTTPError(404)
+
+        self.sql_session.delete(task_file)
+        if not self.try_commit():
+            self.set_status(500)
+            return
+
+        # Page to redirect to.
+        self.write("%s" % task.id)
+
+
+class AttachmentFilesMixin(TaskFilesMixin):
+    FIELD = "attachment"
+    MODEL = Attachment
+    COLLECTION = "attachments"
+    LABEL = "attachment"
+
+
+class EditorialFilesMixin(TaskFilesMixin):
+    FIELD = "editorial"
+    MODEL = Editorial
+    COLLECTION = "editorials"
+    LABEL = "editorial"
+
+    def _filename(self, uploaded_name: str) -> str | None:
+        return Editorial.sanitize_filename(uploaded_name)
+
+
+class AddAttachmentHandler(AttachmentFilesMixin, BaseHandler):
+    """Add an attachment to a task."""
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        self._add_task_files(task_id)
+
+
+class AttachmentHandler(AttachmentFilesMixin, BaseHandler):
     """Delete an attachment.
 
     """
@@ -842,20 +903,69 @@ class AttachmentHandler(BaseHandler):
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id, attachment_id):
-        attachment = self.safe_get_item(Attachment, attachment_id)
-        task = self.safe_get_item(Task, task_id)
+        self._delete_task_file(task_id, attachment_id)
 
-        # Protect against URLs providing incompatible parameters.
-        if attachment.task is not task:
+
+class AddEditorialHandler(EditorialFilesMixin, BaseHandler):
+    """Add coach materials (editorials, written solutions) to a task."""
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def post(self, task_id):
+        self._add_task_files(task_id)
+
+
+class EditorialHandler(EditorialFilesMixin, BaseHandler):
+    """Delete a coach material file."""
+
+    @require_permission(BaseHandler.PERMISSION_ALL)
+    def delete(self, task_id, editorial_id):
+        self._delete_task_file(task_id, editorial_id)
+
+
+EDITORIAL_TEXT_EXTENSIONS = (".md", ".markdown", ".txt")
+
+
+class EditorialViewHandler(FileHandler):
+    """Show a coach material in the browser: PDFs inline, Markdown and
+    text files rendered as a page; anything else (or any file when the
+    "download" argument is given) is downloaded."""
+
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, task_id, editorial_id):
+        editorial = self.safe_get_item(Editorial, editorial_id)
+        task = self.safe_get_item(Task, task_id)
+        if editorial.task is not task:
             raise tornado.web.HTTPError(404)
 
-        self.sql_session.delete(attachment)
-        if not self.try_commit():
-            self.set_status(500)
+        filename = editorial.filename
+        digest = editorial.digest
+        lower_name = filename.lower()
+
+        if self.get_argument("download", None) is not None:
+            self.sql_session.close()
+            self.fetch(digest, "application/octet-stream", filename)
             return
 
-        # Page to redirect to.
-        self.write("%s" % task.id)
+        if lower_name.endswith(EDITORIAL_TEXT_EXTENSIONS):
+            task_name = task.name
+            self.sql_session.close()
+            try:
+                content = self.service.file_cacher.get_file_content(digest)
+            except Exception:
+                raise tornado.web.HTTPError(404)
+            self.render(
+                "editorial_view.html",
+                task_id=task_id,
+                task_name=task_name,
+                filename=filename,
+                content=content.decode("utf-8", errors="replace"),
+                is_markdown=not lower_name.endswith(".txt"))
+            return
+
+        self.sql_session.close()
+        if lower_name.endswith(".pdf"):
+            self.fetch(digest, "application/pdf", filename, "inline")
+        else:
+            self.fetch(digest, "application/octet-stream", filename)
 
 
 class AddDatasetHandler(BaseHandler):

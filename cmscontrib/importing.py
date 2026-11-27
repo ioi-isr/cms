@@ -399,6 +399,10 @@ def update_task(old_task: Task, new_task: Task, parent=None, get_statements=True
         Task.statements: get_statements,
         Task.datasets: update_datasets_fn,
         Task.attachments: True,
+        # Keep coach materials uploaded in the admin UI when the package
+        # has no editorial folder (or the loader does not support them).
+        Task.editorials: getattr(
+            new_task, "_editorials_provided", bool(new_task.editorials)),
         # Scalar columns exceptions.
         Task.num: False,
         Task.primary_statements: get_statements,

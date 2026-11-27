@@ -38,6 +38,7 @@ from . import (
     Participation,
     Statement,
     Attachment,
+    Editorial,
     Task,
     Manager,
     Dataset,
@@ -361,6 +362,8 @@ def enumerate_files(
                    .with_entities(Statement.source_digest))
     queries.append(task_q.join(Task.attachments)
                    .with_entities(Attachment.digest))
+    queries.append(task_q.join(Task.editorials)
+                   .with_entities(Editorial.digest))
 
     dataset_q = task_q.join(Task.datasets)
     queries.append(dataset_q.join(Dataset.managers)

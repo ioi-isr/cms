@@ -61,8 +61,8 @@ __all__ = [
     # admin
     "Admin",
     # task
-    "Task", "Statement", "Attachment", "Dataset", "Manager", "Testcase",
-    "Generator", "SubtaskValidator", "SubtaskValidationResult",
+    "Task", "Statement", "Attachment", "Editorial", "Dataset", "Manager",
+    "Testcase", "Generator", "SubtaskValidator", "SubtaskValidationResult",
     # submission
     "Submission", "File", "Token", "SubmissionResult", "Executable",
     "Evaluation",
@@ -115,8 +115,8 @@ from .student_task import StudentTask
 from .archived_attendance import ArchivedAttendance
 from .archived_student_ranking import ArchivedStudentRanking
 from .user import User, Team, Participation, Message, Question, DelayRequest
-from .task import Task, Statement, Attachment, Dataset, Manager, Testcase, \
-    Generator, SubtaskValidator, SubtaskValidationResult
+from .task import Task, Statement, Attachment, Editorial, Dataset, Manager, \
+    Testcase, Generator, SubtaskValidator, SubtaskValidationResult
 from .submission import Submission, File, Token, SubmissionResult, \
     Executable, Evaluation
 from .usertest import UserTest, UserTestFile, UserTestManager, \

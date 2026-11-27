@@ -20,12 +20,31 @@
 from collections.abc import Callable
 import os
 import tempfile
+from urllib.parse import quote
 
 from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable
+from werkzeug.http import quote_header_value
 from werkzeug.wrappers import Response, Request
 from werkzeug.wsgi import responder, wrap_file
 
 from cms.db.filecacher import FileCacher, TombstoneError
+
+
+def content_disposition(disposition: str, filename: str) -> str:
+    """Build a Content-Disposition header value valid for any filename.
+
+    Non-ASCII names (e.g. Hebrew) are sent with the RFC 6266 filename*
+    parameter, plus an ASCII fallback for old clients.
+
+    """
+    try:
+        filename.encode("ascii")
+    except UnicodeEncodeError:
+        fallback = filename.encode("ascii", "replace").decode("ascii")
+        return "%s; filename=%s; filename*=UTF-8''%s" % (
+            disposition, quote_header_value(fallback.replace("?", "_")),
+            quote(filename, safe=""))
+    return "%s; filename=%s" % (disposition, quote_header_value(filename))
 
 
 class FileServerMiddleware:
@@ -111,8 +130,8 @@ class FileServerMiddleware:
         response.status_code = 200
         response.mimetype = mimetype
         if filename is not None:
-            response.headers.add(
-                "Content-Disposition", disposition, filename=filename)
+            response.headers["Content-Disposition"] = \
+                content_disposition(disposition, filename)
         response.set_etag(digest)
         response.cache_control.no_cache = True
         response.cache_control.private = True
@@ -163,8 +182,8 @@ class FileServerMiddleware:
         response.status_code = 200
         response.mimetype = mimetype
         if filename is not None:
-            response.headers.add(
-                "Content-Disposition", disposition, filename=filename)
+            response.headers["Content-Disposition"] = \
+                content_disposition(disposition, filename)
         response.cache_control.no_cache = True
         response.cache_control.private = True
         response.content_length = size

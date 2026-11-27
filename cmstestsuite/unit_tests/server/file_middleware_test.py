@@ -104,6 +104,18 @@ class TestFileByDigestMiddleware(unittest.TestCase):
         self.assertEqual(response.mimetype, "text/plain")
         self.assertEqual(response.get_data(), b"some other content")
 
+    def test_non_ascii_filename(self):
+        self.filename = "פתרון מלא.md"
+
+        response = self.request()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers.get("content-disposition"),
+            "attachment; filename=\"_____ ___.md\"; "
+            "filename*=UTF-8''%D7%A4%D7%AA%D7%A8%D7%95%D7%9F%20"
+            "%D7%9E%D7%9C%D7%90.md")
+
     def test_no_filename(self):
         self.provide_filename = False
 

@@ -468,6 +468,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
             <button type="button" class="task-page-tab active" data-tab="task-info">Task Information</button>
             <button type="button" class="task-page-tab" data-tab="limits-scoring">Limits & Scoring</button>
             <button type="button" class="task-page-tab" data-tab="tokens">Tokens</button>
+            <button type="button" class="task-page-tab" data-tab="coach-materials">Coach Materials{% if task.editorials %} ({{ task.editorials|length }}){% endif %}</button>
         </div>
 
         <!-- TAB: Task Information -->
@@ -673,6 +674,69 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
                       </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Coach materials -->
+        <div class="task-page-tab-content" id="tab-coach-materials">
+            <div class="tp-card">
+                <div class="tp-card-header-modern">
+                    <div class="tp-card-header-icon">
+                        <svg class="icon"><use href="#icon-graduation-cap"/></svg>
+                    </div>
+                    <h3 class="tp-card-title-modern">
+                        Coach materials
+                        <span class="info" title="Editorial slides, written solutions and other files for coaches. They are only available in the admin interface and are never shown to contestants. They are exported in the task's editorial/ folder and imported from an editorial/ or editorials/ folder."></span>
+                    </h3>
+                </div>
+                <div class="tp-card-body">
+                    <div class="notification is-warning is-light py-2 px-3" style="font-size: 0.9rem;">
+                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-eye-off"/></svg>
+                        Hidden from contestants. To share a file with contestants, add it as an attachment in Task Information instead.
+                    </div>
+                    <fieldset class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
+                             {% if admin.permission_all %}
+                             ondragover="event.preventDefault();this.classList.add('is-dragover')"
+                             ondragleave="this.classList.remove('is-dragover')"
+                             ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('editorial_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
+                             {% endif %}>
+                        <legend class="label mb-0 is-pulled-left">
+                            Editorials &amp; written solutions
+                            <span class="info" title="Typically slides (.pptx/.pdf) and written solutions (.md/.pdf). PDF, Markdown and text files open in the browser; other files are downloaded. Drop files here to upload."></span>
+                        </legend>
+                        {% if admin.permission_all %}
+                        <div class="is-pulled-right">
+                            <button type="button" onclick="document.getElementById('editorial_file').click();" class="button">
+                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                <span>Add File</span>
+                            </button>
+                        </div>
+                        {% endif %}
+                        <div style="clear: both; margin-bottom: 12px;"></div>
+                        {% if task.editorials|length == 0 %}
+                        <div style="color: var(--tp-text-muted); font-size: 0.9rem;">No coach materials.</div>
+                        {% else %}
+                        <div class="field is-grouped is-grouped-multiline" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: var(--tp-bg-light); border: 1px dashed var(--tp-border); border-radius: 10px;">
+                            {% for editorial in task.editorials.values()|sort(attribute="filename") %}
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-warning is-light is-medium has-text-black">
+                                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                        <a href="{{ url("task", task.id, "editorial", editorial.id, "view") }}" target="_blank" rel="noopener" style="color: inherit;" dir="auto">{{ editorial.filename }}</a>
+                                    </span>
+                                    <a class="tag is-light is-medium" href="{{ url("task", task.id, "editorial", editorial.id, "view", download=1) }}" title="Download" aria-label="Download {{ editorial.filename }}">
+                                        <svg class="icon-text" width="14" height="14"><use href="#icon-download"/></svg>
+                                    </a>
+                                    {% if admin.permission_all %}
+                                    <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "editorial", editorial.id) }}');" title="Delete coach material" aria-label="Delete coach material"></button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </fieldset>
                 </div>
             </div>
         </div>
@@ -1718,6 +1782,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
     <form id="attachment_form" method="POST" action="{{ url("task", task.id, "attachments", "add") }}" enctype="multipart/form-data" style="display: none;">
         {{ xsrf_form_html|safe }}
         <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
+    </form>
+    <form id="editorial_form" method="POST" action="{{ url("task", task.id, "editorials", "add") }}" enctype="multipart/form-data" style="display: none;">
+        {{ xsrf_form_html|safe }}
+        <input type="file" id="editorial_file" name="editorial" multiple onchange="if(this.files.length) this.form.submit();" />
     </form>
     {% for dataset in task.datasets %}
     <form id="delete-dataset-form-{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "delete") }}" style="display: none;">

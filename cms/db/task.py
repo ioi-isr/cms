@@ -303,6 +303,13 @@ class Task(Base):
         passive_deletes=True,
         back_populates="task")
 
+    editorials: dict[str, "Editorial"] = relationship(
+        "Editorial",
+        collection_class=attribute_mapped_collection("filename"),
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="task")
+
     datasets: list["Dataset"] = relationship(
         "Dataset",
         # Due to active_dataset_id, SQLAlchemy cannot unambiguously
@@ -502,6 +509,50 @@ class Attachment(Base):
     digest: str = Column(
         Digest,
         nullable=False)
+
+
+class Editorial(Base):
+    """Class to store coach-only materials of a task, such as editorial
+    slides or written solutions. These are never shown to contestants.
+
+    """
+    __tablename__ = 'editorials'
+    __table_args__ = (
+        UniqueConstraint('task_id', 'filename'),
+    )
+
+    # Auto increment primary key.
+    id: int = Column(
+        Integer,
+        primary_key=True)
+
+    # Task (id and object) owning the editorial.
+    task_id: int = Column(
+        Integer,
+        ForeignKey(Task.id,
+                   onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        index=True)
+    task: Task = relationship(
+        Task,
+        back_populates="editorials")
+
+    # Filename and digest of the file. Unlike attachments, filenames are
+    # free text (e.g. Hebrew or with spaces), see sanitize_filename.
+    filename: str = Column(
+        Unicode,
+        nullable=False)
+    digest: str = Column(
+        Digest,
+        nullable=False)
+
+    @staticmethod
+    def sanitize_filename(filename: str) -> str | None:
+        """Return the base name of an uploaded file, or None if unusable."""
+        name = filename.replace("\\", "/").rsplit("/", 1)[-1].strip()
+        if name in ("", ".", ".."):
+            return None
+        return name
 
 
 class Dataset(Base):

@@ -11,7 +11,7 @@ import zipfile
 from openpyxl import load_workbook
 import yaml
 
-from cms.db import (Attachment, Dataset, File, Generator, Manager,
+from cms.db import (Attachment, Dataset, Editorial, File, Generator, Manager,
                     ModelSolutionMeta, Statement, Submission, SubtaskValidator,
                     Task, Testcase as DBTestcase)
 from cms.server.admin.handlers import HANDLERS
@@ -131,6 +131,19 @@ class TestTasksExport(tornado.testing.AsyncHTTPTestCase):
                 self.assertEqual(archive.read(base + 'statements/english.pdf'), b'english')
                 with zipfile.ZipFile(io.BytesIO(archive.read(base + 'tests.zip'))) as tests:
                     self.assertEqual(tests.namelist(), [])
+
+    def test_editorials_are_exported_to_editorial_folder(self):
+        task = self.task()
+        self.task(task_id=8)
+        Editorial(task=task, filename='slides.pptx', digest='slides')
+        Editorial(task=task, filename='פתרון.md', digest='solution')
+        with self.archive('backup') as archive:
+            base = 'tasks/7_example/'
+            self.assertEqual(archive.read(base + 'editorial/slides.pptx'), b'slides')
+            self.assertEqual(archive.read(base + 'editorial/פתרון.md'), b'solution')
+            self.assertFalse(any('/attachments/' in name for name in archive.namelist()))
+            self.assertFalse(any(name.startswith('tasks/8_example/editorial')
+                                 for name in archive.namelist()))
 
     def test_backup_fails_if_any_task_has_no_dataset(self):
         self.task(dataset=False)
