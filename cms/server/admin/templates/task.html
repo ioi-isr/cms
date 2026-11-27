@@ -716,8 +716,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                             {% for editorial in task.editorials.values()|sort(attribute="filename") %}
                             <div class="control">
                                 <div class="tags has-addons">
-                                    <span class="tag is-warning is-light is-medium has-text-black">
-                                        <svg class="icon-text" aria-hidden="true" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                    <span class="tag is-link is-light is-medium has-text-black">
+                                        <svg class="icon-text" aria-hidden="true" width="14" height="14" style="margin-right: 4px;"><use href="#icon-presentation"/></svg>
                                         <a href="{{ url("task", task.id, "editorial", editorial.id, "view") }}" target="_blank" rel="noopener" style="color: inherit;" dir="auto">{{ editorial.filename }}</a>
                                     </span>
                                     <a class="tag is-light is-medium" href="{{ url("task", task.id, "editorial", editorial.id, "view", download=1) }}" title="Download" aria-label="Download {{ editorial.filename }}">
