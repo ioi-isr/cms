@@ -46,17 +46,29 @@ from cms.db import (
     Attachment, Dataset, Session, Statement, Submission, Task, TrainingDay,
     TrainingProgram,
 )
+from cms.grading.languagemanager import HEADER_EXTS, SOURCE_EXTS
 from cms.grading.scoring import compute_changes_for_dataset
 from cms.grading.scoretypes import ScoreTypeGroup
 from cms.server.admin.handlers.utils import (
     deduplicate_preserving_order, parse_tags,
 )
 from cmscommon.datetime import make_datetime
-from .base import BaseHandler, require_permission
+from .base import BaseHandler, FileHandler, require_permission
 from cms.grading.subtask_validation import get_running_validator_ids
 
 
 logger = logging.getLogger(__name__)
+
+
+_TEXT_PREVIEW_EXTENSIONS = {ext.lower() for ext in SOURCE_EXTS | HEADER_EXTS} | {
+    ".csv", ".hh", ".hpp", ".hxx", ".in", ".ini", ".json", ".log", ".md",
+    ".out", ".sh", ".toml", ".tsv", ".txt", ".yaml", ".yml",
+}
+
+
+def _can_preview_task_file(filename: str) -> bool:
+    """Return whether the task page can show the file in its text preview."""
+    return os.path.splitext(filename)[1].lower() in _TEXT_PREVIEW_EXTENSIONS
 
 
 def _parse_task_tags(value: str) -> list[str]:
@@ -278,6 +290,7 @@ class TaskHandler(BaseHandler):
         self.r_params["task_training_days"] = get_task_training_days(
             self.sql_session, [task.id])[task.id]
         self.r_params["primary_statements"] = task.primary_statements
+        self.r_params["can_preview_task_file"] = _can_preview_task_file
         self.r_params["submissions"] = \
             self.sql_session.query(Submission)\
                 .join(Task).filter(Task.id == task_id)\
@@ -716,11 +729,17 @@ class ReplaceStatementHandler(StatementUploadMixin, BaseHandler):
             self.redirect(fallback_page)
 
 
-class StatementHandler(BaseHandler):
-    """Delete a statement.
+class StatementHandler(FileHandler):
+    """View or delete a task statement."""
 
-    """
-    # No page for single statements.
+    @require_permission(BaseHandler.AUTHENTICATED)
+    def get(self, task_id, statement_id):
+        statement = self.safe_get_item(Statement, statement_id)
+        if statement.task_id != int(task_id):
+            raise tornado.web.HTTPError(404)
+
+        filename = f"{statement.task.name}_{statement.language}.pdf"
+        self.fetch(statement.digest, "application/pdf", filename, disposition="inline")
 
     @require_permission(BaseHandler.PERMISSION_ALL)
     def delete(self, task_id, statement_id):
