@@ -896,7 +896,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Coach materials (editorials, written solutions), never shown to
         # contestants.
-        args["editorials"] = dict()
+        args["editorials"] = {}
         editorial_folder, editorial_files = list_editorial_files(self.path)
         for filename in editorial_files:
             digest = self.file_cacher.put_file_from_path(

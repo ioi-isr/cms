@@ -683,7 +683,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
             <div class="tp-card">
                 <div class="tp-card-header-modern">
                     <div class="tp-card-header-icon">
-                        <svg class="icon"><use href="#icon-graduation-cap"/></svg>
+                        <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"/></svg>
                     </div>
                     <h3 class="tp-card-title-modern">
                         Coach materials
@@ -692,15 +692,10 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                 </div>
                 <div class="tp-card-body">
                     <div class="notification is-warning is-light py-2 px-3" style="font-size: 0.9rem;">
-                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-eye-off"/></svg>
+                        <svg class="icon-text" aria-hidden="true" width="14" height="14" style="margin-right: 4px;"><use href="#icon-eye-off"/></svg>
                         Hidden from contestants. To share a file with contestants, add it as an attachment in Task Information instead.
                     </div>
-                    <fieldset class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;"
-                             {% if admin.permission_all %}
-                             ondragover="event.preventDefault();this.classList.add('is-dragover')"
-                             ondragleave="this.classList.remove('is-dragover')"
-                             ondrop="event.preventDefault();this.classList.remove('is-dragover');var inp=document.getElementById('editorial_file');inp.files=event.dataTransfer.files;if(inp.files.length)inp.form.submit()"
-                             {% endif %}>
+                    <fieldset id="editorial_drop_zone" class="field file-drop-zone" role="group" style="border: 1px dashed var(--tp-border); border-radius: 10px; padding: 12px; margin: 0;">
                         <legend class="label mb-0 is-pulled-left">
                             Editorials &amp; written solutions
                             <span class="info" title="Typically slides (.pptx/.pdf) and written solutions (.md/.pdf). PDF, Markdown and text files open in the browser; other files are downloaded. Drop files here to upload."></span>
@@ -708,7 +703,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         {% if admin.permission_all %}
                         <div class="is-pulled-right">
                             <button type="button" onclick="document.getElementById('editorial_file').click();" class="button">
-                                <svg class="icon is-small"><use href="#icon-file-plus"/></svg>
+                                <svg class="icon is-small" aria-hidden="true"><use href="#icon-file-plus"/></svg>
                                 <span>Add File</span>
                             </button>
                         </div>
@@ -722,11 +717,11 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                             <div class="control">
                                 <div class="tags has-addons">
                                     <span class="tag is-warning is-light is-medium has-text-black">
-                                        <svg class="icon-text" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
+                                        <svg class="icon-text" aria-hidden="true" width="14" height="14" style="margin-right: 4px;"><use href="#icon-file"/></svg>
                                         <a href="{{ url("task", task.id, "editorial", editorial.id, "view") }}" target="_blank" rel="noopener" style="color: inherit;" dir="auto">{{ editorial.filename }}</a>
                                     </span>
                                     <a class="tag is-light is-medium" href="{{ url("task", task.id, "editorial", editorial.id, "view", download=1) }}" title="Download" aria-label="Download {{ editorial.filename }}">
-                                        <svg class="icon-text" width="14" height="14"><use href="#icon-download"/></svg>
+                                        <svg class="icon-text" aria-hidden="true" width="14" height="14"><use href="#icon-download"/></svg>
                                     </a>
                                     {% if admin.permission_all %}
                                     <button type="button" class="tag is-delete is-light is-medium" onclick="CMS.AWSUtils.ajax_delete('{{ url("task", task.id, "editorial", editorial.id) }}');" title="Delete coach material" aria-label="Delete coach material"></button>
@@ -737,6 +732,27 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                         </div>
                         {% endif %}
                     </fieldset>
+                    {% if admin.permission_all %}
+                    <script>
+                    (function() {
+                        var zone = document.getElementById('editorial_drop_zone');
+                        zone.addEventListener('dragover', function(event) {
+                            event.preventDefault();
+                            zone.classList.add('is-dragover');
+                        });
+                        zone.addEventListener('dragleave', function() {
+                            zone.classList.remove('is-dragover');
+                        });
+                        zone.addEventListener('drop', function(event) {
+                            event.preventDefault();
+                            zone.classList.remove('is-dragover');
+                            var input = document.getElementById('editorial_file');
+                            input.files = event.dataTransfer.files;
+                            if (input.files.length) input.form.submit();
+                        });
+                    })();
+                    </script>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -1784,8 +1800,8 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
         <input type="file" id="attachment_file" name="attachment" multiple onchange="if(this.files.length) this.form.submit();" />
     </form>
     <form id="editorial_form" method="POST" action="{{ url("task", task.id, "editorials", "add") }}" enctype="multipart/form-data" style="display: none;">
-        {{ xsrf_form_html|safe }}
-        <input type="file" id="editorial_file" name="editorial" multiple onchange="if(this.files.length) this.form.submit();" />
+        <input type="hidden" name="_xsrf" value="{{ xsrf_token }}"/>
+        <input type="file" id="editorial_file" name="editorial" aria-label="Upload coach materials" multiple onchange="if(this.files.length) this.form.submit();" />
     </form>
     {% for dataset in task.datasets %}
     <form id="delete-dataset-form-{{ dataset.id }}" method="POST" action="{{ url("dataset", dataset.id, "delete") }}" style="display: none;">
