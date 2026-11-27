@@ -2383,6 +2383,9 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         # Coach materials
         editorial_folder, editorial_files = list_editorial_files(self.path)
+        if editorial_folder is not None:
+            # The folder's mtime catches deleted or renamed files.
+            files.append(os.path.join(self.path, editorial_folder))
         for filename in editorial_files:
             files.append(os.path.join(self.path, editorial_folder, filename))
 
