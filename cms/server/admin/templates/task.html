@@ -1253,7 +1253,7 @@ window.submitSubtaskNameEdit = function(editId, displayId, actionUrl) {
                                         <div id="st_name_edit_{{ dataset.id }}_{{ subtask.idx }}" class="is-hidden mt-1">
                                             <div class="field mb-2">
                                                 <div class="control">
-                                                    <input class="input is-small is-fullwidth" type="text" data-field="name" value="{{ subtask.name|default('', true) }}" onkeydown="if(event.key==='Enter'){event.preventDefault();submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}');}" />
+                                                    <input class="input is-small is-fullwidth" type="text" data-field="name" aria-label="Subtask name" value="{{ subtask.name|default('', true) }}" onkeydown="if(event.key==='Enter'){event.preventDefault();submitSubtaskNameEdit('st_name_edit_{{ dataset.id }}_{{ subtask.idx }}', 'st_name_display_{{ dataset.id }}_{{ subtask.idx }}', '{{ url("dataset", dataset.id, "subtask", subtask.idx, "name") }}');}" />
                                                 </div>
                                             </div>
                                             <div class="field is-grouped">
