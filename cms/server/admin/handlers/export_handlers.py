@@ -181,6 +181,7 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir,
     - task.yaml: Task configuration (including model_solutions section)
     - statements/: Statement PDFs
     - attachments/: Task attachments
+    - editorial/: Coach materials (only if the task has any)
     - tests.zip: Testcases (input/output pairs)
     - managers/: Manager files (checker, grader, etc.)
     - solutions/: Model solution source files (one subdirectory per solution)
@@ -203,6 +204,14 @@ def _export_task_to_yaml_format(task, dataset, file_cacher, export_dir,
         attachment_path = os.path.join(attachments_dir, filename)
         files.to_path(attachment.digest, attachment_path, "attachment",
                       filename=filename)
+
+    if task.editorials:
+        editorial_dir = os.path.join(export_dir, "editorial")
+        os.makedirs(editorial_dir, exist_ok=True)
+        for filename, editorial in task.editorials.items():
+            files.to_path(editorial.digest,
+                          os.path.join(editorial_dir, filename),
+                          "editorial", filename=filename)
 
     input_template = "input_*.txt"
     output_template = "output_*.txt"

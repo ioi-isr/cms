@@ -37,7 +37,7 @@ import yaml
 from cms import TOKEN_MODE_DISABLED, TOKEN_MODE_FINITE, TOKEN_MODE_INFINITE, \
     FEEDBACK_LEVEL_FULL, FEEDBACK_LEVEL_RESTRICTED, \
     FEEDBACK_LEVEL_OI_RESTRICTED
-from cms.db import Contest, User, Task, Statement, Attachment, Team, Dataset, \
+from cms.db import Contest, User, Task, Statement, Attachment, Editorial, Team, Dataset, \
     Manager, Testcase, Generator, SubtaskValidator
 from cms.db.modelsolution import validate_model_solution_name
 from cms.grading.languagemanager import LANGUAGES, HEADER_EXTS, \
@@ -100,6 +100,27 @@ def find_first_existing_dir(base_path, folder_names):
         raise LoaderValidationError(error_msg)
 
     return found_folders[0] if found_folders else None
+
+
+EDITORIAL_FOLDER_NAMES = ["editorial", "editorials", "Editorial", "Editorials"]
+
+
+def list_editorial_files(task_path):
+    """Return (folder_name, [filename, ...]) of the task's coach materials.
+
+    Only regular files directly inside the folder are considered; the
+    folder name is None if the task has no editorial folder.
+
+    """
+    folder = find_first_existing_dir(task_path, EDITORIAL_FOLDER_NAMES)
+    if folder is None:
+        return None, []
+    folder_path = os.path.join(task_path, folder)
+    filenames = sorted(
+        filename for filename in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, filename))
+        and not filename.startswith("."))
+    return folder, filenames
 
 
 def detect_testcase_sources(task_path):
@@ -873,6 +894,16 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
                     "Attachment %s for task %s" % (filename, name))
                 args["attachments"][filename] = Attachment(filename, digest)
 
+        # Coach materials (editorials, written solutions), never shown to
+        # contestants.
+        args["editorials"] = {}
+        editorial_folder, editorial_files = list_editorial_files(self.path)
+        for filename in editorial_files:
+            digest = self.file_cacher.put_file_from_path(
+                os.path.join(self.path, editorial_folder, filename),
+                "Editorial %s for task %s" % (filename, name))
+            args["editorials"][filename] = Editorial(filename, digest)
+
         # Score precision.
         load(conf, args, "score_precision")
 
@@ -880,6 +911,7 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
         # An omitted field must not erase labels assigned in the admin UI.
         # An explicit empty list still clears labels when updating a task.
         task._tags_provided = "tags" in conf
+        task._editorials_provided = editorial_folder is not None
         task.tags = task.custom_tags
 
         args = {}
@@ -2348,6 +2380,14 @@ class YamlLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
             att_path = os.path.join(self.path, att_folder)
             for filename in os.listdir(att_path):
                 files.append(os.path.join(att_path, filename))
+
+        # Coach materials
+        editorial_folder, editorial_files = list_editorial_files(self.path)
+        if editorial_folder is not None:
+            # The folder's mtime catches deleted or renamed files.
+            files.append(os.path.join(self.path, editorial_folder))
+        for filename in editorial_files:
+            files.append(os.path.join(self.path, editorial_folder, filename))
 
         # Score file
         files.append(os.path.join(self.path, "gen", "GEN"))
